@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>בדיקת מיקרופון</title>
+<style>
+  body { font-family: -apple-system, 'Heebo', Arial, sans-serif; margin: 0; padding: 20px 16px 40px; background: #FAF7F2; color: #2B2A28; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  p { margin: 6px 0; font-size: 14px; line-height: 1.5; color: #555; }
+  .row { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+  button { font: inherit; font-size: 16px; padding: 12px 16px; border-radius: 12px; border: 0; background: #3B5568; color: #fff; }
+  button.alt { background: #e4e0d8; color: #2B2A28; }
+  .box { background: #fff; border-radius: 12px; padding: 12px 14px; margin: 10px 0; font-size: 15px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .big { font-size: 26px; font-weight: 700; direction: ltr; text-align: left; min-height: 36px; }
+  .log { font-family: ui-monospace, Menlo, monospace; font-size: 12px; direction: ltr; text-align: left; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+  .ok { color: #2e7d32; } .bad { color: #c62828; }
+</style>
+</head>
+<body>
+<h1>בדיקת זיהוי דיבור</h1>
+<p>לוחצים על "התחל", אומרים בקול מילה בגרמנית (למשל <b>schön</b> או <b>Guten Morgen</b>), ורואים מה המכשיר שמע.</p>
+<div class="box" id="env"></div>
+<div class="row">
+  <button id="start">🎤 התחל</button>
+  <button id="stop" class="alt">עצור</button>
+</div>
+<div class="box"><div>מה נשמע:</div><div class="big" id="out">—</div><div id="conf" style="font-size:13px;color:#777"></div></div>
+<div class="box"><div>יומן:</div><div class="log" id="log"></div></div>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const log = m => { $('log').textContent = new Date().toLocaleTimeString() + '  ' + m + '\n' + $('log').textContent; };
+  const standalone = (window.navigator.standalone === true) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  $('env').innerHTML = 'מצב: <b>' + (standalone ? 'אפליקציה ממסך הבית' : 'דפדפן (ספארי)') + '</b><br>זיהוי דיבור בדפדפן: <b class="' + (SR ? 'ok' : 'bad') + '">' + (SR ? 'קיים' : 'לא קיים') + '</b>';
+  if (!SR) { $('start').disabled = true; log('SpeechRecognition לא נתמך כאן'); return; }
+  let rec = null;
+  function start() {
+    try { if (rec) rec.abort(); } catch (e) {}
+    rec = new SR();
+    rec.lang = 'de-DE';
+    rec.interimResults = true;
+    rec.maxAlternatives = 3;
+    rec.continuous = false;
+    rec.onstart = () => log('start (מקשיב)');
+    rec.onaudiostart = () => log('audiostart (המיקרופון נפתח)');
+    rec.onspeechstart = () => log('speechstart (זוהה קול)');
+    rec.onspeechend = () => log('speechend');
+    rec.onend = () => log('end');
+    rec.onerror = e => { log('שגיאה: ' + e.error + (e.message ? ' — ' + e.message : '')); $('out').textContent = '✗ ' + e.error; };
+    rec.onnomatch = () => log('nomatch');
+    rec.onresult = e => {
+      const r = e.results[e.results.length - 1];
+      $('out').textContent = r[0].transcript;
+      const alts = []; for (let i = 0; i < r.length; i++) alts.push(r[i].transcript + ' (' + Math.round((r[i].confidence || 0) * 100) + '%)');
+      $('conf').textContent = (r.isFinal ? 'סופי: ' : 'ביניים: ') + alts.join(' | ');
+      if (r.isFinal) log('final: ' + alts.join(' | '));
+    };
+    try { rec.start(); } catch (e) { log('start נכשל: ' + e.message); }
+  }
+  $('start').onclick = start;
+  $('stop').onclick = () => { try { rec && rec.stop(); } catch (e) {} };
+})();
+</script>
+</body>
+</html>
