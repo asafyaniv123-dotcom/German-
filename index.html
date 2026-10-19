@@ -1749,6 +1749,498 @@
 
 </script>
 <!--SPEAKMOD-END-->
+<!--COACH-START-->
+<script>
+/* Personal coach for the German learning app: a guided daily path built on Bloom's levels, running on top of the app's own tools. */
+(function () {
+  'use strict';
+  const KEY = 'delearn_coach';
+  const LV = [null,
+    { n: 'זכירה', c: '#0F7B6C', icon: '🧠', what: 'המילים של הנושא', why: 'אי אפשר לבנות משפט בלי אבני בניין. קודם מכירים את המילים.' },
+    { n: 'הבנה', c: '#C9C200', icon: '👂', what: 'מבינים כל משפט מילה אחר מילה', why: 'רואים למה כל מילה נמצאת במשפט ומה היא עושה. הבנה היא מה ששומר את המשפט בראש, ולא שינון של צלילים.' },
+    { n: 'יישום', c: '#E0553F', icon: '🗣️', what: 'אומרים את המשפטים בקול', why: 'רואים את המשמעות בעברית ואומרים את המשפט בגרמנית בקול. כאן הוא מתחיל להיכנס לפה.' },
+    { n: 'ניתוח', c: '#F0901A', icon: '🧩', what: 'משלימים מילה חסרה במשפט', why: 'מפרקים את המשפט ומשלימים את המילה החסרה: ככה מבינים איך הוא בנוי.' },
+    { n: 'הערכה', c: '#0B6B5E', icon: '🎯', what: 'בוחנים את עצמך בלי רמזים', why: 'רק העברית, בלי הגרמנית. לענות בכנות לעצמך זה מה שמראה מה באמת נכנס.' },
+    { n: 'יצירה', c: '#C9C200', icon: '🎭', what: 'משרשרים משפטים לשיחה', why: 'מחברים כמה משפטים לשיחה קצרה ברצף, כמו בשיחה אמיתית.' }
+  ];
+  const $ctx = () => window.GERMAN_COACH_CTX;
+  let overlay = null, cur = null;
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const pad = n => (n < 10 ? '0' : '') + n;
+  function dstr(d) { d = d || new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function dnum(s) { const p = s.split('-').map(Number); return Math.round(Date.UTC(p[0], p[1] - 1, p[2]) / 86400000); }
+  function today() { return dstr(); }
+  function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  // ---------------- state ----------------
+  function load() {
+    let s = null;
+    try { s = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+    if (!s || typeof s !== 'object') s = {};
+    s.v = 1; s.start = s.start || today(); s.budget = s.budget || 45;
+    s.diag = s.diag || { done: false, res: {} };
+    s.u = s.u || {}; s.sk = s.sk || {}; s.days = s.days || {}; s.lastOpen = s.lastOpen || '';
+    return s;
+  }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  let ST = load();
+  function us(key) { return ST.u[key] || (ST.u[key] = { done: {}, rv: { n: 0, due: 0 }, tries: 0 }); }
+  function dayRec(date) { date = date || today(); return ST.days[date] || (ST.days[date] = { plan: [], done: {}, min: 0 }); }
+
+  // ---------------- units ----------------
+  // a "sentence unit" = a sentence category with its sentences and the words they use; a "word unit" = a chunk of the vocabulary
+  let UNITS = null;
+  const stripPunct = w => String(w || '').toLowerCase().replace(/[.,!?;:"'“”„()…]/g, '');
+  function heText(i) {
+    const s = $ctx().sentences[i]; let t = String(s.he || '');
+    const q = t.match(/^איך אומרים ['"׳“]?(.+?)['"׳”]?\s*\?/); if (q) t = q[1];
+    return t.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
+  }
+  function deText(i) { return String($ctx().sentences[i].de || '').replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function units() {
+    if (UNITS) return UNITS;
+    const C = $ctx(), sU = [], seen = new Map();
+    C.sentences.forEach((s, i) => {
+      const k = 's:' + (s.category || 'כללי');
+      if (!seen.has(k)) { const o = { key: k, kind: 's', name: s.category || 'כללי', sents: [], vocab: [] }; seen.set(k, o); sU.push(o); }
+      seen.get(k).sents.push(i);
+    });
+    sU.forEach(u => {
+      const toks = new Set();
+      u.sents.forEach(i => { const s = C.sentences[i]; deText(i).split(/\s+/).forEach(w => toks.add(stripPunct(w))); (s.flow || []).forEach(f => toks.add(stripPunct(f.text))); });
+      const tl = Array.from(toks);
+      C.vocab.forEach((v, vi) => {
+        const base = stripPunct(String(v.de || '').replace(/\([^)]*\)/g, '').replace(/^(der|die|das)\s+/i, '').trim().split(/[\s/,]+/)[0]);
+        if (!base) return;
+        const verb = /פועל/.test(v.pos || '');
+        if (toks.has(base) || (verb && /en$/.test(base) && base.length > 5 && tl.some(t => t.indexOf(base.slice(0, -2)) === 0 && t.length <= base.length + 1))) u.vocab.push(vi);
+      });
+    });
+    // word units: the vocabulary by category, in chunks of at most 25 words
+    const wU = [], cats = [];
+    C.vocab.forEach((v, vi) => { const c = v.category || 'כללי'; let o = cats.find(x => x.c === c); if (!o) { o = { c: c, idx: [] }; cats.push(o); } o.idx.push(vi); });
+    cats.forEach(o => {
+      const n = Math.ceil(o.idx.length / 25);
+      for (let k = 0; k < n; k++) {
+        const part = o.idx.slice(Math.round(k * o.idx.length / n), Math.round((k + 1) * o.idx.length / n));
+        wU.push({ key: 'w:' + o.c + (n > 1 ? '#' + (k + 1) : ''), kind: 'w', name: 'מילים · ' + o.c + (n > 1 ? ' ' + (k + 1) : ''), sents: [], vocab: part });
+      }
+    });
+    // alternate sentences and words so that every day mixes both
+    const out = []; for (let i = 0; i < Math.max(sU.length, wU.length); i++) { if (sU[i]) out.push(sU[i]); if (wU[i]) out.push(wU[i]); }
+    UNITS = out; return out;
+  }
+  function unitByKey(k) { return units().find(u => u.key === k); }
+  function vm(vi) { const v = $ctx().vocab[vi]; const r = $ctx().vmastery(v.de); return r == null ? 0 : r; }
+  function vocabRatio(u) { if (!u.vocab.length) return 1; return u.vocab.filter(vi => vm(vi) >= 0.6).length / u.vocab.length; }
+  function sentRatio(u) { if (!u.sents.length) return 0; return u.sents.filter(i => ST.sk[i] === 1).length / u.sents.length; }
+  function mastery(u) { return u.kind === 's' ? sentRatio(u) : vocabRatio(u); }
+  function levelsOf(u) { return u.kind === 's' ? [1, 2, 3, 4, 5, 6] : [1]; }
+
+  // fill-in-the-blank items for the analysis level
+  function clozeItems(u) {
+    const C = $ctx(), out = [];
+    u.sents.forEach(i => {
+      const s = C.sentences[i], fl = (s.flow || []).filter(f => { const w = stripPunct(f.text); return w.length >= 3 && f.type !== 'pron' && !/^(der|die|das|ein|eine|einen|einem|den|dem|und|ich|du|er|sie|es|wir|ihr|mit|für|bei|zum|zur|ins|im|in)$/.test(w); });
+      if (!fl.length) return;
+      const pick = fl.find(f => f.type === 'verb') || fl[(i * 7) % fl.length];
+      const word = String(pick.text).replace(/[.,!?;:"“”„]/g, '');
+      const text = deText(i);
+      const re = new RegExp('(^|[^A-Za-zÄÖÜäöüß])(' + word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')(?![A-Za-zÄÖÜäöüß])');
+      if (!re.test(text) || text.split(' ').length < 3) return;
+      out.push({ ref: i, prompt: text.replace(re, (all, pre) => pre + '_____'), answer: word, display: word, hint: heText(i), sub: text, ltr: true });
+    });
+    return out;
+  }
+
+  // ---------------- time estimates and the plan ----------------
+  function est(u, L) {
+    const n = u.sents.length;
+    switch (L) {
+      case 1: return Math.max(3, Math.ceil(u.vocab.length * 0.55) + 1);
+      case 2: return Math.ceil(n * 0.6) + 2;
+      case 3: return Math.ceil(n * 0.5) + 2;
+      case 4: return Math.max(3, Math.ceil(clozeItems(u).length * 0.4) + 2);
+      case 5: return Math.ceil(n * 0.4) + 2;
+      case 6: return Math.max(3, Math.ceil(Math.max(n, 3) / 3) * 2 + 1);
+    }
+    return 5;
+  }
+  const TYPES = ['', 'vocab', 'read', 'apply', 'analyze', 'evaluate', 'chain'];
+  function stepFor(u, L) {
+    return { id: 'L' + L + ':' + u.key, type: TYPES[L], lv: L, key: u.key, title: (u.kind === 'w' ? u.name : LV[L].n + ' · ' + u.name), what: u.kind === 'w' ? 'אומרים כל מילה בגרמנית' : LV[L].what, min: est(u, L) };
+  }
+  function isDone(u, L) {
+    const s = us(u.key);
+    if (s.done[L]) return true;
+    if (L === 1 && (!u.vocab.length || vocabRatio(u) >= 0.85)) return true;
+    if (L === 4 && clozeItems(u).length < 2) return true;
+    return false;
+  }
+  function allDone(u) { return levelsOf(u).every(L => isDone(u, L)); }
+  function dueReviews(date) {
+    const dn = dnum(date);
+    return units().filter(u => { const s = us(u.key); return allDone(u) && s.rv.due && s.rv.due <= dn && !dayRec(date).done['rv:' + date + ':' + u.key]; })
+      .sort((a, b) => mastery(a) - mastery(b));
+  }
+  function generate(minutes) {
+    const steps = [], date = today();
+    let used = 0;
+    if (!ST.diag.done) { steps.push({ id: 'diag', type: 'diag', lv: 0, key: '', title: 'בדיקת מצב · איפה אתה עומד', what: 'שני משפטים מכל נושא, בלי רמזים', min: 8 }); used += 8; }
+    dueReviews(date).slice(0, 3).forEach(u => { steps.push({ id: 'rv:' + date + ':' + u.key, type: 'review', lv: 5, key: u.key, title: 'חזרה · ' + u.name, what: u.kind === 's' ? 'חמישה משפטים בלי רמזים' : 'עשר מילים בדיבור', min: 5 }); used += 5; });
+    outer: for (const u of units()) {
+      for (const L of levelsOf(u)) {
+        if (isDone(u, L) || dayRec().done['L' + L + ':' + u.key]) continue;
+        const e = est(u, L);
+        if (used + e > minutes * 1.1 && steps.length) break outer;
+        steps.push(stepFor(u, L)); used += e;
+      }
+    }
+    return steps;
+  }
+  function ensurePlan() {
+    const d = dayRec();
+    const doneAll = d.plan.length && d.plan.every(s => d.done[s.id]);
+    if (!d.plan.length) d.plan = generate(Math.max(20, ST.budget - d.min));
+    else if (doneAll && ST.budget - d.min >= 12) { const more = generate(ST.budget - d.min).filter(s => !d.plan.some(p => p.id === s.id)); d.plan = d.plan.concat(more); }
+    save(ST); return d;
+  }
+  function nextStep() { const d = ensurePlan(); return d.plan.find(s => !d.done[s.id]) || null; }
+  function streak() {
+    let n = 0, d = dnum(today());
+    const has = k => { const r = ST.days[k]; return r && r.min > 0; };
+    const key = x => { const dt = new Date(x * 86400000); return dt.getUTCFullYear() + '-' + pad(dt.getUTCMonth() + 1) + '-' + pad(dt.getUTCDate()); };
+    if (!has(key(d))) d--;
+    while (has(key(d))) { n++; d--; }
+    return n;
+  }
+  function message(next) {
+    const tot = units().length, n = units().filter(allDone).length;
+    if (!ST.diag.done) return 'שלום אסף. לפני שנתחיל אני צריך לדעת איפה אתה עומד: בדיקה של כ-8 דקות, שני משפטים מכל נושא. בלי ציונים ובלי לחץ, זה רק כדי שלא תבזבז זמן על מה שכבר ידוע.';
+    if (!next) return 'סיימת את כל מה שתוכנן להיום. זמן מצוין לעצור. אם נשארו לך כוחות אפשר להוסיף עוד צעד, ואם לא, מחר ממשיכים. השינה היא חלק מהלמידה.';
+    const dayNo = dnum(today()) - dnum(ST.start) + 1, st = streak();
+    return 'יום ' + dayNo + ' · ' + n + ' מתוך ' + tot + ' נושאים כבר בידיים שלך' + (st > 1 ? ' · ' + st + ' ימים ברצף' : '') + '. הלמידה הטובה היא בהדרגה: כמה דקות כל יום, ועם חזרות.';
+  }
+
+  // ---------------- UI ----------------
+  const CSS = `
+  .co-ov { position: fixed; inset: 0; z-index: 8000; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg, #fff); color: var(--ink, #3c3c3c); padding: max(14px, env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom)); }
+  .co-wrap { max-width: 560px; margin: 0 auto; }
+  .co-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .co-top h2 { margin: 0; font-size: 24px; font-weight: 800; color: var(--fun-green, #58a700); }
+  .co-x { background: none; border: 0; font-size: 26px; line-height: 1; color: var(--ink-soft, #777); padding: 6px 4px; cursor: pointer; }
+  .co-count { display: flex; gap: 10px; margin: 12px 0 8px; }
+  .co-stat { flex: 1; background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 16px; box-shadow: 0 4px 0 var(--fun-shade, #e5e5e5); padding: 10px 8px; text-align: center; }
+  .co-stat b { display: block; font-size: 26px; font-weight: 800; line-height: 1.1; }
+  .co-stat span { font-size: 12px; color: var(--ink-soft, #777); }
+  .co-msg { background: var(--accent-soft, #ddf4ff); border-radius: 18px; padding: 14px 16px; margin: 10px 0; font-size: 15.5px; line-height: 1.5; font-weight: 500; }
+  .co-next { background: var(--surface, #fff); border: 2px solid var(--fun-green, #58cc02); border-radius: 22px; box-shadow: 0 5px 0 var(--fun-green, #58cc02); padding: 16px; margin: 14px 0; }
+  .co-next .co-lvl { display: inline-flex; align-items: center; gap: 6px; font-weight: 800; font-size: 13px; color: #fff; padding: 3px 12px; border-radius: 999px; }
+  .co-next h3 { margin: 8px 0 4px; font-size: 20px; font-weight: 800; }
+  .co-next p { margin: 0 0 12px; font-size: 14.5px; line-height: 1.5; color: var(--ink-soft, #777); }
+  .co-go { width: 100%; border: 0; border-radius: 16px; padding: 15px; font: inherit; font-size: 18px; font-weight: 800; color: #fff; background: var(--fun-green, #58cc02); box-shadow: 0 5px 0 var(--fun-green-dk, #58a700); cursor: pointer; }
+  .co-go:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--fun-green-dk, #58a700); }
+  .co-h { margin: 22px 0 8px; font-size: 16px; font-weight: 800; }
+  .co-step { display: flex; align-items: center; gap: 12px; background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 16px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+  .co-step.done { opacity: .6; }
+  .co-step.now { border-color: var(--fun-green, #58cc02); }
+  .co-ic { width: 40px; height: 40px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex: none; color: #fff; }
+  .co-step b { display: block; font-size: 15px; }
+  .co-step small { color: var(--ink-soft, #777); font-size: 12.5px; }
+  .co-tick { margin-inline-start: auto; font-size: 20px; color: var(--fun-green, #58cc02); font-weight: 800; }
+  .co-pyr { display: block; width: 100%; max-width: 330px; margin: 6px auto; }
+  .co-map { display: flex; flex-direction: column; gap: 6px; }
+  .co-sc { display: flex; align-items: center; gap: 10px; background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 14px; padding: 8px 10px; font-size: 14px; }
+  .co-sc .co-n { flex: 1; min-width: 0; font-weight: 600; }
+  .co-dots { display: flex; gap: 3px; }
+  .co-dots i { width: 11px; height: 11px; border-radius: 50%; background: var(--line, #e5e5e5); display: block; }
+  .co-pct { font-size: 12px; color: var(--ink-soft, #777); min-width: 34px; text-align: left; direction: ltr; }
+  .co-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .co-chip { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 14px; padding: 9px 14px; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 var(--fun-shade, #e5e5e5); }
+  .co-chip.on { border-color: var(--fun-blue, #1cb0f6); color: var(--fun-blue-dk, #1899d6); background: var(--accent-soft, #ddf4ff); }
+  .co-link { background: none; border: 0; font: inherit; font-size: 13px; font-weight: 700; color: var(--ink-soft, #777); padding: 8px 4px; cursor: pointer; }
+  .co-banner { display: flex; align-items: center; gap: 12px; background: var(--surface, #fff); border: 2px solid var(--fun-green, #58cc02); border-radius: 20px; box-shadow: 0 4px 0 var(--fun-green, #58cc02); padding: 11px 14px; margin: 4px 0 14px; cursor: pointer; }
+  .co-banner .co-bi { font-size: 28px; }
+  .co-banner b { display: block; font-size: 16px; }
+  .co-banner small { color: var(--ink-soft, #777); font-size: 12.5px; }
+  .co-banner .co-bgo { margin-inline-start: auto; background: var(--fun-green, #58cc02); color: #fff; font-weight: 800; border-radius: 12px; padding: 8px 14px; box-shadow: 0 3px 0 var(--fun-green-dk, #58a700); }
+  .co-strip { position: fixed; top: 0; left: 0; right: 0; z-index: 7000; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 12px 8px; background: var(--fun-green, #58cc02); color: #fff; font-weight: 700; font-size: 14px; box-shadow: 0 3px 8px rgba(0,0,0,.2); }
+  .co-strip span { flex: 1 1 100%; min-width: 0; line-height: 1.35; font-size: 13.5px; }
+  .co-strip button { flex: 1; }
+  .co-strip button { border: 0; border-radius: 12px; padding: 8px 12px; font: inherit; font-weight: 800; cursor: pointer; background: #fff; color: var(--fun-green-dk, #58a700); box-shadow: 0 3px 0 rgba(0,0,0,.18); }
+  .co-strip button.sec { background: rgba(255,255,255,.2); color: #fff; box-shadow: none; }
+  
+  .karaoke-on .sync-mine .sync-de, .karaoke-on .sync-mine .sync-he { filter: blur(8px); transition: filter .2s; }
+  .karaoke-on .sync-mine.rev .sync-de, .karaoke-on .sync-mine.rev .sync-he { filter: none; }
+  /* recite */
+  .co-card { background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 26px; box-shadow: 0 6px 0 var(--fun-shade, #e5e5e5); padding: 20px 16px; min-height: 230px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 10px; text-align: center; margin: 14px 0; }
+  .co-card.rev { background: var(--accent-soft, #ddf4ff); border-color: var(--fun-blue, #1cb0f6); box-shadow: 0 6px 0 var(--fun-blue, #1cb0f6); }
+  .co-card .co-big { font-size: 24px; font-weight: 800; line-height: 1.35; }
+  .co-card .co-de { font-size: 22px; font-weight: 800; direction: ltr; line-height: 1.35; }
+  .co-card .co-small { font-size: 14px; color: var(--ink-soft, #777); line-height: 1.45; }
+  .co-card .co-who { font-size: 12px; font-weight: 800; color: var(--ink-soft, #777); direction: ltr; }
+  .co-rate { display: flex; gap: 8px; }
+  .co-rate button, .co-btn { flex: 1; border: 0; border-radius: 16px; padding: 14px 6px; font: inherit; font-size: 16px; font-weight: 800; color: #fff; cursor: pointer; }
+  .co-rate .g { background: var(--fun-green, #58cc02); box-shadow: 0 4px 0 var(--fun-green-dk, #58a700); }
+  .co-rate .o { background: var(--fun-orange, #ff9600); box-shadow: 0 4px 0 #d97f00; }
+  .co-rate .r { background: var(--fun-red, #ff4b4b); box-shadow: 0 4px 0 var(--fun-red-dk, #ea2b2b); }
+  .co-btn { background: var(--fun-blue, #1cb0f6); box-shadow: 0 4px 0 var(--fun-blue-dk, #1899d6); width: 100%; font-size: 18px; }
+  .co-aux { display: flex; gap: 8px; justify-content: center; }
+  .co-aux button { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 14px; padding: 8px 14px; font: inherit; font-weight: 700; cursor: pointer; box-shadow: 0 3px 0 var(--fun-shade, #e5e5e5); }
+  .co-bar { flex: 1; height: 14px; border-radius: 8px; background: var(--line, #e6e1d8); overflow: hidden; }
+  .co-bar i { display: block; height: 100%; background: linear-gradient(90deg, #22d3c5, #3b82f6); border-radius: 8px; transition: width .3s; }
+  .co-score { font-size: 56px; font-weight: 800; color: var(--fun-blue, #1cb0f6); direction: ltr; text-align: center; }
+  .co-miss { background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 16px; padding: 8px 12px; font-size: 14px; max-height: 220px; overflow: auto; }
+  .co-miss div { padding: 5px 0; border-bottom: 1px solid var(--line, #e5e5e5); direction: ltr; text-align: left; }
+  .co-miss div:last-child { border-bottom: 0; }
+  
+  .co-flow { width: 100%; display: flex; flex-direction: column; gap: 4px; margin: 4px 0; text-align: right; }
+  .co-flow div { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; border-top: 1px solid var(--line, #e5e5e5); padding-top: 4px; }
+  .co-flow b { direction: ltr; font-size: 16px; }
+  .co-flow span { font-size: 13px; color: var(--ink-soft, #777); text-align: left; }
+`;
+  function injectCss() {
+    if (document.getElementById('coCss')) return;
+    const s = document.createElement('style'); s.id = 'coCss'; s.textContent = CSS; document.head.appendChild(s);
+  }
+  function mount() {
+    injectCss();
+    if (!overlay) { overlay = document.createElement('div'); overlay.className = 'co-ov'; document.body.appendChild(overlay); }
+    return overlay;
+  }
+  function unmount() { if (overlay) { overlay.remove(); overlay = null; } }
+
+  function pyramid(u) {
+    const cs = u ? levelsOf(u) : [];
+    let nextL = 0; if (u) { for (const L of cs) { if (!isDone(u, L)) { nextL = L; break; } } }
+    const H = 30, top = 6, cx = 160, half = y => (y - top) / (H * 6) * 150;
+    let out = '<svg class="co-pyr" viewBox="0 0 320 196" role="img" aria-label="פירמידת הלמידה">';
+    for (let i = 0; i < 6; i++) {
+      const L = 6 - i, y0 = top + i * H, y1 = y0 + H - 3;
+      const pts = (i === 0 ? [[cx, y0], [cx + half(y1), y1], [cx - half(y1), y1]] : [[cx - half(y0), y0], [cx + half(y0), y0], [cx + half(y1), y1], [cx - half(y1), y1]]);
+      const done = u ? isDone(u, L) : false, skipped = u && cs.indexOf(L) < 0 && !done;
+      out += '<polygon points="' + pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ') + '" fill="' + (done ? LV[L].c : 'none') + '" stroke="' + LV[L].c + '" stroke-width="' + (L === nextL ? 4 : 2) + '" opacity="' + (skipped ? .35 : 1) + '"' + (L === nextL ? ' style="filter:drop-shadow(0 0 5px ' + LV[L].c + ')"' : '') + '/>';
+      out += '<text x="' + cx + '" y="' + (y0 + H / 2 + 5) + '" text-anchor="middle" font-size="' + (i === 0 ? 11 : 14) + '" font-weight="800" fill="' + (done ? '#fff' : 'currentColor') + '" opacity="' + (skipped ? .4 : 1) + '">' + LV[L].n + '</text>';
+    }
+    return out + '</svg>';
+  }
+
+  function home(note) {
+    const el = mount();
+    ST.lastOpen = today(); save(ST);
+    const d = ensurePlan(), next = d.plan.find(s => !d.done[s.id]) || null;
+    const total = $ctx().sentences.length, knownN = Object.keys(ST.sk).filter(k => ST.sk[k] === 1).length;
+    const vk = $ctx().vocab.filter((v, i) => vm(i) >= 0.6).length;
+    const planMin = d.plan.reduce((a, s) => a + s.min, 0);
+    const u = next && next.key && unitByKey(next.key) || units().find(x => !allDone(x)) || null;
+    let h = '<div class="co-wrap"><div class="co-top"><h2>🧭 המאמן שלי</h2><button class="co-x" id="coClose" aria-label="סגירה">✕</button></div>';
+    h += '<div class="co-count"><div class="co-stat"><b>' + streak() + '</b><span>ימים ברצף</span></div><div class="co-stat"><b>' + knownN + '/' + total + '</b><span>משפטים בידיים</span></div><div class="co-stat"><b>' + vk + '</b><span>מילים שאתה יודע</span></div></div>';
+    h += '<div class="co-msg">' + esc(note || message(next)) + '</div>';
+    if (next) {
+      const lv = next.lv ? LV[next.lv] : { n: 'בדיקה', c: '#1cb0f6', icon: '🔎', why: 'כדי לבנות לך מסלול שמתאים בדיוק למה שאתה כבר יודע.' };
+      const nu = unitByKey(next.key);
+      const why = next.type === 'review' ? 'חזרה במרווחים: מה שחוזרים אליו אחרי יום ושניים נשאר בראש לאורך זמן.' : (nu && nu.kind === 'w') ? 'מילים נכנסות כשאומרים אותן בקול. כאן מדברים, לא קוראים.' : lv.why;
+      h += '<div class="co-next"><span class="co-lvl" style="background:' + lv.c + '">' + lv.icon + ' ' + esc(next.type === 'review' ? 'חזרה' : (nu && nu.kind === 'w') ? 'זכירה' : lv.n) + '</span><h3>' + esc(next.title) + '</h3><p>' + esc(why) + '</p><button class="co-go" id="coGo">התחל · ' + next.min + ' דק׳</button></div>';
+    }
+    h += '<div class="co-h">התוכנית להיום <small style="font-weight:400;color:var(--ink-soft)">· ' + planMin + ' דק׳ מתוכננות מתוך ' + ST.budget + '</small></div>';
+    d.plan.forEach((s, i) => {
+      const dn = !!d.done[s.id], isNow = next && next.id === s.id, nu = unitByKey(s.key), lv = s.lv ? LV[s.lv] : { c: '#1cb0f6', icon: '🔎' };
+      h += '<div class="co-step' + (dn ? ' done' : '') + (isNow ? ' now' : '') + '" data-i="' + i + '"><div class="co-ic" style="background:' + lv.c + '">' + (s.type === 'review' ? '🔁' : lv.icon) + '</div><div><b>' + esc(s.title) + '</b><small>' + esc(s.what) + ' · ' + s.min + ' דק׳</small></div>' + (dn ? '<span class="co-tick">✓</span>' : '') + '</div>';
+    });
+    if (!d.plan.length) h += '<div class="co-msg">אין צעדים להיום.</div>';
+    if (u && u.kind === 's') h += '<div class="co-h">הפירמידה של הנושא: ' + esc(u.name) + '</div>' + pyramid(u);
+    h += '<div class="co-h">כל הנושאים</div><div class="co-map">';
+    units().forEach(x => {
+      const dots = levelsOf(x).map(L => '<i style="' + (isDone(x, L) ? 'background:' + LV[L].c : '') + '"></i>').join('');
+      h += '<div class="co-sc"><span class="co-n">' + esc(x.name) + '</span><span class="co-dots">' + dots + '</span><span class="co-pct">' + Math.round(mastery(x) * 100) + '%</span></div>';
+    });
+    h += '</div><div class="co-h">כמה זמן ביום?</div><div class="co-chips" id="coBudget">' + [20, 30, 45, 60, 90, 120].map(m => '<button class="co-chip' + (ST.budget === m ? ' on' : '') + '" data-m="' + m + '">' + (m >= 60 ? (m / 60) + ' שעות' : m + ' דק׳') + '</button>').join('') + '</div>';
+    h += '<div style="margin-top:14px;display:flex;gap:6px;flex-wrap:wrap"><button class="co-link" id="coDiag">בדוק אותי שוב</button><button class="co-link" id="coMore">הוסף עוד צעד להיום</button><button class="co-link" id="coReset">איפוס המסלול</button></div></div>';
+    el.innerHTML = h;
+    const $ = id => el.querySelector('#' + id);
+    $('coClose').onclick = () => { unmount(); refreshBanner(); };
+    if ($('coGo')) $('coGo').onclick = () => run(next);
+    el.querySelectorAll('.co-step').forEach(n => { n.onclick = () => { const s = d.plan[+n.dataset.i]; if (s && !d.done[s.id]) run(s); }; });
+    el.querySelectorAll('#coBudget .co-chip').forEach(b => { b.onclick = () => { ST.budget = +b.dataset.m; const dd = dayRec(); dd.plan = dd.plan.filter(s => dd.done[s.id]); save(ST); home(); }; });
+    $('coDiag').onclick = () => { ST.diag.done = false; const dd = dayRec(); dd.plan = dd.plan.filter(s => dd.done[s.id]); dd.plan.push({ id: 'diag:' + Date.now(), type: 'diag', lv: 0, key: '', title: 'בדיקת מצב · איפה אתה עומד', what: 'שני משפטים מכל נושא, בלי רמזים', min: 8 }); save(ST); home(); };
+    $('coMore').onclick = () => { const dd = dayRec(); const more = generate(30).filter(s => !dd.plan.some(p => p.id === s.id)); if (!more.length) { home('אין עוד מה להוסיף: כל השלבים כבר הושלמו.'); return; } dd.plan = dd.plan.concat(more); save(ST); home(); };
+    $('coReset').onclick = () => { if (confirm('לאפס את כל המסלול? (ההתקדמות באפליקציה נשארת)')) { ST = { v: 1, start: today(), budget: ST.budget, diag: { done: false, res: {} }, u: {}, sk: {}, days: {}, lastOpen: today() }; save(ST); home(); } };
+    el.scrollTop = 0;
+  }
+
+  // ---------------- running a step ----------------
+  const INTERVALS = [1, 2, 4, 8, 12];
+  function scheduleReview(u, pass) {
+    const s = us(u.key);
+    if (pass) { s.rv.n = (s.rv.n || 0) + 1; s.rv.due = dnum(today()) + INTERVALS[Math.min(4, s.rv.n)]; }
+    else { s.rv.n = 0; s.rv.due = dnum(today()) + 1; }
+    return INTERVALS[Math.min(4, s.rv.n)];
+  }
+  function finish(step, info) {
+    const d = dayRec();
+    const mins = Math.min(45, Math.max(1, Math.round((Date.now() - (cur && cur.t0 || Date.now())) / 60000)));
+    d.min += mins;
+    let note = '', ok = true;
+    const u = step.key ? unitByKey(step.key) : null, s = u ? us(u.key) : null;
+    if (step.type === 'diag') {
+      ST.diag.done = true; ST.diag.res = info.byUnit || {};
+      units().forEach(x => {
+        const r = ST.diag.res[x.key]; if (x.kind !== 's' || !r) return;
+        const ratio = r.n ? r.s / r.n : 0, st2 = us(x.key);
+        if (ratio >= 0.8) { [1, 2, 3, 4, 5].forEach(L => st2.done[L] = Date.now()); st2.rv = { n: 0, due: dnum(today()) + 1 }; }
+        else if (ratio >= 0.5) { st2.done[2] = Date.now(); }
+      });
+      const strong = units().filter(x => x.kind === 's' && us(x.key).done[5]).length;
+      note = 'סיימנו את הבדיקה: ' + strong + ' נושאים כבר די מוכנים. את השאר נבנה שלב אחר שלב, ואת המוכנות נחזק בחזרות קצרות.';
+      d.done[step.id] = Date.now(); d.plan = d.plan.filter(x => d.done[x.id]).concat(generate(Math.max(20, ST.budget - d.min)));
+      cur = null; save(ST); return home(note);
+    }
+    if (step.type === 'apply') {
+      ok = info.ratio >= 0.6 || (s.tries || 0) >= 1;
+      if (!ok) { s.tries = (s.tries || 0) + 1; note = 'ידעת ' + Math.round(info.ratio * 100) + '%. נעשה עוד סיבוב קצר על מה שלא נכנס, זה לגמרי טבעי.'; }
+      else { s.done[3] = Date.now(); s.tries = 0; note = 'יפה! ' + Math.round(info.ratio * 100) + '% ידעת. עכשיו המשפטים כבר זזים לפה.'; }
+    } else if (step.type === 'evaluate') {
+      if (info.ratio >= 0.7) { s.done[5] = Date.now(); scheduleReview(u, false); s.rv.due = dnum(today()) + 1; note = 'מצוין: ' + Math.round(info.ratio * 100) + '% בלי רמזים. הנושא "' + u.name + '" כבר אצלך. אחזור אליו מחר לחזרה קצרה.'; }
+      else { delete s.done[3]; ok = false; note = 'בלי רמזים ידעת ' + Math.round(info.ratio * 100) + '%. אין בעיה: חוזרים לשלב היישום ואז נבחן שוב. ככה זה נשאר בראש.'; }
+    } else if (step.type === 'review') {
+      const k = scheduleReview(u, info.ratio >= 0.8);
+      note = info.ratio >= 0.8 ? 'חזרה טובה: ' + Math.round(info.ratio * 100) + '%. אחזור לנושא הזה בעוד ' + k + ' ימים.' : 'ידעת ' + Math.round(info.ratio * 100) + '%. מחר נחזור לנושא הזה שוב.';
+    } else if (step.type === 'vocab') { s.done[1] = Date.now(); if (u.kind === 'w') { s.rv.due = dnum(today()) + 2; note = 'מצוין. המילים האלה נכנסות כשחוזרים אליהן, אז אחזור אליהן בעוד יומיים.'; } else note = 'המילים של הנושא עברו. עכשיו נבין את המשפטים.'; }
+    else if (step.type === 'analyze') { s.done[4] = Date.now(); note = 'יופי. עכשיו המשפטים כבר לא רק צלילים.'; }
+    else if (step.type === 'read') { s.done[2] = Date.now(); note = 'הבנת את המשפטים. השלב הבא: להגיד אותם בקול.'; }
+    else if (step.type === 'chain') { s.done[6] = Date.now(); if (!s.rv.due) s.rv.due = dnum(today()) + 1; note = 'שרשרת ראשונה נעשתה. זו כבר שיחה.'; }
+    if (ok) d.done[step.id] = Date.now();
+    else {
+      const back = step.type === 'evaluate' && u ? stepFor(u, 3) : null;
+      if (back) { d.plan = d.plan.filter(p => p.id !== back.id); delete d.done[back.id]; const i = d.plan.findIndex(p => p.id === step.id); d.plan.splice(Math.max(0, i), 0, back); }
+    }
+    cur = null; save(ST); home(note);
+  }
+
+  function sentItems(idxs, mode) {
+    return idxs.map(i => ({ idx: i, he: heText(i), de: deText(i), flow: ($ctx().sentences[i].flow || []), mode: mode }));
+  }
+
+  function run(step) {
+    const C = $ctx();
+    unmount();
+    cur = { step: step, t0: Date.now() };
+    const u = step.key ? unitByKey(step.key) : null;
+    const backIfNotDone = () => { if (cur) { cur = null; home(); } };
+    if (step.type === 'diag') {
+      const items = [];
+      units().filter(x => x.kind === 's').forEach(x => { const pick = shuffle(x.sents).slice(0, 2); sentItems(pick, 'diag').forEach(it => { it.unit = x.key; items.push(it); }); });
+      return recite({ title: 'בדיקת מצב', intro: 'אין ציונים. עונים בכנות כדי שהמסלול יתאים לך. כל כרטיס: רואים את העברית, אומרים את המשפט בגרמנית בקול, ואז לוחצים "הצג".', items: shuffle(items), mode: 'diag', mark: true, onFinish: sum => { const by = {}; sum.results.forEach(r => { const o = by[r.item.unit] || (by[r.item.unit] = { n: 0, s: 0 }); o.n++; o.s += r.score; }); finish(step, { byUnit: by, ratio: sum.ratio }); }, onClose: backIfNotDone });
+    }
+    if (step.type === 'vocab') {
+      return C.speakOpen({ title: 'אמרו את המילה בגרמנית', items: C.vocabItems(u.vocab.filter(vi => vm(vi) < 0.85).length >= 3 ? u.vocab.filter(vi => vm(vi) < 0.85) : u.vocab), onFinish: sum => finish(step, { sum: sum }), onClose: backIfNotDone });
+    }
+    if (step.type === 'analyze') {
+      return C.speakOpen({ title: 'השלימו את המילה החסרה', items: clozeItems(u), onResult: function () {}, onFinish: sum => finish(step, { sum: sum }), onClose: backIfNotDone });
+    }
+    if (step.type === 'read') {
+      return recite({ title: 'הבנה · ' + u.name, intro: 'מקשיבים למשפט ורואים מילה אחר מילה מה כל חלק עושה. כשהכול ברור, לוחצים "הבנתי".', items: sentItems(u.sents, 'understand'), mode: 'understand', onFinish: sum => finish(step, { ratio: sum.ratio }), onClose: backIfNotDone });
+    }
+    if (step.type === 'apply') {
+      return recite({ title: 'יישום · ' + u.name, intro: 'רואים את המשמעות בעברית. אומרים את המשפט בגרמנית בקול, ואז "הצג" כדי לבדוק.', items: sentItems(shuffle(u.sents), 'apply'), mode: 'apply', mark: 'up', onFinish: sum => finish(step, { ratio: sum.ratio }), onClose: backIfNotDone });
+    }
+    if (step.type === 'evaluate') {
+      // the unit's own sentences, with a few from units that are already done mixed in
+      const old = []; units().forEach(x => { if (x.kind === 's' && x !== u && us(x.key).done[5]) x.sents.forEach(i => old.push(i)); });
+      const idxs = u.sents.concat(shuffle(old).slice(0, 3));
+      return recite({ title: 'הערכה · ' + u.name, intro: 'בלי עזרה: רק העברית. אומרים את המשפט בקול, ואז "הצג". כמה משפטים מנושאים קודמים מעורבבים בפנים, כדי לבדוק שהם עדיין שם.', items: sentItems(shuffle(idxs), 'eval'), mode: 'eval', mark: true, onFinish: sum => finish(step, { ratio: sum.ratio }), onClose: backIfNotDone, scoreOnly: new Set(u.sents) });
+    }
+    if (step.type === 'review') {
+      if (u.kind === 'w') {
+        const idx = shuffle(u.vocab).slice(0, 10);
+        return C.speakOpen({ title: 'חזרה · ' + u.name, items: C.vocabItems(idx), onFinish: sum => finish(step, { ratio: sum.total ? sum.firstTry / sum.total : 1 }), onClose: backIfNotDone });
+      }
+      const kn = ST.sk, idxs = u.sents.slice().sort((a, b) => ((kn[a] === 1) ? 1 : 0) - ((kn[b] === 1) ? 1 : 0) || Math.random() - .5).slice(0, 5);
+      return recite({ title: 'חזרה · ' + u.name, intro: 'חזרה קצרה: רק העברית, אתם אומרים בקול.', items: sentItems(idxs, 'eval'), mode: 'eval', mark: true, onFinish: sum => finish(step, { ratio: sum.ratio }), onClose: backIfNotDone });
+    }
+    if (step.type === 'chain') {
+      let pool = u.sents.slice();
+      if (pool.length < 3) { const extra = []; units().forEach(x => { if (x.kind === 's' && x !== u) x.sents.forEach(i => extra.push(i)); }); pool = pool.concat(shuffle(extra).slice(0, 3 - pool.length)); }
+      pool = shuffle(pool); const chains = [];
+      for (let i = 0; i < pool.length; i += 3) chains.push(pool.slice(i, i + 3).length === 1 && chains.length ? null : pool.slice(i, i + 3));
+      const items = chains.filter(Boolean).map(ch => ({ idx: ch[0], idxs: ch, mode: 'chain', he: ch.map(heText).join('\n'), de: ch.map(deText).join('\n') }));
+      return recite({ title: 'יצירה · ' + u.name, intro: 'כמה משפטים ברצף, כמו שיחה. אומרים את כולם בקול בלי להסתכל, ואז "הצג" כדי לבדוק.', items: items, mode: 'chain', mark: 'up', onFinish: sum => finish(step, { ratio: sum.ratio }), onClose: backIfNotDone });
+    }
+  }
+
+  // ---------------- recite engine (self-rated) ----------------
+  function recite(o) {
+    injectCss(); try { if (window.SpeakPractice) window.SpeakPractice.ensureCss(); } catch (e) {}
+    const C = $ctx();
+    const q = o.items.slice(); let i = 0, results = [], phase = 'ask';
+    const root = document.createElement('div'); root.className = 'co-ov'; document.body.appendChild(root);
+    const finishNow = () => { root.remove(); if (o.onFinish) o.onFinish(summary()); };
+    function summary() {
+      const rs = o.scoreOnly ? results.filter(r => r.item.idxs ? true : o.scoreOnly.has(r.item.idx)) : results;
+      const n = rs.length || 1, s = rs.reduce((a, r) => a + r.score, 0); return { results: results, ratio: s / n };
+    }
+    function close() { root.remove(); if (o.onClose) o.onClose(); }
+    function draw() {
+      if (i >= q.length) {
+        if (!results.length) return finishNow();
+        const sum = summary(), miss = results.filter(r => r.score < 1);
+        root.innerHTML = '<div class="co-wrap"><div class="co-top"><h2>' + esc(o.title) + '</h2><button class="co-x" id="rX">✕</button></div>' + (o.mode === 'understand' ? '<div class="co-score">✓</div>' : '<div class="co-score">' + Math.round(sum.ratio * 100) + '%</div>') + '<div class="co-msg" style="text-align:center">' + (o.mode === 'understand' ? 'עברת על כל המשפטים.' : sum.ratio >= .8 ? 'מצוין!' : sum.ratio >= .5 ? 'בכיוון, יש מה לחזק.' : 'זה מה שבדיקה באה לגלות. משם בונים.') + '</div>' + (miss.length && o.mode !== 'understand' ? '<div class="co-h">מה עוד לא ישב</div><div class="co-miss">' + miss.slice(0, 40).map(r => '<div>' + esc(r.item.de).replace(/\n/g, '<br>') + '</div>').join('') + '</div>' : '') + '<div style="margin-top:14px"><button class="co-go" id="rDone">המשך</button></div></div>';
+        root.querySelector('#rX').onclick = close; root.querySelector('#rDone').onclick = finishNow;
+        return;
+      }
+      const it = q[i], pct = Math.round(i / q.length * 100), multi = it.mode === 'chain';
+      let card;
+      const flowHtml = () => (it.flow && it.flow.length ? '<div class="co-flow">' + it.flow.map(f => '<div><b>' + esc(f.text) + '</b><span>' + esc(f.he || '') + (f.label ? ' · ' + esc(f.label) : '') + '</span></div>').join('') + '</div>' : '');
+      const heHtml = t => esc(t).replace(/\n/g, '<br>');
+      if (it.mode === 'understand') {
+        card = '<div class="co-card rev"><div class="co-de">' + esc(it.de) + '</div><div class="co-small">' + esc(it.he) + '</div>' + flowHtml() + '<div class="co-aux"><button id="rSay">🔊 השמע</button></div></div>';
+      } else if (phase === 'ask') {
+        card = '<div class="co-card"><div class="co-big">' + heHtml(it.he) + '</div><div class="co-small">' + (multi ? 'אמרו את כל המשפטים ברצף, בגרמנית, בקול' : 'אמרו את זה בגרמנית, בקול') + '</div></div>';
+      } else {
+        card = '<div class="co-card rev"><div class="co-de">' + heHtml(it.de) + '</div><div class="co-small">' + heHtml(it.he) + '</div><div class="co-aux"><button id="rSay">🔊 השמע</button></div></div>';
+      }
+      const act = it.mode === 'understand'
+        ? '<div class="co-rate"><button class="r" data-s="0">עוד לא ברור</button><button class="g" data-s="1">הבנתי</button></div>'
+        : phase === 'ask' ? '<button class="co-btn" id="rShow">הצג</button>' : '<div class="co-rate"><button class="r" data-s="0">לא ידעתי</button><button class="o" data-s="0.5">כמעט</button><button class="g" data-s="1">ידעתי</button></div>';
+      root.innerHTML = '<div class="co-wrap"><div class="co-top"><button class="co-x" id="rX">✕</button><div class="co-bar"><i style="width:' + pct + '%"></i></div><span style="font-size:13px;color:var(--ink-soft);direction:ltr">' + i + '/' + q.length + '</span></div><div class="co-h" style="margin-top:12px">' + esc(o.title) + '</div>' + (i === 0 && phase === 'ask' && o.intro ? '<div class="co-msg" style="font-size:14px">' + esc(o.intro) + '</div>' : '') + card + act + '</div>';
+      root.querySelector('#rX').onclick = close;
+      const sb = root.querySelector('#rSay'); if (sb) sb.onclick = () => C.speakDe(it.de.replace(/\n/g, '. '));
+      if (it.mode === 'understand') { root.querySelectorAll('.co-rate button').forEach(b => { b.onclick = () => rate(+b.dataset.s); }); if (C.speakDe && !it.__said) { it.__said = 1; setTimeout(() => C.speakDe(it.de), 150); } }
+      else if (phase === 'ask') root.querySelector('#rShow').onclick = () => { phase = 'rev'; draw(); C.speakDe(q[i].de.replace(/\n/g, '. ')); };
+      else root.querySelectorAll('.co-rate button').forEach(b => { b.onclick = () => rate(+b.dataset.s); });
+      root.scrollTop = 0;
+    }
+    function rate(score) {
+      const it = q[i];
+      if (!it.again) results.push({ item: it, score: score });
+      const ids = it.idxs || [it.idx];
+      if (o.mark) ids.forEach(ix => { if (score === 1) ST.sk[ix] = 1; else if (o.mark === true && ST.sk[ix] === 1 && score === 0) delete ST.sk[ix]; });
+      save(ST);
+      if (score < 1 && (o.mode === 'apply' || o.mode === 'understand') && !it.again) q.push(Object.assign({}, it, { again: true }));
+      i++; phase = 'ask'; draw();
+    }
+    draw();
+  }
+
+  // ---------------- entry banner on the home screen ----------------
+  function refreshBanner() {
+    const b = document.getElementById('coachBanner');
+    if (!b) return;
+    injectCss();
+    let nx = null; try { nx = nextStep(); } catch (e) {}
+    b.innerHTML = '<div class="co-banner"><span class="co-bi">🧭</span><div><b>המאמן שלי</b><small>' + (nx ? 'הצעד הבא: ' + esc(nx.title) : 'סיימת להיום') + '</small></div><span class="co-bgo">פתח</span></div>';
+    b.firstChild.onclick = () => home();
+  }
+  function init() {
+    if (!window.GERMAN_COACH_CTX) return;
+    injectCss(); refreshBanner();
+    if (ST.lastOpen !== today()) setTimeout(() => { if (!overlay) home(); }, 700);
+  }
+  window.GermanCoach = { open: () => home(), init: init, refreshBanner: refreshBanner, _state: () => ST, _units: units, _gen: generate, _cloze: clozeItems };
+})();
+
+</script>
+<!--COACH-END-->
 <!--FUN-START-->
 <script>
 (function () {
@@ -4794,7 +5286,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           </button>`).join('')}
         </div>
       </div>`).join('');
-    el.innerHTML = `<div class="home-wrap"><div class="home-hello">מה לומדים היום?</div>${groups}</div>`;
+    el.innerHTML = `<div class="home-wrap"><div class="home-hello">מה לומדים היום?</div><div id="coachBanner"></div>${groups}</div>`;
+    try { if (window.GermanCoach) GermanCoach.refreshBanner(); } catch (e) {}
   }
 
   function goToFlowDiagram(idx) {
@@ -5715,6 +6208,25 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     });
   }
   // <<SPEAKADAPT-END>>
+
+  // <<COACHADAPT-START>>
+  window.GERMAN_COACH_CTX = {
+    sentences: SENTENCES, vocab: VOCAB,
+    vmastery: function (de) { return masteryRatio(getStat(de)); },
+    speakDe: function (t) { try { speak(String(t).replace(/\([^)]*\)/g, ' ')); } catch (e) {} },
+    vocabItems: function (idxs) { return idxs.map(i => VOCAB[i]).map(v => ({ ref: v, prompt: spCleanHe(v.he), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos })); },
+    speakOpen: function (o) {
+      if (!window.SpeakPractice) return;
+      SpeakPractice.open(Object.assign({
+        title: 'אמרו את המילה בגרמנית', storeKey: 'delearn_sp_coach',
+        onResult: (v, ok) => { recordAttempt(v.de, ok); try { renderProgress(); } catch (e) {} },
+        getGroups: spGermanGroups,
+        getItems: () => []
+      }, o, { autostart: true }));
+    }
+  };
+  try { if (window.GermanCoach) GermanCoach.init(); } catch (e) { console.error(e); }
+  // <<COACHADAPT-END>>
 
   // --- full progress backup: copy a code from one place, paste it in another ---
   (function () {
