@@ -1497,14 +1497,14 @@
     const o = S.opts, cfg = S.cfg;
     saveCfg(o, cfg);
     let items = [];
-    try { items = o.getItems({ group: cfg.group, count: cfg.count === 'all' ? 99999 : cfg.count, preferNew: cfg.preferNew }) || []; } catch (e) { console.error(e); }
-    if (cfg.count !== 'all') items = items.slice(0, cfg.count);
+    if (o.items) items = o.items.slice(); else try { items = o.getItems({ group: cfg.group, count: cfg.count === 'all' ? 99999 : cfg.count, preferNew: cfg.preferNew }) || []; } catch (e) { console.error(e); }
+    if (cfg.count !== 'all' && !o.items) items = items.slice(0, cfg.count);
     if (!items.length) { S.msg = 'אין מילים לתרגול בבחירה הזו.'; renderSetup(); return; }
     clearTimers(); stopRec();
     Object.assign(S, {
       phase: 'play', idx: 0, state: 'ask', attempts: 0, combo: 0, best: 0, firstTry: 0, results: [], done: false, msg: '', heard: '', wrong: false,
       listening: false, live: false, typing: !!typing || !SR, focusInput: false, base: 0, lastLen: 0, muteUntil: 0, heardAny: false,
-      queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint }))
+      queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr }))
     });
     restarts = [];
     render();
@@ -1520,9 +1520,9 @@
     const cardCls = 'sp-card' + (S.enter ? ' enter' : '') + (S.state === 'ok' ? ' ok' : S.state === 'bad' ? ' bad' : S.wrong ? ' wrongtry' : '') + (S.shake ? ' shake' : '');
     let cardInner;
     if (S.state === 'ask') {
-      cardInner = '<div class="sp-prompt">' + esc(c.prompt) + '</div>' + (c.hint ? '<div class="sp-pos">' + esc(c.hint) + '</div>' : '');
+      cardInner = '<div class="sp-prompt"' + (c.ltr ? ' style="direction:ltr;font-size:23px"' : '') + '>' + esc(c.prompt) + '</div>' + (c.hint ? '<div class="sp-pos">' + esc(c.hint) + '</div>' : '');
     } else {
-      cardInner = '<div class="sp-answer">' + esc(c.display || c.answer) + '</div><div class="sp-sub">' + esc(c.prompt) + '</div>';
+      cardInner = '<div class="sp-answer">' + esc(c.display || c.answer) + '</div><div class="sp-sub"' + (c.ltr ? ' style="direction:ltr"' : '') + '>' + esc(c.sub || c.prompt) + '</div>';
     }
     const layers = (total - S.idx > 2 ? '<div class="sp-layer l2"></div>' : '') + (total - S.idx > 1 ? '<div class="sp-layer l1"></div>' : '');
     let banner = '';
@@ -1700,7 +1700,7 @@
     sfx('bad');
     later(() => { if (S && S.state === 'bad') speakWord(c.display || c.answer, true); }, 500); // after a miss the word is always played, so the person hears how it should sound
     // practise it once more at the end of the round
-    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, requeued: true });
+    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, requeued: true });
   }
   function advance() {
     clearTimers();
@@ -1715,6 +1715,7 @@
   }
   function renderEnd() {
     const n = S.results.length, miss = S.results.filter(r => !r.ok);
+    if (!S.finished) { S.finished = true; try { if (S.opts.onFinish) S.opts.onFinish({ total: n, firstTry: S.firstTry, results: S.results.map(r => ({ ref: r.item.ref, ok: r.ok })) }); } catch (e) {} }
     overlay.innerHTML =
       '<div class="sp-top"><button class="sp-x" id="spClose" aria-label="סגירה">✕</button><div class="sp-bar"><div class="sp-fill" style="width:100%"></div></div></div>' +
       '<div class="sp-end"><h2>' + (miss.length === 0 ? 'מושלם! 🎉' : 'סיימתם סיבוב') + '</h2>' +
@@ -1724,7 +1725,7 @@
       '<div class="sp-btns"><button class="sp-redo" id="spSettings" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">שינוי הגדרות</button><button class="sp-redo" id="spDone" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">סגירה</button></div></div>';
     document.getElementById('spClose').onclick = close;
     document.getElementById('spDone').onclick = close;
-    document.getElementById('spAgain').onclick = () => { const t = S.typing; begin(t); };
+    document.getElementById('spAgain').onclick = () => { const t = S.typing; S.finished = false; begin(t); };
     document.getElementById('spSettings').onclick = () => { S.groups = S.opts.getGroups ? S.opts.getGroups() : []; S.phase = 'setup'; S.msg = ''; render(); };
   }
 
@@ -1733,11 +1734,13 @@
     clearTimers(); stopRec();
     if (!overlay) { overlay = document.createElement('div'); overlay.className = 'sp-overlay'; document.body.appendChild(overlay); }
     S = { opts, phase: 'setup', cfg: loadCfg(opts), groups: opts.getGroups ? opts.getGroups() : [{ id: 'all', label: 'הכול', count: 999 }], msg: '', live: false, listening: false, typing: !SR, done: false };
+    if (opts.autostart) { if (opts.preset) Object.assign(S.cfg, opts.preset); audioCtx(); begin(false); return; } // started by the coach: skip the setup screen
     render();
   }
 
   window.SpeakPractice = {
     open: open,
+    ensureCss: injectCss,
     matches: matches, // exported for tests
     _state: function () { return S; },
     supported: !!SR
