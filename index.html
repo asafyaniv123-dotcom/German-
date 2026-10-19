@@ -1749,6 +1749,181 @@
 
 </script>
 <!--SPEAKMOD-END-->
+<!--LESSONS-START-->
+<script>
+/* Grammar lessons: idea -> visual rule -> examples -> practice. First lesson: Modalverben. */
+(function () {
+  'use strict';
+  const KEY = 'delearn_lessons';
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; } return a; };
+  const ctx = () => window.LESSONS_CTX || {};
+  const say = t => { try { ctx().speakDe && ctx().speakDe(t); } catch (e) {} };
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function save(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+
+  const CSS = `
+  .ls-ov { position: fixed; inset: 0; z-index: 8400; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg, #fff); color: var(--ink, #3c3c3c); direction: rtl; padding: max(12px, env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom)); }
+  .ls-wrap { max-width: 560px; margin: 0 auto; }
+  .ls-top { display: flex; align-items: center; gap: 10px; } .ls-top h2 { flex: 1; margin: 0; font-size: 19px; font-weight: 800; }
+  .ls-x { background: none; border: 0; font-size: 26px; line-height: 1; color: var(--ink-soft, #777); padding: 6px 4px; cursor: pointer; }
+  .ls-steps { display: flex; gap: 6px; margin: 10px 0 14px; }
+  .ls-steps button { flex: 1; border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: var(--ink-soft, #777); border-radius: 12px; padding: 7px 2px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+  .ls-steps button.on { border-color: var(--fun-blue, #1cb0f6); background: var(--accent-soft, #ddf4ff); color: var(--fun-blue-dk, #1899d6); }
+  .ls-card { background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 20px; box-shadow: 0 4px 0 var(--line, #e5e5e5); padding: 14px; margin-bottom: 14px; }
+  .ls-card h3 { margin: 0 0 6px; font-size: 17px; font-weight: 800; } .ls-card p { margin: 6px 0; line-height: 1.55; font-size: 15.5px; }
+  .ls-tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; } .ls-tag { background: var(--accent-soft, #ddf4ff); border-radius: 999px; padding: 5px 11px; font-size: 14px; font-weight: 700; }
+  .ls-sent { direction: ltr; display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin: 10px 0 4px; justify-content: flex-start; }
+  .ls-chip { display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 7px 11px 5px; min-width: 44px; font-weight: 800; font-size: 17px; border: 2px solid transparent; }
+  .ls-chip small { font-size: 10.5px; font-weight: 700; opacity: .8; margin-top: 2px; direction: rtl; }
+  .ls-chip.sub { background: #e6e8ff; color: #4b55c9; } .ls-chip.mod { background: #ffe9cc; color: #c76a00; border-color: #ffb347; } .ls-chip.rest { background: #e8f6e0; color: #3d8c00; } .ls-chip.inf { background: #ffd9de; color: #c4264a; border-color: #ff8fa1; } .ls-chip.verb { background: #ffe9cc; color: #c76a00; }
+  .ls-chip.pop { animation: lsPop .55s cubic-bezier(.2,1.4,.4,1); }
+  @keyframes lsPop { 0% { transform: translateX(-120px) scale(.6); opacity: 0; } 100% { transform: none; opacity: 1; } }
+  .ls-note { font-size: 13.5px; color: var(--ink-soft, #777); margin-top: 6px; }
+  .ls-btn { width: 100%; border: 0; border-radius: 14px; padding: 12px; font: inherit; font-size: 16px; font-weight: 800; color: #fff; cursor: pointer; background: var(--fun-green, #58cc02); box-shadow: 0 4px 0 var(--fun-green-dk, #58a700); margin-top: 8px; }
+  .ls-btn.blue { background: var(--fun-blue, #1cb0f6); box-shadow: 0 4px 0 var(--fun-blue-dk, #1899d6); } .ls-btn.sec { background: var(--surface, #fff); color: inherit; border: 2px solid var(--line, #e5e5e5); box-shadow: 0 3px 0 var(--line, #e5e5e5); } .ls-btn:active { transform: translateY(2px); }
+  .ls-vh { display: flex; align-items: center; gap: 10px; cursor: pointer; } .ls-vh .n { font-size: 22px; font-weight: 800; direction: ltr; color: #c76a00; } .ls-vh .m { font-weight: 800; } .ls-vh .d { font-size: 13px; color: var(--ink-soft, #777); } .ls-vh .ch { margin-inline-start: auto; color: var(--ink-soft, #777); transition: transform .2s; } .ls-vc.open .ls-vh .ch { transform: rotate(180deg); }
+  .ls-vt { display: none; margin-top: 8px; grid-template-columns: 1fr 1fr; gap: 4px 12px; direction: ltr; } .ls-vc.open .ls-vt { display: grid; } .ls-vt div { display: flex; justify-content: space-between; font-size: 15px; border-bottom: 1px dashed var(--line, #e5e5e5); padding: 3px 2px; } .ls-vt b { color: #c76a00; }
+  .ls-ex { display: flex; align-items: center; gap: 8px; margin-top: 8px; direction: ltr; } .ls-ex .t { flex: 1; font-weight: 800; font-size: 16px; } .ls-ex .h { direction: rtl; font-size: 13px; color: var(--ink-soft, #777); font-weight: 400; }
+  .ls-say { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 12px; padding: 4px 9px; font-size: 16px; cursor: pointer; }
+  .ls-trap { background: #fff3cd; border: 2px solid #ffe08a; color: #5c4600; border-radius: 16px; padding: 11px 13px; margin-bottom: 14px; line-height: 1.55; font-size: 15px; }
+  .ls-prog { height: 10px; border-radius: 6px; background: var(--line, #e5e5e5); overflow: hidden; margin: 6px 0 12px; } .ls-prog i { display: block; height: 100%; background: var(--fun-green, #58cc02); border-radius: 6px; transition: width .3s; }
+  .ls-q { font-size: 18px; font-weight: 800; margin-bottom: 4px; } .ls-hint { font-size: 13.5px; color: var(--ink-soft, #777); margin-bottom: 8px; }
+  .ls-de { direction: ltr; text-align: left; font-size: 19px; font-weight: 800; margin: 8px 0; } .ls-de u { text-decoration: none; display: inline-block; min-width: 54px; border-bottom: 3px solid var(--fun-blue, #1cb0f6); text-align: center; color: var(--fun-blue-dk, #1899d6); }
+  .ls-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; direction: ltr; margin-top: 8px; }
+  .ls-opt { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 14px; padding: 12px 6px; font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 var(--line, #e5e5e5); }
+  .ls-opt.ok { border-color: var(--fun-green, #58cc02); background: #e1f7c8; color: #3d8c00; } .ls-opt.bad { border-color: #ff4b4b; background: #ffe0e0; color: #c4264a; }
+  .ls-slot { direction: ltr; display: flex; flex-wrap: wrap; gap: 6px; min-height: 52px; border-bottom: 2px dashed var(--line, #ccc); padding: 6px 0 10px; margin: 10px 0; }
+  .ls-bank { direction: ltr; display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 6px; }
+  .ls-w { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 12px; padding: 9px 13px; font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 var(--line, #e5e5e5); }
+  .ls-w.used { opacity: .25; pointer-events: none; }
+  .ls-fb { border-radius: 14px; padding: 10px 12px; margin-top: 10px; font-weight: 700; } .ls-fb.ok { background: #e1f7c8; color: #3d8c00; } .ls-fb.bad { background: #ffe0e0; color: #c4264a; } .ls-fb .de { direction: ltr; display: block; font-size: 17px; margin-top: 4px; }
+  .ls-done { text-align: center; padding: 18px 4px; } .ls-done .big { font-size: 56px; } .ls-done h3 { font-size: 20px; margin: 4px 0; }
+  .ls-tile { display: flex; align-items: center; gap: 12px; background: var(--surface, #fff); border: 2px solid var(--fun-orange, #ff9600); box-shadow: 0 4px 0 var(--fun-orange, #ff9600); border-radius: 20px; padding: 11px 14px; margin: 4px 0 16px; cursor: pointer; }
+  .ls-tile .i { font-size: 30px; } .ls-tile b { display: block; font-size: 16px; } .ls-tile small { color: var(--ink-soft, #777); font-size: 12.5px; } .ls-tile .go { margin-inline-start: auto; background: var(--fun-orange, #ff9600); color: #fff; font-weight: 800; border-radius: 12px; padding: 7px 13px; box-shadow: 0 3px 0 #cc7a00; }
+  `;
+  function injectCss() { if (document.getElementById('lsCss')) return; const s = document.createElement('style'); s.id = 'lsCss'; s.textContent = CSS; document.head.appendChild(s); }
+
+  const MODALS = [
+    { inf: 'können', he: 'יכול / מסוגל', kind: 'יכולת או אפשרות', ex: ['Ich kann schwimmen.', 'אני יכול לשחות'], tip: 'האות k: kann, kannst. ביחיד ich ו-er חולקים אותה צורה (kann), בלי סיומת.' },
+    { inf: 'müssen', he: 'חייב / מוכרח', kind: 'חובה מוחלטת', ex: ['Ich muss lernen.', 'אני חייב ללמוד'], tip: 'ich muss / er muss, בלי סיומת. ושימו לב: nicht müssen = "לא חייב", לא "אסור"!' },
+    { inf: 'wollen', he: 'רוצה', kind: 'רצון עז / כוונה ברורה', ex: ['Ich will schlafen.', 'אני רוצה לישון'], tip: 'ישיר וחזק. כשמבקשים בנימוס, עדיף möchten.' },
+    { inf: 'möchten', he: 'הייתי רוצה', kind: 'רצון מנומס (כמו would like)', ex: ['Ich möchte ein Eis.', 'הייתי רוצה גלידה'], tip: 'בחנות ובמסעדה זה הפועל לבקשות. אפשר גם בלי פועל שני, כשיש מושא: möchte ein Eis.' },
+    { inf: 'dürfen', he: 'מותר / רשאי', kind: 'רשות או איסור', ex: ['Hier darf man nicht parken.', 'כאן אסור לחנות'], tip: 'כש-dürfen מופיע עם nicht, המשמעות היא "אסור". ו-man פירושו "אנשים בכלל", כמו בשלט.' },
+    { inf: 'sollen', he: 'אמור / צריך', kind: 'המלצה, או משימה שמישהו אחר ביקש', ex: ['Ich soll den Arzt anrufen.', 'אני אמור להתקשר לרופא'], tip: 'ההבדל: müssen = אני חייב (מתוך הכרח), sollen = מישהו אחר אמר או ביקש. גם "אמור" לפי התוכנית.' }
+  ];
+  const TRAPS = [
+    '<b>⚠️ מלכודת:</b> Du <b>musst nicht</b> kommen = "אתה לא חייב לבוא", אבל Du <b>darfst nicht</b> kommen = "אסור לך לבוא". אותו nicht, משמעות הפוכה כמעט.',
+    '<b>💡 wollen או möchten?</b> wollen = "אני רוצה" (חד, כמעט דרישה). möchten = "הייתי רוצה" (מנומס). בקשות בחנות, במסעדה, בשיחה עם זרים: möchten.'
+  ];
+  const CHOOSE = [
+    { he: 'אני יכול לשחות', hint: 'יכולת', pre: 'Ich', post: 'schwimmen.', opts: ['kann', 'muss', 'will', 'soll'], a: 'kann' },
+    { he: 'אני חייב ללמוד', hint: 'חובה מוחלטת', pre: 'Ich', post: 'lernen.', opts: ['muss', 'kann', 'darf', 'möchte'], a: 'muss' },
+    { he: 'אני רוצה לישון', hint: 'רצון עז', pre: 'Ich', post: 'schlafen.', opts: ['will', 'soll', 'muss', 'kann'], a: 'will' },
+    { he: 'הייתי רוצה גלידה', hint: 'בקשה מנומסת בחנות', pre: 'Ich', post: 'ein Eis.', opts: ['möchte', 'muss', 'soll', 'darf'], a: 'möchte' },
+    { he: 'כאן אסור לחנות', hint: 'איסור', pre: 'Hier', post: 'man nicht parken.', opts: ['darf', 'will', 'möchte', 'muss'], a: 'darf' },
+    { he: 'אני אמור להתקשר לרופא', hint: 'ביקשו ממני', pre: 'Ich', post: 'den Arzt anrufen.', opts: ['soll', 'will', 'kann', 'darf'], a: 'soll' },
+    { he: 'אתה יכול לבוא', hint: 'du: איזו צורה?', pre: 'Du', post: 'kommen.', opts: ['kannst', 'kann', 'können', 'könnt'], a: 'kannst' },
+    { he: 'אנחנו חייבים ללכת', hint: 'wir: איזו צורה?', pre: 'Wir', post: 'gehen.', opts: ['müssen', 'muss', 'musst', 'müsst'], a: 'müssen' },
+    { he: 'הוא רוצה לבוא', hint: 'er: איזו צורה?', pre: 'Er', post: 'kommen.', opts: ['will', 'wollen', 'willst', 'wolle'], a: 'will' },
+    { he: 'אתם יכולים לשחות', hint: 'ihr: איזו צורה?', pre: 'Ihr', post: 'schwimmen.', opts: ['könnt', 'können', 'kannst', 'kann'], a: 'könnt' }
+  ];
+  const BUILD = [
+    { he: 'אני חייב לאכול תפוח', w: ['Ich', 'muss', 'einen', 'Apfel', 'essen'] },
+    { he: 'אני יכול לשחות', w: ['Ich', 'kann', 'schwimmen'] },
+    { he: 'כאן אסור לחנות', w: ['Hier', 'darf', 'man', 'nicht', 'parken'] },
+    { he: 'אני אמור להתקשר לרופא', w: ['Ich', 'soll', 'den', 'Arzt', 'anrufen'] },
+    { he: 'אני רוצה לישון', w: ['Ich', 'will', 'schlafen'] },
+    { he: 'אנחנו חייבים ללמוד', w: ['Wir', 'müssen', 'lernen'] }
+  ];
+
+  let ov = null, tab = 'idea', mod = false, P = null;
+  function chip(cls, txt, sub, extra) { return '<div class="ls-chip ' + cls + (extra ? ' ' + extra : '') + '"><span>' + esc(txt) + '</span><small>' + esc(sub) + '</small></div>'; }
+  function verbTable(inf) {
+    const v = (ctx().verbs || []).find(x => x.inf === inf); if (!v) return '';
+    return '<div class="ls-vt">' + v.forms.map(f => '<div><span>' + esc(f.pron) + '</span><b>' + esc(f.form) + '</b></div>').join('') + '</div>';
+  }
+  function viewIdea() {
+    return '<div class="ls-card"><h3>מה זה פועל מודאלי?</h3><p>פועל שמוסיף "אופי" לפועל אחר במשפט. הוא לא מתאר את הפעולה עצמה, אלא את <b>היחס של הדובר אליה</b>.</p><div class="ls-tags"><span class="ls-tag">💪 יכולת</span><span class="ls-tag">🔥 רצון</span><span class="ls-tag">⛓️ חובה</span><span class="ls-tag">✅ רשות</span><span class="ls-tag">🚫 איסור</span><span class="ls-tag">📌 המלצה / משימה</span></div></div>' +
+      '<div class="ls-card"><h3>ששת הפעלים</h3>' + MODALS.map(m => '<div class="ls-ex" style="direction:rtl"><span class="ls-tag" style="direction:ltr;min-width:76px;text-align:center">' + esc(m.inf) + '</span><span><b>' + esc(m.he) + '</b><br><small style="color:var(--ink-soft)">' + esc(m.kind) + '</small></span></div>').join('') + '</div>' +
+      '<button class="ls-btn blue" data-go="team">הכלל שמשגע לומדים ←</button>';
+  }
+  function viewTeam() {
+    const normal = '<div class="ls-sent">' + chip('sub', 'Ich', 'נושא') + chip('verb', 'esse', 'פועל מנוטה') + chip('rest', 'einen Apfel', 'שאר המשפט') + '</div><button class="ls-say" data-say="Ich esse einen Apfel.">🔊</button> <span class="ls-note">אני אוכל תפוח</span>';
+    const modal = mod
+      ? '<div class="ls-sent">' + chip('sub', 'Ich', 'נושא') + chip('mod', 'muss', 'מודאלי, מקום 2', 'pop') + chip('rest', 'einen Apfel', 'שאר המשפט') + chip('inf', 'essen', 'מקור, בסוף!', 'pop') + '</div><button class="ls-say" data-say="Ich muss einen Apfel essen.">🔊</button> <span class="ls-note">אני חייב לאכול תפוח</span>'
+      : '<div class="ls-note" style="text-align:center;padding:14px 0">לחצו כדי להוסיף פועל מודאלי למשפט</div>';
+    return '<div class="ls-card"><h3>משפט רגיל</h3>' + normal + '</div>' +
+      '<div class="ls-card"><h3>אותו משפט עם פועל מודאלי</h3>' + modal + (mod ? '' : '<button class="ls-btn" data-act="mod">➕ הוסף "muss"</button>') + '</div>' +
+      '<div class="ls-card"><h3>הצוות: שני כללים</h3><p><b>1.</b> הפועל המודאלי עומד <b>במקום השני</b> במשפט ומשתנה לפי הגוף (<span dir="ltr">Ich möchte…, Du kannst…</span>).</p><p><b>2.</b> הפועל השני (הפעולה עצמה) נשאר ב<b>צורת המקור</b> ונזרק <b>לסוף המשפט</b>.</p><div class="ls-note">גם כשמשהו אחר פותח את המשפט, המודאלי נשאר שני: <span dir="ltr"><b>Hier darf</b> man nicht parken.</span></div></div>' +
+      '<button class="ls-btn blue" data-go="six">להכיר את ששת הפעלים ←</button>';
+  }
+  function viewSix() {
+    return TRAPS.map(t => '<div class="ls-trap">' + t + '</div>').join('') + MODALS.map((m, i) => '<div class="ls-card ls-vc" data-i="' + i + '"><div class="ls-vh" data-tg="' + i + '"><span class="n">' + esc(m.inf) + '</span><span><div class="m">' + esc(m.he) + '</div><div class="d">' + esc(m.kind) + '</div></span><span class="ch">▾</span></div><div class="ls-ex"><span class="t">' + esc(m.ex[0]) + '<div class="h">' + esc(m.ex[1]) + '</div></span><button class="ls-say" data-say="' + esc(m.ex[0]) + '">🔊</button></div><div class="ls-note">' + esc(m.tip) + '</div>' + verbTable(m.inf) + '</div>').join('') + '<button class="ls-btn" data-go="practice">לתרגול ←</button>';
+  }
+  function startPractice() {
+    const chosen = shuffle(CHOOSE).slice(0, 6).map(q => ({ t: 'c', q: q })), built = shuffle(BUILD).slice(0, 4).map(q => ({ t: 'b', q: q }));
+    P = { items: shuffle(chosen.concat(built)), i: 0, ok: 0, first: true, done: false, st: null };
+  }
+  function viewPractice() {
+    if (!P) startPractice();
+    if (P.done) {
+      const n = P.items.length, pct = Math.round(P.ok / n * 100);
+      return '<div class="ls-card ls-done"><div class="big">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👏' : '💪') + '</div><h3>' + P.ok + ' מתוך ' + n + ' בניסיון ראשון</h3><p>' + (pct >= 80 ? 'מצוין! הכלל נקלט.' : 'כדאי לעבור שוב על "הצוות" ועל המלכודות, ולנסות עוד סיבוב.') + '</p><button class="ls-btn" data-act="again">סיבוב נוסף</button><button class="ls-btn sec" data-go="six">חזרה לששת הפעלים</button></div>';
+    }
+    const it = P.items[P.i], n = P.items.length;
+    let h = '<div class="ls-prog"><i style="width:' + Math.round(P.i / n * 100) + '%"></i></div><div class="ls-card">';
+    if (it.t === 'c') {
+      const q = it.q;
+      h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">' + esc(q.hint) + '</div><div class="ls-de">' + esc(q.pre) + ' <u>' + (P.st ? esc(q.a) : '&nbsp;&nbsp;&nbsp;') + '</u> ' + esc(q.post) + '</div><div class="ls-opts">' + q.opts.map(o => '<button class="ls-opt' + (P.st ? (o === q.a ? ' ok' : (P.st.pick === o ? ' bad' : '')) : '') + '" data-opt="' + esc(o) + '"' + (P.st ? ' disabled' : '') + '>' + esc(o) + '</button>').join('') + '</div>';
+      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'נכון! 🎉' : 'כמעט. התשובה הנכונה: ' + esc(q.a)) + '</div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
+    } else {
+      const q = it.q; if (!P.b) P.b = { bank: shuffle(q.w.map((w, k) => ({ w: w, k: k }))), sel: [] };
+      const B = P.b, used = new Set(B.sel.map(s => s.k));
+      h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">סדרו את המילים: המודאלי שני, הפועל השני בסוף</div><div class="ls-slot">' + B.sel.map((s, x) => '<button class="ls-w" data-un="' + x + '">' + esc(s.w) + '</button>').join('') + '</div><div class="ls-bank">' + B.bank.map(b => '<button class="ls-w' + (used.has(b.k) ? ' used' : '') + '" data-w="' + b.k + '">' + esc(b.w) + '</button>').join('') + '</div>';
+      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'מושלם! 🎉' : 'כמעט. הסדר הנכון:') + '<span class="de">' + esc(q.w.join(' ')) + '.</span></div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
+      else h += '<button class="ls-btn blue" data-act="check"' + (B.sel.length === q.w.length ? '' : ' disabled style="opacity:.5"') + '>בדיקה</button>';
+    }
+    return h + '</div>';
+  }
+  function draw() {
+    const L = { idea: 'הרעיון', team: 'הצוות', six: 'ששת הפעלים', practice: 'תרגול' };
+    let body = tab === 'idea' ? viewIdea() : tab === 'team' ? viewTeam() : tab === 'six' ? viewSix() : viewPractice();
+    ov.innerHTML = '<div class="ls-wrap"><div class="ls-top"><button class="ls-x" id="lsX" aria-label="סגירה">✕</button><h2>📘 פעלים מודאליים (Modalverben)</h2></div><div class="ls-steps">' + Object.keys(L).map(k => '<button class="' + (k === tab ? 'on' : '') + '" data-go="' + k + '">' + L[k] + '</button>').join('') + '</div>' + body + '</div>';
+    bind();
+  }
+  function bind() {
+    ov.querySelector('#lsX').onclick = close;
+    ov.querySelectorAll('[data-go]').forEach(b => { b.onclick = () => { tab = b.dataset.go; if (tab === 'practice' && (!P || P.done)) startPractice(); draw(); ov.scrollTop = 0; }; });
+    ov.querySelectorAll('[data-say]').forEach(b => { b.onclick = e => { e.stopPropagation(); say(b.dataset.say); }; });
+    ov.querySelectorAll('[data-tg]').forEach(b => { b.onclick = () => b.closest('.ls-vc').classList.toggle('open'); });
+    ov.querySelectorAll('[data-act]').forEach(b => { b.onclick = () => act(b.dataset.act); });
+    ov.querySelectorAll('[data-opt]').forEach(b => { b.onclick = () => { const q = P.items[P.i].q, ok = b.dataset.opt === q.a; P.st = { ok: ok, pick: b.dataset.opt }; if (!ok) P.first = false; if (ok && P.first) P.ok++; P.first = true; draw(); say(q.pre + ' ' + q.a + ' ' + q.post); }; });
+    ov.querySelectorAll('[data-w]').forEach(b => { b.onclick = () => { const B = P.b, k = +b.dataset.w, e = B.bank.find(x => x.k === k); if (!B.sel.some(s => s.k === k)) B.sel.push(e); draw(); }; });
+    ov.querySelectorAll('[data-un]').forEach(b => { b.onclick = () => { if (P.st) return; P.b.sel.splice(+b.dataset.un, 1); draw(); }; });
+  }
+  function act(a) {
+    if (a === 'mod') { mod = true; draw(); say('Ich muss einen Apfel essen.'); return; }
+    if (a === 'again') { startPractice(); draw(); return; }
+    if (a === 'check') { const q = P.items[P.i].q, ok = P.b.sel.map(s => s.w).join(' ') === q.w.join(' '); P.st = { ok: ok }; if (ok) P.ok++; draw(); say(q.w.join(' ')); return; }
+    if (a === 'next') {
+      P.i++; P.st = null; P.b = null;
+      if (P.i >= P.items.length) { P.done = true; const s = load(); s.modal = { done: true, best: Math.max((s.modal && s.modal.best) || 0, P.ok), of: P.items.length, at: Date.now() }; save(s); }
+      draw(); ov.scrollTop = 0;
+    }
+  }
+  function open() { injectCss(); if (ov) ov.remove(); tab = 'idea'; mod = false; P = null; ov = document.createElement('div'); ov.className = 'ls-ov'; document.body.appendChild(ov); draw(); }
+  function close() { if (ov) { ov.remove(); ov = null; } try { const m = document.getElementById('lessonsMount'); if (m) mount(m); } catch (e) {} }
+  function mount(el) {
+    if (!el) return; injectCss(); const s = load().modal;
+    el.innerHTML = '<div class="grammar-section-title">שיעורים</div><div class="ls-tile" id="lsTile"><span class="i">📘</span><div><b>פעלים מודאליים</b><small>' + (s && s.done ? '✓ תורגל · התוצאה הטובה ביותר ' + s.best + '/' + s.of : '6 פעלים, הכלל, תרגול') + '</small></div><span class="go">' + (s && s.done ? 'שוב' : 'התחל') + '</span></div>';
+    el.querySelector('#lsTile').onclick = open;
+  }
+  window.Lessons = { open: open, mount: mount };
+})();
+
+</script>
+<!--LESSONS-END-->
 <!--DAILY-START-->
 <script>
 /* A monthly calendar of daily words: 15 new words a day, tap a day to see its words, memorise them or be tested on them. */
@@ -3464,6 +3639,50 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { text: "will", label: "פועל מודלי", type: "modal", he: "רוצה" },
       { text: "gehen", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "ללכת" },
     ]},
+    { he: "אני יכול לשחות", de: "Ich kann schwimmen.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "kann", label: "פועל מודלי", type: "modal", he: "יכול", why: "kann הוא צורת ich של können. המודאלי תמיד במקום 2." },
+      { text: "schwimmen", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "לשחות", why: "הפעולה עצמה בצורת מקור, בסוף המשפט, והיא לא משתנה לפי הגוף." },
+    ]},
+    { he: "אני חייב ללמוד", de: "Ich muss lernen.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "muss", label: "פועל מודלי", type: "modal", he: "חייב", why: "חובה מוחלטת. ich muss / er muss — שתיהן בלי סיומת." },
+      { text: "lernen", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "ללמוד" },
+    ]},
+    { he: "אני רוצה לישון", de: "Ich will schlafen.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "will", label: "פועל מודלי", type: "modal", he: "רוצה", why: "wollen = רצון עז וישיר. לבקשה מנומסת משתמשים ב-möchten." },
+      { text: "schlafen", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "לישון" },
+    ]},
+    { he: "הייתי רוצה גלידה", de: "Ich möchte ein Eis.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "möchte", label: "פועל מודלי", type: "modal", he: "הייתי רוצה", why: "möchten = הרצון המנומס, כמו would like. הדרך הרגילה לבקש בחנות ובמסעדה." },
+      { text: "ein Eis", label: "שם עצם (ניטרלי)", type: "other", he: "גלידה", why: "כשיש מושא ברור (גלידה) אפשר בלי פועל שני: möchte לבד מספיק." },
+    ]},
+    { he: "כאן אסור לחנות", de: "Hier darf man nicht parken.", category: "פעלים מודאליים", flow: [
+      { text: "Hier", label: "תואר פועל", type: "other", he: "כאן" },
+      { text: "darf", label: "פועל מודלי", type: "modal", he: "מותר", why: "אפילו כש-Hier פותח את המשפט, המודאלי נשאר שני. dürfen + nicht = אסור." },
+      { text: "man", label: "כינוי כללי", type: "pron", he: "אנשים בכלל / אפשר", why: "man הוא \"אנשים בכלל\": כלל שמתאים לכולם, כמו שלט." },
+      { text: "nicht", label: "שלילה", type: "other", he: "לא" },
+      { text: "parken", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "לחנות" },
+    ]},
+    { he: "אני אמור להתקשר לרופא", de: "Ich soll den Arzt anrufen.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "soll", label: "פועל מודלי", type: "modal", he: "אמור", why: "sollen = מישהו אחר ביקש או הורה (שונה מ-müssen שהוא חובה שלי)." },
+      { text: "den Arzt", label: "שם עצם (זכר, Akkusativ)", type: "other", he: "את הרופא", why: "der Arzt הופך ל-den Arzt כי הוא מושא ישיר (זכר)." },
+      { text: "anrufen", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "להתקשר", why: "anrufen הוא פועל נפרד (ich rufe … an). עם פועל מודאלי הוא חוזר להיות שלם בסוף המשפט." },
+    ]},
+    { he: "אני אוכל תפוח", de: "Ich esse einen Apfel.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "esse", label: "פועל", type: "verb", he: "אוכל", why: "משפט רגיל, בלי מודאלי: הפועל מנוטה במקום 2 (ich esse)." },
+      { text: "einen Apfel", label: "שם עצם (זכר, Akkusativ)", type: "other", he: "תפוח" },
+    ]},
+    { he: "אני חייב לאכול תפוח", de: "Ich muss einen Apfel essen.", category: "פעלים מודאליים", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "muss", label: "פועל מודלי", type: "modal", he: "חייב", why: "אותו משפט כמו Ich esse einen Apfel — אבל עכשיו muss תופס את מקום 2." },
+      { text: "einen Apfel", label: "שם עצם (זכר, Akkusativ)", type: "other", he: "תפוח" },
+      { text: "essen", label: "פועל (מקור, בסוף המשפט)", type: "verb", he: "לאכול", why: "esse הפך ל-essen (מקור) ונזרק לסוף המשפט. זה בדיוק \"הצוות\" של פועל מודאלי." },
+    ]},
   ];
 
   const VOCAB = [
@@ -3796,7 +4015,16 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   { de: 'Suche', he: 'חיפוש', pos: 'שם עצם', gender: 'die', category: 'שמות עצם' },
   { de: 'auf der Suche sein nach', he: 'לחפש / להיות בחיפוש אחר', pos: 'ביטוי', category: 'ביטויים' },
   { de: 'nach', he: 'אחרי / אל / אחר (בביטוי auf der Suche nach)', pos: 'מילת יחס', category: 'מילות יחס ותוויות' },
-  { de: 'etwas', he: 'משהו', pos: 'כינוי לא מוגדר', category: 'כינויי גוף' }
+  { de: 'etwas', he: 'משהו', pos: 'כינוי לא מוגדר', category: 'כינויי גוף' },
+  { de: 'dürfen', he: 'מותר / רשאי (מודלי; dürfen + nicht = אסור)', pos: 'פועל מודלי', category: 'פעלים' },
+  { de: 'sollen', he: 'אמור / צריך (מודלי; מישהו אחר ביקש)', pos: 'פועל מודלי', category: 'פעלים' },
+  { de: 'schwimmen', he: 'לשחות', pos: 'פועל', category: 'פעלים', heForms: ['שחה', 'שחתה', 'שחו'] },
+  { de: 'lernen', he: 'ללמוד', pos: 'פועל', category: 'פעלים', heForms: ['למד', 'למדה', 'למדו'] },
+  { de: 'essen', he: 'לאכול', pos: 'פועל', category: 'פעלים', heForms: ['אכל', 'אכלה', 'אכלו'] },
+  { de: 'parken', he: 'לחנות (חניה)', pos: 'פועל', category: 'פעלים', heForms: ['חנה', 'חנתה', 'חנו'] },
+  { de: 'anrufen', he: 'להתקשר (פועל נפרד: ich rufe … an)', pos: 'פועל', category: 'פעלים', heForms: ['התקשר', 'התקשרה', 'התקשרו'] },
+  { de: 'man', he: 'אנשים בכלל / אפשר (כינוי כללי)', pos: 'כינוי כללי', category: 'כינויי גוף' },
+  { de: 'Arzt', he: 'רופא', pos: 'שם עצם', gender: 'der', category: 'שמות עצם' }
 ];
 
   const VERBS = [
@@ -3823,6 +4051,14 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     { inf: "haben", he: "להיות ל... / פועל עזר", forms: [
       { pron: "ich", form: "habe" }, { pron: "du", form: "hast" }, { pron: "er/sie/es", form: "hat" },
       { pron: "wir", form: "haben" }, { pron: "ihr", form: "habt" }, { pron: "sie/Sie", form: "haben" },
+    ]},
+    { inf: "dürfen", he: "מותר / רשאי (מודלי)", forms: [
+      { pron: "ich", form: "darf" }, { pron: "du", form: "darfst" }, { pron: "er/sie/es", form: "darf" },
+      { pron: "wir", form: "dürfen" }, { pron: "ihr", form: "dürft" }, { pron: "sie/Sie", form: "dürfen" },
+    ]},
+    { inf: "sollen", he: "אמור / צריך (מודלי)", forms: [
+      { pron: "ich", form: "soll" }, { pron: "du", form: "sollst" }, { pron: "er/sie/es", form: "soll" },
+      { pron: "wir", form: "sollen" }, { pron: "ihr", form: "sollt" }, { pron: "sie/Sie", form: "sollen" },
     ]},
     { inf: "müssen", he: "חייב / צריך (מודלי)", forms: [
       { pron: "ich", form: "muss" }, { pron: "du", form: "musst" }, { pron: "er/sie/es", form: "muss" },
@@ -5609,7 +5845,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           </div>
         </div>`;
       }).join('')}`;
-    el.innerHTML = genderHtml + verbHtml;
+    el.innerHTML = '<div id="lessonsMount"></div>' + genderHtml + verbHtml;
+    try { if (window.Lessons) Lessons.mount(document.getElementById('lessonsMount')); } catch (e) { console.error(e); }
   }
 
   function toggleVerb(vid) {
@@ -5892,7 +6129,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { view: 'sentences', icon: '📝', label: 'משפטים', sub: 'משפטי יום-יום עם שמע' },
       { view: 'vocab', icon: '🗂️', label: 'אוצר מילים', sub: 'מילים, חידונים וכרטיסים' },
       { view: 'flow', icon: '🔀', label: 'תרשימי זרימה', sub: 'משפטים מילה אחר מילה' },
-      { view: 'grammar', icon: '📐', label: 'דקדוק', sub: 'פעלים וכללים' },
+      { view: 'grammar', icon: '📐', label: 'דקדוק', sub: 'שיעורים, פעלים וכללים' },
     ] },
     { title: 'לתרגל', items: [
       { view: 'flashcards', icon: '🃏', label: 'כרטיסיות', sub: 'שינון משפטים' },
@@ -6871,6 +7108,10 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   window.CONVO_CTX = { speakDe: function (t) { try { speak(String(t)); } catch (e) {} } };
   try { if (window.Convo) Convo.init(); } catch (e) { console.error(e); }
   // <<CONVOADAPT-END>>
+
+  // <<LESSONSADAPT-START>>
+  window.LESSONS_CTX = { speakDe: function (t) { try { speak(String(t)); } catch (e) {} }, verbs: VERBS };
+  // <<LESSONSADAPT-END>>
 
   // <<BOWLSADAPT-START>>
   function openBowls() {
