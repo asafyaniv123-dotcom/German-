@@ -3444,6 +3444,13 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { text: "suche", label: "פועל", type: "verb", he: "מחפש/ת", why: "suchen הוא פועל ישיר — אין אחריו מילת יחס (לא 'מחפש אחרי', פשוט suchen + מושא ישיר ב-Akkusativ)." },
       { text: "die Milch", label: "שם עצם (נקבה, Akkusativ)", type: "other", he: "החלב", why: "Milch נקבה (die Milch) — ב-Akkusativ נקבה לא משתנה בכלל. לעומת זאת 'את הגבינה' (זכר, der Käse) היה הופך ל-den Käse — רק זכר משתנה ב-Akkusativ (der→den), נקבה/ניטרלי/רבים נשארים אותו דבר." },
     ]},
+    { he: "אני מחפש/ת משהו…", de: "Ich bin auf der Suche nach etwas.", category: "קניות ואוכל", flow: [
+      { text: "Ich", label: "כינוי גוף", type: "pron", he: "אני" },
+      { text: "bin", label: "פועל (sein)", type: "verb", he: "אני (נמצא)", why: "זה הביטוי הקבוע auf der Suche sein: sein מוטה במקום השני (ich bin), והחלק 'auf der Suche nach' בא אחריו. זה נשמע מנומס ופתוח יותר מ-Ich suche… (שנשמע ישיר)." },
+      { text: "auf der Suche", label: "ביטוי (שם עצם נקבה, Dativ)", type: "other", he: "בחיפוש", why: "die Suche = החיפוש. אחרי auf במצב של 'להיות ב-' משתמשים ב-Dativ, ולכן die הופך ל-der (נקבה ב-Dativ). לא צריך לחשוב על זה: פשוט לשנן auf der Suche sein nach." },
+      { text: "nach", label: "מילת יחס (+ Dativ)", type: "other", he: "אחרי / אחר", why: "בביטוי הזה nach הוא ה'אחר' של 'בחיפוש אחר'. אחרי nach תמיד Dativ." },
+      { text: "etwas", label: "כינוי לא מוגדר", type: "other", he: "משהו", why: "אפשר להמשיך כאן בכל דבר: nach etwas Besonderem (משהו מיוחד), nach einem Geschenk (מתנה)." },
+    ]},
     { he: "ראינו עזים ותרנגולות", de: "Wir haben Ziegen und Hühner gesehen.", category: "תרגול תבניות", flow: [
       { text: "Wir", label: "כינוי גוף", type: "pron", he: "אנחנו" },
       { text: "haben", label: "פועל עזר (Perfekt)", type: "verb", he: "(פועל עזר)", why: "זו ההיכרות הראשונה עם זמן העבר המלא (Perfekt) — הדרך הרגילה לדבר על העבר בגרמנית מדוברת. המבנה: haben/sein מוטה במקום 2, ואז צורת עבר של הפועל העיקרי (ge-...-t/en) נודדת לסוף המשפט." },
@@ -3785,7 +3792,11 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   { de: 'trösten', he: 'לנחם', pos: 'פועל', category: 'פעלים', heForms: ['ניחם', 'ניחמה', 'ניחמו'] },
   { de: 'weinen', he: 'לבכות', pos: 'פועל', category: 'פעלים', heForms: ['בכה', 'בכתה', 'בכו'] },
   { de: 'jung', he: 'צעיר', pos: 'תואר', category: 'תארים ותוארי פועל' },
-  { de: 'hübsch', he: 'חמוד / יפה', pos: 'תואר', category: 'תארים ותוארי פועל' }
+  { de: 'hübsch', he: 'חמוד / יפה', pos: 'תואר', category: 'תארים ותוארי פועל' },
+  { de: 'Suche', he: 'חיפוש', pos: 'שם עצם', gender: 'die', category: 'שמות עצם' },
+  { de: 'auf der Suche sein nach', he: 'לחפש / להיות בחיפוש אחר', pos: 'ביטוי', category: 'ביטויים' },
+  { de: 'nach', he: 'אחרי / אל / אחר (בביטוי auf der Suche nach)', pos: 'מילת יחס', category: 'מילות יחס ותוויות' },
+  { de: 'etwas', he: 'משהו', pos: 'כינוי לא מוגדר', category: 'כינויי גוף' }
 ];
 
   const VERBS = [
