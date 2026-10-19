@@ -1798,6 +1798,8 @@
   .ls-w { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 12px; padding: 9px 13px; font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; box-shadow: 0 3px 0 var(--line, #e5e5e5); }
   .ls-w.used { opacity: .25; pointer-events: none; }
   .ls-fb { border-radius: 14px; padding: 10px 12px; margin-top: 10px; font-weight: 700; } .ls-fb.ok { background: #e1f7c8; color: #3d8c00; } .ls-fb.bad { background: #ffe0e0; color: #c4264a; } .ls-fb .de { direction: ltr; display: block; font-size: 17px; margin-top: 4px; }
+  .ls-exp { text-align: right; } .ls-er { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.5; padding: 7px 9px; border-radius: 12px; margin-bottom: 5px; background: var(--bg, #f7f7f7); border: 1px solid var(--line, #e5e5e5); }
+  .ls-er > span { font-weight: 800; flex: none; width: 18px; color: var(--ink-soft, #999); } .ls-er.ok { background: #eaf8dc; border-color: #bfe59a; } .ls-er.ok > span { color: #3d8c00; } .ls-er.pick { background: #ffeaea; border-color: #ffb9b9; } .ls-er.pick > span { color: #c4264a; } .ls-er b { direction: ltr; unicode-bidi: isolate; }
   .ls-done { text-align: center; padding: 18px 4px; } .ls-done .big { font-size: 56px; } .ls-done h3 { font-size: 20px; margin: 4px 0; }
   .ls-tile { display: flex; align-items: center; gap: 12px; background: var(--surface, #fff); border: 2px solid var(--fun-orange, #ff9600); box-shadow: 0 4px 0 var(--fun-orange, #ff9600); border-radius: 20px; padding: 11px 14px; margin: 4px 0 16px; cursor: pointer; }
   .ls-tile .i { font-size: 30px; } .ls-tile b { display: block; font-size: 16px; } .ls-tile small { color: var(--ink-soft, #777); font-size: 12.5px; } .ls-tile .go { margin-inline-start: auto; background: var(--fun-orange, #ff9600); color: #fff; font-weight: 800; border-radius: 12px; padding: 7px 13px; box-shadow: 0 3px 0 #cc7a00; }
@@ -1817,16 +1819,16 @@
     '<b>💡 wollen או möchten?</b> wollen = "אני רוצה" (חד, כמעט דרישה). möchten = "הייתי רוצה" (מנומס). בקשות בחנות, במסעדה, בשיחה עם זרים: möchten.'
   ];
   const CHOOSE = [
-    { he: 'אני יכול לשחות', hint: 'יכולת', pre: 'Ich', post: 'schwimmen.', opts: ['kann', 'muss', 'will', 'soll'], a: 'kann' },
-    { he: 'אני חייב ללמוד', hint: 'חובה מוחלטת', pre: 'Ich', post: 'lernen.', opts: ['muss', 'kann', 'darf', 'möchte'], a: 'muss' },
-    { he: 'אני רוצה לישון', hint: 'רצון עז', pre: 'Ich', post: 'schlafen.', opts: ['will', 'soll', 'muss', 'kann'], a: 'will' },
-    { he: 'הייתי רוצה גלידה', hint: 'בקשה מנומסת בחנות', pre: 'Ich', post: 'ein Eis.', opts: ['möchte', 'muss', 'soll', 'darf'], a: 'möchte' },
-    { he: 'כאן אסור לחנות', hint: 'איסור', pre: 'Hier', post: 'man nicht parken.', opts: ['darf', 'will', 'möchte', 'muss'], a: 'darf' },
-    { he: 'אני אמור להתקשר לרופא', hint: 'ביקשו ממני', pre: 'Ich', post: 'den Arzt anrufen.', opts: ['soll', 'will', 'kann', 'darf'], a: 'soll' },
-    { he: 'אתה יכול לבוא', hint: 'du: איזו צורה?', pre: 'Du', post: 'kommen.', opts: ['kannst', 'kann', 'können', 'könnt'], a: 'kannst' },
-    { he: 'אנחנו חייבים ללכת', hint: 'wir: איזו צורה?', pre: 'Wir', post: 'gehen.', opts: ['müssen', 'muss', 'musst', 'müsst'], a: 'müssen' },
-    { he: 'הוא רוצה לבוא', hint: 'er: איזו צורה?', pre: 'Er', post: 'kommen.', opts: ['will', 'wollen', 'willst', 'wolle'], a: 'will' },
-    { he: 'אתם יכולים לשחות', hint: 'ihr: איזו צורה?', pre: 'Ihr', post: 'schwimmen.', opts: ['könnt', 'können', 'kannst', 'kann'], a: 'könnt' }
+    { he: 'אני יכול לשחות', p: 'ich', hint: 'יכולת', pre: 'Ich', post: 'schwimmen.', opts: ['kann', 'muss', 'will', 'soll'], a: 'kann' },
+    { he: 'אני חייב ללמוד', p: 'ich', hint: 'חובה מוחלטת', pre: 'Ich', post: 'lernen.', opts: ['muss', 'kann', 'darf', 'möchte'], a: 'muss' },
+    { he: 'אני רוצה לישון', p: 'ich', hint: 'רצון עז', pre: 'Ich', post: 'schlafen.', opts: ['will', 'soll', 'muss', 'kann'], a: 'will' },
+    { he: 'הייתי רוצה גלידה', p: 'ich', hint: 'בקשה מנומסת בחנות', pre: 'Ich', post: 'ein Eis.', opts: ['möchte', 'muss', 'soll', 'darf'], a: 'möchte' },
+    { he: 'כאן אסור לחנות', p: 'man', hint: 'איסור', pre: 'Hier', post: 'man nicht parken.', opts: ['darf', 'will', 'möchte', 'muss'], a: 'darf' },
+    { he: 'אני אמור להתקשר לרופא', p: 'ich', hint: 'ביקשו ממני', pre: 'Ich', post: 'den Arzt anrufen.', opts: ['soll', 'will', 'kann', 'darf'], a: 'soll' },
+    { he: 'אתה יכול לבוא', p: 'du', hint: 'du: איזו צורה?', pre: 'Du', post: 'kommen.', opts: ['kannst', 'kann', 'können', 'könnt'], a: 'kannst' },
+    { he: 'אנחנו חייבים ללכת', p: 'wir', hint: 'wir: איזו צורה?', pre: 'Wir', post: 'gehen.', opts: ['müssen', 'muss', 'musst', 'müsst'], a: 'müssen' },
+    { he: 'הוא רוצה לבוא', p: 'er', hint: 'er: איזו צורה?', pre: 'Er', post: 'kommen.', opts: ['will', 'wollen', 'willst', 'wolle'], a: 'will' },
+    { he: 'אתם יכולים לשחות', p: 'ihr', hint: 'ihr: איזו צורה?', pre: 'Ihr', post: 'schwimmen.', opts: ['könnt', 'können', 'kannst', 'kann'], a: 'könnt' }
   ];
   const BUILD = [
     { he: 'אני חייב לאכול תפוח', w: ['Ich', 'muss', 'einen', 'Apfel', 'essen'] },
@@ -1836,6 +1838,26 @@
     { he: 'אני רוצה לישון', w: ['Ich', 'will', 'schlafen'] },
     { he: 'אנחנו חייבים ללמוד', w: ['Wir', 'müssen', 'lernen'] }
   ];
+
+
+  const FORMS = {
+    kann: ['können', 'ich / er'], kannst: ['können', 'du'], 'können': ['können', 'wir / sie'], könnt: ['können', 'ihr'],
+    muss: ['müssen', 'ich / er'], musst: ['müssen', 'du'], 'müssen': ['müssen', 'wir / sie'], müsst: ['müssen', 'ihr'],
+    will: ['wollen', 'ich / er'], willst: ['wollen', 'du'], wollen: ['wollen', 'wir / sie'], wollt: ['wollen', 'ihr'],
+    'möchte': ['möchten', 'ich / er'], 'möchtest': ['möchten', 'du'], 'möchten': ['möchten', 'wir / sie'], 'möchtet': ['möchten', 'ihr'],
+    darf: ['dürfen', 'ich / er'], darfst: ['dürfen', 'du'], 'dürfen': ['dürfen', 'wir / sie'], 'dürft': ['dürfen', 'ihr'],
+    soll: ['sollen', 'ich / er'], sollst: ['sollen', 'du'], sollen: ['sollen', 'wir / sie'], sollt: ['sollen', 'ihr']
+  };
+  const PERS = { ich: 'ich (אני)', du: 'du (אתה)', er: 'er (הוא)', wir: 'wir (אנחנו)', ihr: 'ihr (אתם)', man: 'man (שמתנהג כמו er)' };
+  const MEAN = { 'können': 'יכולת', 'müssen': 'חובה מוחלטת', 'wollen': 'רצון עז', 'möchten': 'רצון מנומס', 'dürfen': 'רשות או איסור', 'sollen': 'משימה / המלצה מאחרים' };
+  function explain(q, o) {
+    const good = o === q.a, f = FORMS[o], fa = FORMS[q.a];
+    if (!f) return { ok: false, t: '<b>' + esc(o) + '</b>: לא צורת הווה רגילה של wollen. זו צורה ספרותית (Konjunktiv) שלא משתמשים בה כאן. בהווה: ich will, er will.' };
+    const base = '<b>' + esc(o) + '</b> = צורת <b>' + f[1] + '</b> של ' + f[0] + ' (' + MEAN[f[0]] + ').';
+    if (good) return { ok: true, t: base + ' ✓ מתאים: ' + (/צורה/.test(q.hint) ? 'הנושא כאן הוא ' + esc(PERS[q.p]) + '.' : esc(q.hint) + '.') };
+    if (f[0] === fa[0]) return { ok: false, t: base + ' כאן הנושא הוא ' + esc(PERS[q.p]) + ', ולכן צריך <b>' + esc(q.a) + '</b>.' };
+    return { ok: false, t: base + ' כאן צריך <b>' + MEAN[fa[0]] + '</b> ("' + esc(q.hint) + '"), לא ' + MEAN[f[0]] + '.' };
+  }
 
   let ov = null, tab = 'idea', mod = false, P = null;
   function chip(cls, txt, sub, extra) { return '<div class="ls-chip ' + cls + (extra ? ' ' + extra : '') + '"><span>' + esc(txt) + '</span><small>' + esc(sub) + '</small></div>'; }
@@ -1876,12 +1898,12 @@
     if (it.t === 'c') {
       const q = it.q;
       h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">' + esc(q.hint) + '</div><div class="ls-de">' + esc(q.pre) + ' <u>' + (P.st ? esc(q.a) : '&nbsp;&nbsp;&nbsp;') + '</u> ' + esc(q.post) + '</div><div class="ls-opts">' + q.opts.map(o => '<button class="ls-opt' + (P.st ? (o === q.a ? ' ok' : (P.st.pick === o ? ' bad' : '')) : '') + '" data-opt="' + esc(o) + '"' + (P.st ? ' disabled' : '') + '>' + esc(o) + '</button>').join('') + '</div>';
-      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'נכון! 🎉' : 'כמעט. התשובה הנכונה: ' + esc(q.a)) + '</div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
+      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'נכון! 🎉' : 'כמעט. התשובה הנכונה: ' + esc(q.a)) + '</div><div class="ls-exp"><div class="ls-hint" style="margin:10px 0 4px">מה כל אפשרות אומרת:</div>' + q.opts.map(o => { const e = explain(q, o); return '<div class="ls-er ' + (e.ok ? 'ok' : (o === P.st.pick ? 'pick' : '')) + '"><span>' + (e.ok ? '✓' : '✗') + '</span><div>' + e.t + '</div></div>'; }).join('') + '</div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
     } else {
       const q = it.q; if (!P.b) P.b = { bank: shuffle(q.w.map((w, k) => ({ w: w, k: k }))), sel: [] };
       const B = P.b, used = new Set(B.sel.map(s => s.k));
       h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">סדרו את המילים: המודאלי שני, הפועל השני בסוף</div><div class="ls-slot">' + B.sel.map((s, x) => '<button class="ls-w" data-un="' + x + '">' + esc(s.w) + '</button>').join('') + '</div><div class="ls-bank">' + B.bank.map(b => '<button class="ls-w' + (used.has(b.k) ? ' used' : '') + '" data-w="' + b.k + '">' + esc(b.w) + '</button>').join('') + '</div>';
-      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'מושלם! 🎉' : 'כמעט. הסדר הנכון:') + '<span class="de">' + esc(q.w.join(' ')) + '.</span></div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
+      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'מושלם! 🎉' : 'כמעט. הסדר הנכון:') + '<span class="de">' + esc(q.w.join(' ')) + '.</span></div><div class="ls-er ok"><span>💡</span><div>הסדר תמיד: <b>נושא או פתיח</b> ← <b>המודאלי (מקום 2)</b> ← שאר המשפט ← <b>הפועל השני במקור, בסוף</b>. כאן: ' + esc(q.w[0]) + ' ← <b>' + esc(q.w[1]) + '</b> ← … ← <b>' + esc(q.w[q.w.length - 1]) + '</b>.</div></div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
       else h += '<button class="ls-btn blue" data-act="check"' + (B.sel.length === q.w.length ? '' : ' disabled style="opacity:.5"') + '>בדיקה</button>';
     }
     return h + '</div>';
