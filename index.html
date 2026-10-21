@@ -1875,7 +1875,135 @@
     return { ok: false, t: base + ' כאן צריך <b>' + MEAN[fa[0]] + '</b> ("' + esc(q.hint) + '"), לא ' + MEAN[f[0]] + '.' };
   }
 
-  let ov = null, tab = 'idea', mod = false, P = null;
+  let ov = null, tab = 'idea', mod = false, P = null, pf = false, cur = 'modal';
+
+  // ================= Lesson 2: the past (Perfekt) =================
+  const PTYPES = [
+    { n: 'ge-…-t', m: 'פעלים רגילים', d: 'שורש + t', rows: [['machen', 'gemacht'], ['kaufen', 'gekauft'], ['lernen', 'gelernt'], ['spielen', 'gespielt'], ['wohnen', 'gewohnt'], ['arbeiten', 'gearbeitet']], ex: ['Ich habe Brot gekauft.', 'קניתי לחם'], tip: 'כשהשורש נגמר ב-t או ב-d מוסיפים et כדי שיהיה אפשר לבטא: arbeiten ← gearbeitet.' },
+    { n: 'ge-…-en', m: 'פעלים לא רגילים', d: 'לרוב עם שינוי תנועה, צריך לשנן', rows: [['sehen', 'gesehen'], ['essen', 'gegessen'], ['trinken', 'getrunken'], ['schreiben', 'geschrieben'], ['finden', 'gefunden'], ['nehmen', 'genommen'], ['sprechen', 'gesprochen'], ['lesen', 'gelesen']], ex: ['Wir haben Ziegen gesehen.', 'ראינו עזים'], tip: 'הפעלים הנפוצים ביותר הם בדרך כלל לא רגילים. כדאי ללמוד אותם בזוגות: trinken / getrunken.' },
+    { n: 'בלי ge-', m: 'קידומת בלתי נפרדת', d: 'be- ver- er- ent- zer- ge-', rows: [['bezahlen', 'bezahlt'], ['besuchen', 'besucht'], ['verstehen', 'verstanden'], ['bekommen', 'bekommen'], ['vergessen', 'vergessen'], ['erzählen', 'erzählt'], ['telefonieren', 'telefoniert']], ex: ['Ich habe bar bezahlt.', 'שילמתי במזומן'], tip: 'הקידומת כבר "תופסת" את מקומו של ge. גם פעלים שנגמרים ב-ieren לא מקבלים ge.' },
+    { n: '…ge…', m: 'קידומת נפרדת', d: 'ה-ge נכנס באמצע', rows: [['einkaufen', 'eingekauft'], ['anrufen', 'angerufen'], ['aufstehen', 'aufgestanden'], ['ankommen', 'angekommen'], ['mitkommen', 'mitgekommen'], ['einsteigen', 'eingestiegen']], ex: ['Ich habe Freunde angerufen.', 'התקשרתי לחברים'], tip: 'הקידומת הנפרדת (ein, an, auf, mit) נשארת בהתחלה, ו-ge נכנס בינה לבין הפועל.' }
+  ];
+  const SEINV = [['gehen', 'gegangen', 'ללכת'], ['kommen', 'gekommen', 'לבוא'], ['fahren', 'gefahren', 'לנסוע'], ['fliegen', 'geflogen', 'לטוס'], ['bleiben', 'geblieben', 'להישאר'], ['aufstehen', 'aufgestanden', 'לקום'], ['ankommen', 'angekommen', 'להגיע'], ['einsteigen', 'eingestiegen', 'לעלות (לרכב)'], ['werden', 'geworden', 'להפוך ל'], ['sein', 'gewesen', 'להיות']];
+  const SEINEX = [['Ich bin nach Hause gegangen.', 'הלכתי הביתה'], ['Wir sind nach Berlin gefahren.', 'נסענו לברלין'], ['Ich bin um sieben aufgestanden.', 'קמתי בשבע'], ['Ich bin zu Hause geblieben.', 'נשארתי בבית']];
+  const WAR = [
+    { inf: 'sein', he: 'להיות', rows: [['ich', 'war'], ['du', 'warst'], ['er / sie / es', 'war'], ['wir', 'waren'], ['ihr', 'wart'], ['sie / Sie', 'waren']], ex: ['Ich war müde.', 'הייתי עייף'] },
+    { inf: 'haben', he: 'להיות ל…', rows: [['ich', 'hatte'], ['du', 'hattest'], ['er / sie / es', 'hatte'], ['wir', 'hatten'], ['ihr', 'hattet'], ['sie / Sie', 'hatten']], ex: ['Ich hatte Hunger.', 'הייתי רעב'] },
+    { inf: 'können', he: 'יכול (מודלי)', rows: [['ich', 'konnte'], ['du', 'konntest'], ['er / sie / es', 'konnte'], ['wir', 'konnten'], ['ihr', 'konntet'], ['sie / Sie', 'konnten']], ex: ['Ich konnte nicht kommen.', 'לא יכולתי לבוא'] }
+  ];
+  const AUX = { habe: ['haben', 'ich'], hast: ['haben', 'du'], hat: ['haben', 'er / sie / es'], haben: ['haben', 'wir / sie'], habt: ['haben', 'ihr'], bin: ['sein', 'ich'], bist: ['sein', 'du'], ist: ['sein', 'er / sie / es'], sind: ['sein', 'wir / sie'], seid: ['sein', 'ihr'] };
+  const PERSX = { ich: 'ich (אני)', du: 'du (אתה / את)', er: 'er (הוא)', wir: 'wir (אנחנו)', ihr: 'ihr (אתם)', sie: 'sie (הם)' };
+  const PF_AUX = [
+    { he: 'הלכתי הביתה', hint: 'gehen: תנועה ממקום למקום', p: 'ich', pre: 'Ich', post: 'nach Hause gegangen.', opts: ['bin', 'habe', 'ist', 'hat'], a: 'bin', why: 'gehen הוא תנועה ממקום למקום, ולכן הפועל העוזר הוא <b>sein</b>' },
+    { he: 'שתיתי קפה', hint: 'trinken: לא תנועה', p: 'ich', pre: 'Ich', post: 'Kaffee getrunken.', opts: ['habe', 'bin', 'hat', 'ist'], a: 'habe', why: 'trinken הוא פעולה רגילה (לא תנועה ולא שינוי מצב), ולכן העוזר הוא <b>haben</b>' },
+    { he: 'נסענו לברלין', hint: 'fahren: תנועה', p: 'wir', pre: 'Wir', post: 'nach Berlin gefahren.', opts: ['sind', 'haben', 'seid', 'bin'], a: 'sind', why: 'fahren הוא תנועה, ולכן <b>sein</b>' },
+    { he: 'הוא קנה לחם', hint: 'kaufen: פעולה רגילה', p: 'er', pre: 'Er', post: 'Brot gekauft.', opts: ['hat', 'ist', 'habe', 'bin'], a: 'hat', why: 'kaufen הוא פעולה רגילה, ולכן <b>haben</b>' },
+    { he: 'את קמת בשבע', hint: 'aufstehen: שינוי מצב', p: 'du', pre: 'Du', post: 'um sieben aufgestanden.', opts: ['bist', 'hast', 'ist', 'habt'], a: 'bist', why: 'aufstehen הוא שינוי מצב (משכיבה לעמידה), ולכן <b>sein</b>' },
+    { he: 'הם ראו עזים', hint: 'sehen: פעולה רגילה', p: 'sie', pre: 'Sie', post: 'Ziegen gesehen.', opts: ['haben', 'sind', 'hat', 'habt'], a: 'haben', why: 'sehen הוא פעולה רגילה, ולכן <b>haben</b>' },
+    { he: 'אתם נשארתם בבית', hint: 'bleiben: יוצא דופן, עם sein', p: 'ihr', pre: 'Ihr', post: 'zu Hause geblieben.', opts: ['seid', 'habt', 'sind', 'bist'], a: 'seid', why: 'bleiben הוא אחד היוצאים מן הכלל: אין תנועה, אבל הוא תמיד עם <b>sein</b>' },
+    { he: 'שילמתי במזומן', hint: 'bezahlen: פעולה רגילה', p: 'ich', pre: 'Ich', post: 'bar bezahlt.', opts: ['habe', 'bin', 'hast', 'sind'], a: 'habe', why: 'bezahlen הוא פעולה רגילה, ולכן <b>haben</b>' }
+  ];
+  const PF_PART = [
+    { he: 'שתיתי קפה', hint: 'trinken: פועל לא רגיל', pre: 'Ich habe Kaffee', post: '.', opts: ['getrunken', 'getrinkt', 'getrinken', 'trunken'], a: 'getrunken', ex: {
+      getrunken: 'פועל לא רגיל: ge + שורש (עם שינוי תנועה, i ← u) + en. כך גם finden ← gefunden.',
+      getrinkt: 'בנוי כמו פועל רגיל (ge…t). אבל trinken לא רגיל: הסיומת en והתנועה משתנה.',
+      getrinken: 'הסיומת en נכונה, אבל התנועה לא השתנתה. צריך לשנן: trinken ← getrunken.',
+      trunken: 'חסר ge- בהתחלה.' } },
+    { he: 'עשיתי שיעורי בית', hint: 'machen: פועל רגיל', pre: 'Ich habe die Hausaufgaben', post: '.', opts: ['gemacht', 'gemachen', 'macht', 'gemachtet'], a: 'gemacht', ex: {
+      gemacht: 'פועל רגיל: ge + שורש + t.',
+      gemachen: 'הסיומת en מתאימה לפעלים לא רגילים (gesehen). machen הוא רגיל, ולכן t.',
+      macht: 'זו צורת ההווה (er macht), חסר ge- בהתחלה.',
+      gemachtet: 'et נוסף רק כשהשורש נגמר ב-t או ב-d (arbeiten ← gearbeitet). אצל machen מספיק t.' } },
+    { he: 'שילמתי במזומן', hint: 'bezahlen: יש קידומת be-', pre: 'Ich habe bar', post: '.', opts: ['bezahlt', 'gebezahlt', 'gezahlt', 'bezahlen'], a: 'bezahlt', ex: {
+      bezahlt: 'הקידומת be- בלתי נפרדת, ולכן אין ge-. פועל רגיל: שורש + t.',
+      gebezahlt: 'אחרי קידומות כמו be-, ver-, er-, ent- לא מוסיפים ge-.',
+      gezahlt: 'זו צורת העבר של zahlen (בלי be-). זה פועל קרוב, אבל לא הפועל ששאלו עליו כאן.',
+      bezahlen: 'זו צורת המקור. אחרי haben צריך צורת עבר.' } },
+    { he: 'קניתי לחם (בקניות)', hint: 'einkaufen: קידומת נפרדת', pre: 'Ich habe Brot', post: '.', opts: ['eingekauft', 'geeinkauft', 'einkauft', 'eingekaufen'], a: 'eingekauft', ex: {
+      eingekauft: 'einkaufen = ein + kaufen. ה-ge נכנס באמצע: ein-ge-kauft. רגיל, ולכן t.',
+      geeinkauft: 'ה-ge לא בא לפני הקידומת הנפרדת, אלא אחריה.',
+      einkauft: 'חסר ge-, וזו גם צורת הווה (er kauft ein).',
+      eingekaufen: 'מקום ה-ge נכון, אבל kaufen רגיל: t ולא en.' } },
+    { he: 'ראינו עזים', hint: 'sehen: פועל לא רגיל', pre: 'Wir haben Ziegen', post: '.', opts: ['gesehen', 'gesieht', 'gesehnt', 'gesehet'], a: 'gesehen', ex: {
+      gesehen: 'לא רגיל: ge + sehen + en. הצורה זהה כמעט למקור.',
+      gesieht: 'בהווה יש er sieht (e ← ie), אבל בעבר חוזרים לשורש seh.',
+      gesehnt: 'sehen לא רגיל, ולכן en. t מתאים לרגילים.',
+      gesehet: 'et נוסף רק לשורשים שנגמרים ב-t או ב-d. כאן זה לא המקרה.' } },
+    { he: 'הבנתי את זה', hint: 'verstehen: יש קידומת ver-', pre: 'Ich habe das', post: '.', opts: ['verstanden', 'geverstanden', 'verstand', 'verstehen'], a: 'verstanden', ex: {
+      verstanden: 'הקידומת ver- בלתי נפרדת ← בלי ge-. לא רגיל: stehen ← standen ← verstanden.',
+      geverstanden: 'ver- לא מקבלת ge-.',
+      verstand: 'זה עבר פשוט (Präteritum), אפשרי בכתיבה. ב-Perfekt צריך verstanden.',
+      verstehen: 'זו צורת מקור או הווה, לא צורת עבר.' } }
+  ];
+  const PF_BUILD = [
+    { he: 'שילמתי אתמול במזומן', w: ['Ich', 'habe', 'gestern', 'bar', 'bezahlt'] },
+    { he: 'הלכתי הביתה', w: ['Ich', 'bin', 'nach', 'Hause', 'gegangen'] },
+    { he: 'ראינו עזים', w: ['Wir', 'haben', 'Ziegen', 'gesehen'] },
+    { he: 'אתמול שתיתי קפה', w: ['Gestern', 'habe', 'ich', 'Kaffee', 'getrunken'] },
+    { he: 'קמתי בשבע', w: ['Ich', 'bin', 'um', 'sieben', 'aufgestanden'] },
+    { he: 'הוא קנה לחם', w: ['Er', 'hat', 'Brot', 'gekauft'] }
+  ];
+  const PF_WAR = [
+    { he: 'הייתי עייף', hint: 'עבר של sein', pre: 'Ich', post: 'müde.', opts: ['war', 'bin', 'hatte', 'habe'], a: 'war', ex: {
+      war: 'עבר של sein (ich war). בדיבור אומרים war, ולא "bin gewesen".',
+      bin: 'זה הווה: "אני עייף".',
+      hatte: 'עבר של haben ("היה לי"). לא מתאים ל"הייתי עייף".',
+      habe: 'הווה של haben, ולא מתאים כאן.' } },
+    { he: 'הייתי רעב', hint: 'Hunger haben', pre: 'Ich', post: 'Hunger.', opts: ['hatte', 'war', 'habe', 'hat'], a: 'hatte', ex: {
+      hatte: 'Hunger haben = להיות רעב (יש לי רעב). בעבר: ich hatte.',
+      war: 'war הוא של sein. אומרים Hunger haben, לא "Hunger sein".',
+      habe: 'זה הווה ("יש לי רעב").',
+      hat: 'זו צורה של er / sie / es. כאן הנושא הוא ich.' } },
+    { he: 'לא יכולתי לבוא', hint: 'עבר של können', pre: 'Ich', post: 'nicht kommen.', opts: ['konnte', 'kann', 'könnte', 'gekonnt'], a: 'konnte', ex: {
+      konnte: 'עבר פשוט של können. כך אומרים בדיבור על פעלים מודליים.',
+      kann: 'הווה: "אני לא יכול".',
+      könnte: 'Konjunktiv: "הייתי יכול (אילו)". לא מתאר משהו שקרה בפועל.',
+      gekonnt: 'צורת Perfekt קיימת, אבל כבדה. במשפט עם פועל נוסף אומרים konnte.' } },
+    { he: 'היינו בקולנוע אתמול', hint: 'עבר של sein עם wir', pre: 'Wir', post: 'gestern im Kino.', opts: ['waren', 'hatten', 'sind', 'wart'], a: 'waren', ex: {
+      waren: 'עבר של sein עם wir / sie.',
+      hatten: 'עבר של haben, אבל "היינו" הוא sein.',
+      sind: 'זה הווה: "אנחנו נמצאים".',
+      wart: 'עבר של sein, אבל עם ihr (אתם).' } }
+  ];
+  function explainAux(q, o) {
+    const f = AUX[o], fa = AUX[q.a];
+    if (!f) return { ok: false, t: '<b>' + esc(o) + '</b>' };
+    const base = '<b>' + esc(o) + '</b> = צורת <b>' + f[1] + '</b> של ' + f[0] + '.';
+    if (o === q.a) return { ok: true, t: base + ' ✓ ' + q.why + '. הנושא כאן הוא ' + esc(PERSX[q.p]) + '.' };
+    if (f[0] === fa[0]) return { ok: false, t: base + ' הפועל העוזר נכון, אבל הנושא כאן הוא ' + esc(PERSX[q.p]) + ', ולכן צריך <b>' + esc(q.a) + '</b>.' };
+    return { ok: false, t: base + ' אבל ' + q.why + '.' };
+  }
+  function explainAny(q, o) { if (q.ex) return { ok: o === q.a, t: esc(q.ex[o] || '') }; if (q.why) return explainAux(q, o); return explain(q, o); }
+  function pvIdea() {
+    const now = '<div class="ls-sent">' + chip('sub', 'Ich', 'נושא') + chip('verb', 'bezahle', 'פועל מנוטה') + chip('rest', 'bar', 'שאר המשפט') + '</div><button class="ls-say" data-say="Ich bezahle bar.">🔊</button> <span class="ls-note">אני משלם במזומן</span>';
+    const past = pf
+      ? '<div class="ls-sent">' + chip('sub', 'Ich', 'נושא') + chip('mod', 'habe', 'עוזר, מקום 2', 'pop') + chip('rest', 'bar', 'שאר המשפט') + chip('inf', 'bezahlt', 'צורת עבר, בסוף!', 'pop') + '</div><button class="ls-say" data-say="Ich habe bar bezahlt.">🔊</button> <span class="ls-note">שילמתי במזומן</span>'
+      : '<div class="ls-note" style="text-align:center;padding:14px 0">לחצו כדי להפוך את המשפט לעבר</div>';
+    return '<div class="ls-card"><h3>Perfekt: העבר של הדיבור</h3><p>זה זמן העבר שמשתמשים בו ביום-יום, בחנות, במסעדה ובשיחה. הוא בנוי מ<b>שני חלקים</b>: פועל עוזר (haben או sein) וצורת עבר של הפועל (Partizip II).</p></div>' +
+      '<div class="ls-card"><h3>משפט בהווה</h3>' + now + '</div>' +
+      '<div class="ls-card"><h3>אותו משפט בעבר</h3>' + past + (pf ? '' : '<button class="ls-btn" data-act="pf">⏪ הפוך לעבר</button>') + '</div>' +
+      '<div class="ls-card"><h3>הכלל: אותה "מסגרת" כמו במודאליים</h3><p><b>1.</b> הפועל העוזר (habe / bin…) עומד <b>במקום השני</b> ומשתנה לפי הגוף.</p><p><b>2.</b> צורת העבר <b>נוסעת לסוף</b> המשפט.</p><p>לכן גם <span dir="ltr">Gestern habe ich bar bezahlt.</span> נשאר עם habe במקום השני, ו-bezahlt בסוף.</p></div>' +
+      '<button class="ls-btn blue" data-go="part">איך בונים את צורת העבר ←</button>';
+  }
+  function pvPart() {
+    return '<div class="ls-trap"><b>⚠️ מלכודת:</b> bezahlen ← <b>bezahlt</b> (לא "gebezahlt"). פעלים עם be-, ver-, er-, ent- לא מקבלים ge-.</div>' + PTYPES.map((t, i) => '<div class="ls-card ls-vc' + (i === 0 ? ' open' : '') + '" data-i="' + i + '"><div class="ls-vh" data-tg="' + i + '"><span class="n">' + esc(t.n) + '</span><span><div class="m">' + esc(t.m) + '</div><div class="d">' + esc(t.d) + '</div></span><span class="c">▾</span></div><div class="ls-vt">' + t.rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>').join('') + '</div><div class="ls-ex"><button class="ls-say" data-say="' + esc(t.ex[0]) + '">🔊</button><span class="t">' + esc(t.ex[0]) + '</span><span class="h">' + esc(t.ex[1]) + '</span></div><div class="ls-note">' + esc(t.tip) + '</div></div>').join('') + '<button class="ls-btn blue" data-go="aux">haben או sein ←</button>';
+  }
+  function pvAux() {
+    return '<div class="ls-card"><h3>ברירת המחדל: haben</h3><p>רוב הפעלים הולכים עם haben: <span dir="ltr">machen, kaufen, essen, trinken, sehen, bezahlen, lernen…</span></p><div class="ls-ex"><button class="ls-say" data-say="Ich habe Kaffee getrunken.">🔊</button><span class="t">Ich habe Kaffee getrunken.</span><span class="h">שתיתי קפה</span></div></div>' +
+      '<div class="ls-card"><h3>sein: תנועה ושינוי מצב</h3><p>פעלים של תנועה ממקום למקום, ושינוי מצב, הולכים עם <b>sein</b>. ועוד שלושה יוצאים מן הכלל: <b>bleiben, sein, werden</b>.</p><div class="ls-vt" style="display:grid;grid-template-columns:1fr">' + SEINV.map(v => '<div><span>' + esc(v[0]) + ' · ' + esc(v[2]) + '</span><b>ist ' + esc(v[1]) + '</b></div>').join('') + '</div>' + SEINEX.map(e => '<div class="ls-ex"><button class="ls-say" data-say="' + esc(e[0]) + '">🔊</button><span class="t">' + esc(e[0]) + '</span><span class="h">' + esc(e[1]) + '</span></div>').join('') + '</div>' +
+      '<div class="ls-trap"><b>💡 לא בטוחים?</b> בחרו <b>haben</b>: זה נכון ברוב המקרים. את עשרת הפעלים של sein כדאי ללמוד בעל פה.</div>' +
+      ['haben', 'sein'].map(v => '<div class="ls-card ls-vc"><div class="ls-vh" data-tg="x' + v + '"><span class="n">' + v + '</span><span><div class="m">הטיה בהווה</div><div class="d">habe, hast, hat… / bin, bist, ist…</div></span><span class="c">▾</span></div>' + verbTable(v) + '</div>').join('') +
+      '<button class="ls-btn blue" data-go="war">war ו-hatte ←</button>';
+  }
+  function pvWar() {
+    return '<div class="ls-card"><h3>בדיבור לא תמיד Perfekt</h3><p>בשלוש קבוצות של פעלים אומרים בדרך כלל את <b>העבר הפשוט</b> (Präteritum) ולא Perfekt: <b>sein</b> (war), <b>haben</b> (hatte) ופעלים מודליים (konnte, wollte, musste). זה קצר ונשמע טבעי יותר.</p></div>' +
+      WAR.map((v, i) => '<div class="ls-card ls-vc open" data-i="' + i + '"><div class="ls-vh" data-tg="' + i + '"><span class="n">' + esc(v.rows[0][1]) + '</span><span><div class="m">' + esc(v.inf) + ' · ' + esc(v.he) + '</div></span><span class="c">▾</span></div><div class="ls-vt">' + v.rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>').join('') + '</div><div class="ls-ex"><button class="ls-say" data-say="' + esc(v.ex[0]) + '">🔊</button><span class="t">' + esc(v.ex[0]) + '</span><span class="h">' + esc(v.ex[1]) + '</span></div></div>').join('') +
+      '<div class="ls-trap"><b>💡</b> עוד פעלים מודליים בעבר: <span dir="ltr">wollte, musste, durfte, sollte</span> (ich / er: אותה צורה). כל השאר: Perfekt.</div><button class="ls-btn" data-go="practice">לתרגול ←</button>';
+  }
+  function pfStart() {
+    const a = shuffle(PF_AUX).slice(0, 4).map(q => ({ t: 'c', q: q })), p = shuffle(PF_PART).slice(0, 4).map(q => ({ t: 'c', q: q })), w = shuffle(PF_WAR).slice(0, 2).map(q => ({ t: 'c', q: q })), b = shuffle(PF_BUILD).slice(0, 3).map(q => ({ t: 'b', q: q }));
+    P = { items: shuffle(a.concat(p, w, b)), i: 0, ok: 0, first: true, done: false, st: null };
+  }
   function chip(cls, txt, sub, extra) { return '<div class="ls-chip ' + cls + (extra ? ' ' + extra : '') + '"><span>' + esc(txt) + '</span><small>' + esc(sub) + '</small></div>'; }
   function verbTable(inf) {
     const v = (ctx().verbs || []).find(x => x.inf === inf); if (!v) return '';
@@ -1900,6 +2028,7 @@
     return TRAPS.map(t => '<div class="ls-trap">' + t + '</div>').join('') + MODALS.map((m, i) => '<div class="ls-card ls-vc" data-i="' + i + '"><div class="ls-vh" data-tg="' + i + '"><span class="n">' + esc(m.inf) + '</span><span><div class="m">' + esc(m.he) + '</div><div class="d">' + esc(m.kind) + '</div></span><span class="ch">▾</span></div><div class="ls-ex"><span class="t">' + esc(m.ex[0]) + '<div class="h">' + esc(m.ex[1]) + '</div></span><button class="ls-say" data-say="' + esc(m.ex[0]) + '">🔊</button></div><div class="ls-note">' + esc(m.tip) + '</div>' + verbTable(m.inf) + '</div>').join('') + '<button class="ls-btn" data-go="practice">לתרגול ←</button>';
   }
   function startPractice() {
+    if (cur === 'perfekt') return pfStart();
     const chosen = shuffle(CHOOSE).slice(0, 6).map(q => ({ t: 'c', q: q })), built = shuffle(BUILD).slice(0, 4).map(q => ({ t: 'b', q: q }));
     P = { items: shuffle(chosen.concat(built)), i: 0, ok: 0, first: true, done: false, st: null };
   }
@@ -1907,27 +2036,28 @@
     if (!P) startPractice();
     if (P.done) {
       const n = P.items.length, pct = Math.round(P.ok / n * 100);
-      return '<div class="ls-card ls-done"><div class="big">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👏' : '💪') + '</div><h3>' + P.ok + ' מתוך ' + n + ' בניסיון ראשון</h3><p>' + (pct >= 80 ? 'מצוין! הכלל נקלט.' : 'כדאי לעבור שוב על "הצוות" ועל המלכודות, ולנסות עוד סיבוב.') + '</p><button class="ls-btn" data-act="again">סיבוב נוסף</button><button class="ls-btn sec" data-go="six">חזרה לששת הפעלים</button></div>';
+      return '<div class="ls-card ls-done"><div class="big">' + (pct >= 80 ? '🏆' : pct >= 50 ? '👏' : '💪') + '</div><h3>' + P.ok + ' מתוך ' + n + ' בניסיון ראשון</h3><p>' + (pct >= 80 ? 'מצוין! הכלל נקלט.' : (cur === 'perfekt' ? 'כדאי לעבור שוב על צורת העבר ועל haben / sein, ולנסות עוד סיבוב.' : 'כדאי לעבור שוב על "הצוות" ועל המלכודות, ולנסות עוד סיבוב.')) + '</p><button class="ls-btn" data-act="again">סיבוב נוסף</button><button class="ls-btn sec" data-go="' + (cur === 'perfekt' ? 'part' : 'six') + '">' + (cur === 'perfekt' ? 'חזרה לצורת העבר' : 'חזרה לששת הפעלים') + '</button></div>';
     }
     const it = P.items[P.i], n = P.items.length;
     let h = '<div class="ls-prog"><i style="width:' + Math.round(P.i / n * 100) + '%"></i></div><div class="ls-card">';
     if (it.t === 'c') {
       const q = it.q;
       h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">' + esc(q.hint) + '</div><div class="ls-de">' + esc(q.pre) + ' <u>' + (P.st ? esc(q.a) : '&nbsp;&nbsp;&nbsp;') + '</u> ' + esc(q.post) + '</div><div class="ls-opts">' + q.opts.map(o => '<button class="ls-opt' + (P.st ? (o === q.a ? ' ok' : (P.st.pick === o ? ' bad' : '')) : '') + '" data-opt="' + esc(o) + '"' + (P.st ? ' disabled' : '') + '>' + esc(o) + '</button>').join('') + '</div>';
-      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'נכון! 🎉' : 'כמעט. התשובה הנכונה: ' + esc(q.a)) + '</div><div class="ls-exp"><div class="ls-hint" style="margin:10px 0 4px">מה כל אפשרות אומרת:</div>' + q.opts.map(o => { const e = explain(q, o); return '<div class="ls-er ' + (e.ok ? 'ok' : (o === P.st.pick ? 'pick' : '')) + '"><span>' + (e.ok ? '✓' : '✗') + '</span><div>' + e.t + '</div></div>'; }).join('') + '</div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
+      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'נכון! 🎉' : 'כמעט. התשובה הנכונה: ' + esc(q.a)) + '</div><div class="ls-exp"><div class="ls-hint" style="margin:10px 0 4px">מה כל אפשרות אומרת:</div>' + q.opts.map(o => { const e = explainAny(q, o); return '<div class="ls-er ' + (e.ok ? 'ok' : (o === P.st.pick ? 'pick' : '')) + '"><span>' + (e.ok ? '✓' : '✗') + '</span><div>' + e.t + '</div></div>'; }).join('') + '</div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
     } else {
       const q = it.q; if (!P.b) P.b = { bank: shuffle(q.w.map((w, k) => ({ w: w, k: k }))), sel: [] };
       const B = P.b, used = new Set(B.sel.map(s => s.k));
-      h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">סדרו את המילים: המודאלי שני, הפועל השני בסוף</div><div class="ls-slot">' + B.sel.map((s, x) => '<button class="ls-w" data-un="' + x + '">' + esc(s.w) + '</button>').join('') + '</div><div class="ls-bank">' + B.bank.map(b => '<button class="ls-w' + (used.has(b.k) ? ' used' : '') + '" data-w="' + b.k + '">' + esc(b.w) + '</button>').join('') + '</div>';
-      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'מושלם! 🎉' : 'כמעט. הסדר הנכון:') + '<span class="de">' + esc(q.w.join(' ')) + '.</span></div><div class="ls-er ok"><span>💡</span><div>הסדר תמיד: <b>נושא או פתיח</b> ← <b>המודאלי (מקום 2)</b> ← שאר המשפט ← <b>הפועל השני במקור, בסוף</b>. כאן: ' + esc(q.w[0]) + ' ← <b>' + esc(q.w[1]) + '</b> ← … ← <b>' + esc(q.w[q.w.length - 1]) + '</b>.</div></div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
+      h += '<div class="ls-q">' + esc(q.he) + '</div><div class="ls-hint">' + (cur === 'perfekt' ? 'סדרו את המילים: הפועל העוזר שני, צורת העבר בסוף' : 'סדרו את המילים: המודאלי שני, הפועל השני בסוף') + '</div><div class="ls-slot">' + B.sel.map((s, x) => '<button class="ls-w" data-un="' + x + '">' + esc(s.w) + '</button>').join('') + '</div><div class="ls-bank">' + B.bank.map(b => '<button class="ls-w' + (used.has(b.k) ? ' used' : '') + '" data-w="' + b.k + '">' + esc(b.w) + '</button>').join('') + '</div>';
+      if (P.st) h += '<div class="ls-fb ' + (P.st.ok ? 'ok' : 'bad') + '">' + (P.st.ok ? 'מושלם! 🎉' : 'כמעט. הסדר הנכון:') + '<span class="de">' + esc(q.w.join(' ')) + '.</span></div><div class="ls-er ok"><span>💡</span><div>' + (cur === 'perfekt' ? 'הסדר תמיד: <b>נושא או פתיח</b> ← <b>הפועל העוזר (מקום 2)</b> ← שאר המשפט ← <b>צורת העבר, בסוף</b>.' : 'הסדר תמיד: <b>נושא או פתיח</b> ← <b>המודאלי (מקום 2)</b> ← שאר המשפט ← <b>הפועל השני במקור, בסוף</b>.') + ' כאן: ' + esc(q.w[0]) + ' ← <b>' + esc(q.w[1]) + '</b> ← … ← <b>' + esc(q.w[q.w.length - 1]) + '</b>.</div></div><button class="ls-btn" data-act="next">' + (P.i + 1 >= n ? 'סיום' : 'הבא') + '</button>';
       else h += '<button class="ls-btn blue" data-act="check"' + (B.sel.length === q.w.length ? '' : ' disabled style="opacity:.5"') + '>בדיקה</button>';
     }
     return h + '</div>';
   }
   function draw() {
-    const L = { idea: 'הרעיון', team: 'הצוות', six: 'ששת הפעלים', practice: 'תרגול' };
-    let body = tab === 'idea' ? viewIdea() : tab === 'team' ? viewTeam() : tab === 'six' ? viewSix() : viewPractice();
-    ov.innerHTML = '<div class="ls-wrap"><div class="ls-top"><button class="ls-x" id="lsX" aria-label="סגירה">✕</button><h2>📘 פעלים מודאליים (Modalverben)</h2></div><div class="ls-steps">' + Object.keys(L).map(k => '<button class="' + (k === tab ? 'on' : '') + '" data-go="' + k + '">' + L[k] + '</button>').join('') + '</div>' + body + '</div>';
+    const pfl = cur === 'perfekt';
+    const L = pfl ? { idea: 'הרעיון', part: 'צורת עבר', aux: 'haben / sein', war: 'war / hatte', practice: 'תרגול' } : { idea: 'הרעיון', team: 'הצוות', six: 'ששת הפעלים', practice: 'תרגול' };
+    let body = tab === 'practice' ? viewPractice() : pfl ? (tab === 'idea' ? pvIdea() : tab === 'part' ? pvPart() : tab === 'aux' ? pvAux() : pvWar()) : (tab === 'idea' ? viewIdea() : tab === 'team' ? viewTeam() : viewSix());
+    ov.innerHTML = '<div class="ls-wrap"><div class="ls-top"><button class="ls-x" id="lsX" aria-label="סגירה">✕</button><h2>' + (pfl ? '⏪ זמן עבר (Perfekt)' : '📘 פעלים מודאליים (Modalverben)') + '</h2></div><div class="ls-steps">' + Object.keys(L).map(k => '<button class="' + (k === tab ? 'on' : '') + '" data-go="' + k + '">' + L[k] + '</button>').join('') + '</div>' + body + '</div>';
     bind();
   }
   function bind() {
@@ -1941,21 +2071,23 @@
     ov.querySelectorAll('[data-un]').forEach(b => { b.onclick = () => { if (P.st) return; P.b.sel.splice(+b.dataset.un, 1); draw(); }; });
   }
   function act(a) {
+    if (a === 'pf') { pf = true; draw(); say('Ich habe bar bezahlt.'); return; }
     if (a === 'mod') { mod = true; draw(); say('Ich muss einen Apfel essen.'); return; }
     if (a === 'again') { startPractice(); draw(); return; }
     if (a === 'check') { const q = P.items[P.i].q, ok = P.b.sel.map(s => s.w).join(' ') === q.w.join(' '); P.st = { ok: ok }; if (ok) P.ok++; draw(); say(q.w.join(' ')); return; }
     if (a === 'next') {
       P.i++; P.st = null; P.b = null;
-      if (P.i >= P.items.length) { P.done = true; const s = load(); s.modal = { done: true, best: Math.max((s.modal && s.modal.best) || 0, P.ok), of: P.items.length, at: Date.now() }; save(s); }
+      if (P.i >= P.items.length) { P.done = true; const s = load(), k = cur === 'perfekt' ? 'perfekt' : 'modal'; s[k] = { done: true, best: Math.max((s[k] && s[k].best) || 0, P.ok), of: P.items.length, at: Date.now() }; save(s); }
       draw(); ov.scrollTop = 0;
     }
   }
-  function open() { injectCss(); if (ov) ov.remove(); tab = 'idea'; mod = false; P = null; ov = document.createElement('div'); ov.className = 'ls-ov'; document.body.appendChild(ov); draw(); }
+  function open(id) { injectCss(); if (ov) ov.remove(); cur = id === 'perfekt' ? 'perfekt' : 'modal'; tab = 'idea'; mod = false; pf = false; P = null; ov = document.createElement('div'); ov.className = 'ls-ov'; document.body.appendChild(ov); draw(); }
   function close() { if (ov) { ov.remove(); ov = null; } try { const m = document.getElementById('lessonsMount'); if (m) mount(m); } catch (e) {} }
   function mount(el) {
-    if (!el) return; injectCss(); const s = load().modal;
-    el.innerHTML = '<div class="grammar-section-title">שיעורים</div><div class="ls-tile" id="lsTile"><span class="i">📘</span><div><b>פעלים מודאליים</b><small>' + (s && s.done ? '✓ תורגל · התוצאה הטובה ביותר ' + s.best + '/' + s.of : '6 פעלים, הכלל, תרגול') + '</small></div><span class="go">' + (s && s.done ? 'שוב' : 'התחל') + '</span></div>';
-    el.querySelector('#lsTile').onclick = open;
+    if (!el) return; injectCss(); const L = load(), m = L.modal, p = L.perfekt;
+    const tile = (id, icon, title, st, sub) => '<div class="ls-tile" data-lesson="' + id + '"><span class="i">' + icon + '</span><div><b>' + title + '</b><small>' + (st && st.done ? '✓ תורגל · התוצאה הטובה ביותר ' + st.best + '/' + st.of : sub) + '</small></div><span class="go">' + (st && st.done ? 'שוב' : 'התחל') + '</span></div>';
+    el.innerHTML = '<div class="grammar-section-title">שיעורים</div>' + tile('modal', '📘', 'פעלים מודאליים', m, '6 פעלים, הכלל, תרגול') + tile('perfekt', '⏪', 'זמן עבר (Perfekt)', p, 'haben / sein, צורת עבר, תרגול');
+    el.querySelectorAll('[data-lesson]').forEach(t => { t.onclick = () => open(t.dataset.lesson); });
   }
   window.Lessons = { open: open, mount: mount };
 })();
