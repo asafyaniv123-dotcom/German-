@@ -1817,6 +1817,13 @@
   .ls-exp { text-align: right; } .ls-er { display: flex; gap: 8px; align-items: flex-start; font-size: 14px; line-height: 1.5; padding: 7px 9px; border-radius: 12px; margin-bottom: 5px; background: var(--bg, #f7f7f7); border: 1px solid var(--line, #e5e5e5); }
   .ls-er > span { font-weight: 800; flex: none; width: 18px; color: var(--ink-soft, #999); } .ls-er.ok { background: #eaf8dc; border-color: #bfe59a; } .ls-er.ok > span { color: #3d8c00; } .ls-er.pick { background: #ffeaea; border-color: #ffb9b9; } .ls-er.pick > span { color: #c4264a; } .ls-er b { direction: ltr; unicode-bidi: isolate; }
   .ls-done { text-align: center; padding: 18px 4px; } .ls-done .big { font-size: 56px; } .ls-done h3 { font-size: 20px; margin: 4px 0; }
+  .ls-ir { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px dashed var(--line, #e5e5e5); direction: ltr; cursor: pointer; }
+  .ls-ir:last-child { border-bottom: 0; } .ls-ir .ls-say { flex: none; padding: 3px 8px; }
+  .ls-ir-m { flex: 1; min-width: 0; text-align: left; } .ls-ir-m b { font-size: 16.5px; } .ls-ir-m small { display: block; font-size: 12.5px; color: var(--ink-soft, #777); direction: rtl; text-align: left; margin-top: 1px; }
+  .ls-ir-p { font-weight: 800; font-size: 15.5px; color: #c76a00; text-align: right; white-space: nowrap; transition: filter .15s; } .ls-ir-p.sein { color: #4b55c9; } .ls-ir-p i { font-style: normal; font-weight: 700; opacity: .7; }
+  .ls-hidepp .ls-ir-p { filter: blur(7px); } .ls-hidepp .ls-ir.rev .ls-ir-p { filter: none; }
+  .ls-gh { display: flex; justify-content: space-between; align-items: baseline; font-weight: 800; font-size: 15px; margin: 4px 0 2px; } .ls-gh small { color: var(--ink-soft, #777); font-weight: 700; }
+  .ls-search { width: 100%; box-sizing: border-box; border: 2px solid var(--line, #e5e5e5); border-radius: 14px; padding: 10px 12px; font: inherit; font-size: 15px; background: var(--surface, #fff); color: inherit; margin-bottom: 10px; direction: rtl; }
   .ls-tile { display: flex; align-items: center; gap: 12px; background: var(--surface, #fff); border: 2px solid var(--fun-orange, #ff9600); box-shadow: 0 4px 0 var(--fun-orange, #ff9600); border-radius: 20px; padding: 11px 14px; margin: 4px 0 16px; cursor: pointer; }
   .ls-tile .i { font-size: 30px; } .ls-tile b { display: block; font-size: 16px; } .ls-tile small { color: var(--ink-soft, #777); font-size: 12.5px; } .ls-tile .go { margin-inline-start: auto; background: var(--fun-orange, #ff9600); color: #fff; font-weight: 800; border-radius: 12px; padding: 7px 13px; box-shadow: 0 3px 0 #cc7a00; }
   `;
@@ -1890,6 +1897,14 @@
     { inf: 'sein', he: 'להיות', rows: [['ich', 'war'], ['du', 'warst'], ['er / sie / es', 'war'], ['wir', 'waren'], ['ihr', 'wart'], ['sie / Sie', 'waren']], ex: ['Ich war müde.', 'הייתי עייף'] },
     { inf: 'haben', he: 'להיות ל…', rows: [['ich', 'hatte'], ['du', 'hattest'], ['er / sie / es', 'hatte'], ['wir', 'hatten'], ['ihr', 'hattet'], ['sie / Sie', 'hatten']], ex: ['Ich hatte Hunger.', 'הייתי רעב'] },
     { inf: 'können', he: 'יכול (מודלי)', rows: [['ich', 'konnte'], ['du', 'konntest'], ['er / sie / es', 'konnte'], ['wir', 'konnten'], ['ihr', 'konntet'], ['sie / Sie', 'konnten']], ex: ['Ich konnte nicht kommen.', 'לא יכולתי לבוא'] }
+  ];
+  // irregular and mixed verbs: [infinitive, hebrew, er-form in the present (shows the vowel change), participle, aux, mixed?]
+  const IRR = [
+    { g: '🚆 תנועה והגעה (עם sein)', v: [['gehen', 'ללכת', 'geht', 'gegangen', 's'], ['kommen', 'לבוא', 'kommt', 'gekommen', 's'], ['fahren', 'לנסוע', 'fährt', 'gefahren', 's'], ['fliegen', 'לטוס', 'fliegt', 'geflogen', 's'], ['laufen', 'לרוץ / ללכת ברגל', 'läuft', 'gelaufen', 's'], ['ankommen', 'להגיע', 'kommt an', 'angekommen', 's'], ['abfahren', 'לצאת (בנסיעה)', 'fährt ab', 'abgefahren', 's'], ['einsteigen', 'לעלות (לרכב)', 'steigt ein', 'eingestiegen', 's'], ['aussteigen', 'לרדת (מרכב)', 'steigt aus', 'ausgestiegen', 's'], ['umsteigen', 'להחליף קו', 'steigt um', 'umgestiegen', 's'], ['aufstehen', 'לקום', 'steht auf', 'aufgestanden', 's'], ['bleiben', 'להישאר', 'bleibt', 'geblieben', 's'], ['fallen', 'ליפול', 'fällt', 'gefallen', 's'], ['sein', 'להיות', 'ist', 'gewesen', 's'], ['werden', 'להפוך ל', 'wird', 'geworden', 's']] },
+    { g: '🍽️ אוכל, שתייה וקבלה', v: [['essen', 'לאכול', 'isst', 'gegessen', 'h'], ['trinken', 'לשתות', 'trinkt', 'getrunken', 'h'], ['nehmen', 'לקחת', 'nimmt', 'genommen', 'h'], ['mitnehmen', 'לקחת איתי', 'nimmt mit', 'mitgenommen', 'h'], ['geben', 'לתת', 'gibt', 'gegeben', 'h'], ['bekommen', 'לקבל', 'bekommt', 'bekommen', 'h'], ['bringen', 'להביא', 'bringt', 'gebracht', 'h', 1], ['tragen', 'לשאת / ללבוש', 'trägt', 'getragen', 'h'], ['verlieren', 'לאבד', 'verliert', 'verloren', 'h'], ['gewinnen', 'לנצח / להרוויח', 'gewinnt', 'gewonnen', 'h']] },
+    { g: '💬 דיבור וקשר עם אנשים', v: [['sprechen', 'לדבר', 'spricht', 'gesprochen', 'h'], ['schreiben', 'לכתוב', 'schreibt', 'geschrieben', 'h'], ['lesen', 'לקרוא', 'liest', 'gelesen', 'h'], ['rufen', 'לקרוא (בקול)', 'ruft', 'gerufen', 'h'], ['anrufen', 'להתקשר', 'ruft an', 'angerufen', 'h'], ['bitten', 'לבקש', 'bittet', 'gebeten', 'h'], ['helfen', 'לעזור', 'hilft', 'geholfen', 'h'], ['treffen', 'לפגוש', 'trifft', 'getroffen', 'h'], ['einladen', 'להזמין', 'lädt ein', 'eingeladen', 'h'], ['heißen', 'להיקרא', 'heißt', 'geheißen', 'h']] },
+    { g: '🧠 ראייה, חשיבה והתחלה', v: [['sehen', 'לראות', 'sieht', 'gesehen', 'h'], ['finden', 'למצוא', 'findet', 'gefunden', 'h'], ['denken', 'לחשוב', 'denkt', 'gedacht', 'h', 1], ['wissen', 'לדעת', 'weiß', 'gewusst', 'h', 1], ['kennen', 'להכיר', 'kennt', 'gekannt', 'h', 1], ['verstehen', 'להבין', 'versteht', 'verstanden', 'h'], ['vergessen', 'לשכוח', 'vergisst', 'vergessen', 'h'], ['beginnen', 'להתחיל', 'beginnt', 'begonnen', 'h'], ['anfangen', 'להתחיל', 'fängt an', 'angefangen', 'h']] },
+    { g: '🏠 יום-יום', v: [['schlafen', 'לישון', 'schläft', 'geschlafen', 'h'], ['stehen', 'לעמוד', 'steht', 'gestanden', 'h'], ['sitzen', 'לשבת', 'sitzt', 'gesessen', 'h'], ['liegen', 'לשכב / להיות מונח', 'liegt', 'gelegen', 'h'], ['lassen', 'לתת / להשאיר', 'lässt', 'gelassen', 'h'], ['tun', 'לעשות', 'tut', 'getan', 'h'], ['schließen', 'לסגור', 'schließt', 'geschlossen', 'h'], ['waschen', 'לכבס / לרחוץ', 'wäscht', 'gewaschen', 'h']] }
   ];
   const AUX = { habe: ['haben', 'ich'], hast: ['haben', 'du'], hat: ['haben', 'er / sie / es'], haben: ['haben', 'wir / sie'], habt: ['haben', 'ihr'], bin: ['sein', 'ich'], bist: ['sein', 'du'], ist: ['sein', 'er / sie / es'], sind: ['sein', 'wir / sie'], seid: ['sein', 'ihr'] };
   const PERSX = { ich: 'ich (אני)', du: 'du (אתה / את)', er: 'er (הוא)', wir: 'wir (אנחנו)', ihr: 'ihr (אתם)', sie: 'sie (הם)' };
@@ -1986,7 +2001,15 @@
       '<button class="ls-btn blue" data-go="part">איך בונים את צורת העבר ←</button>';
   }
   function pvPart() {
-    return '<div class="ls-trap"><b>⚠️ מלכודת:</b> bezahlen ← <b>bezahlt</b> (לא "gebezahlt"). פעלים עם be-, ver-, er-, ent- לא מקבלים ge-.</div>' + PTYPES.map((t, i) => '<div class="ls-card ls-vc' + (i === 0 ? ' open' : '') + '" data-i="' + i + '"><div class="ls-vh" data-tg="' + i + '"><span class="n">' + esc(t.n) + '</span><span><div class="m">' + esc(t.m) + '</div><div class="d">' + esc(t.d) + '</div></span><span class="c">▾</span></div><div class="ls-vt">' + t.rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>').join('') + '</div><div class="ls-ex"><button class="ls-say" data-say="' + esc(t.ex[0]) + '">🔊</button><span class="t">' + esc(t.ex[0]) + '</span><span class="h">' + esc(t.ex[1]) + '</span></div><div class="ls-note">' + esc(t.tip) + '</div></div>').join('') + '<button class="ls-btn blue" data-go="aux">haben או sein ←</button>';
+    return '<div class="ls-trap"><b>⚠️ מלכודת:</b> bezahlen ← <b>bezahlt</b> (לא "gebezahlt"). פעלים עם be-, ver-, er-, ent- לא מקבלים ge-.</div>' + PTYPES.map((t, i) => '<div class="ls-card ls-vc' + (i === 0 ? ' open' : '') + '" data-i="' + i + '"><div class="ls-vh" data-tg="' + i + '"><span class="n">' + esc(t.n) + '</span><span><div class="m">' + esc(t.m) + '</div><div class="d">' + esc(t.d) + '</div></span><span class="c">▾</span></div><div class="ls-vt">' + t.rows.map(r => '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>').join('') + '</div><div class="ls-ex"><button class="ls-say" data-say="' + esc(t.ex[0]) + '">🔊</button><span class="t">' + esc(t.ex[0]) + '</span><span class="h">' + esc(t.ex[1]) + '</span></div><div class="ls-note">' + esc(t.tip) + '</div></div>').join('') + '<button class="ls-btn blue" data-go="irr">רשימת הפעלים הלא רגילים ←</button>';
+  }
+  let irrHide = false;
+  function pvIrr() {
+    const n = IRR.reduce((a, g) => a + g.v.length, 0);
+    return '<div class="ls-card"><h3>' + n + ' פעלים שכדאי לשנן</h3><p>לפי נושאים, כי קל יותר לזכור אותם בקבוצות. <b style="color:#c76a00">hat</b> = עם haben, <b style="color:#4b55c9">ist</b> = עם sein. מתחת לכל פועל מופיעה צורת ה-<span dir="ltr">er</span> בהווה, שם יש לפעמים שינוי תנועה (fahren ← er fährt).</p><p class="ls-note">פעלים מעורבים (denken, wissen, kennen, bringen) מקבלים t כמו הרגילים, אבל גם משנים את השורש: <span dir="ltr">denken ← gedacht</span>.</p></div>' +
+      '<input class="ls-search" id="lsIrQ" placeholder="חיפוש פועל (בגרמנית או בעברית)…" autocomplete="off"><button class="ls-btn sec" data-act="irrhide" style="margin-bottom:12px">' + (irrHide ? '👁️ הצג צורות עבר' : '🙈 הסתר צורות עבר (בדיקה עצמית)') + '</button>' +
+      '<div id="lsIrList" class="' + (irrHide ? 'ls-hidepp' : '') + '">' + IRR.map(g => '<div class="ls-card ls-irg"><div class="ls-gh"><span>' + esc(g.g) + '</span><small>' + g.v.length + '</small></div>' + g.v.map(v => '<div class="ls-ir" data-q="' + esc((v[0] + ' ' + v[1]).toLowerCase()) + '"><button class="ls-say" data-say="' + esc(v[0] + '. ' + (v[4] === 's' ? 'ist ' : 'hat ') + v[3]) + '" aria-label="השמע">🔊</button><div class="ls-ir-m"><b>' + esc(v[0]) + '</b><small>' + esc(v[1]) + ' · er ' + esc(v[2]) + (v[5] ? ' · מעורב' : '') + '</small></div><div class="ls-ir-p ' + (v[4] === 's' ? 'sein' : '') + '"><i>' + (v[4] === 's' ? 'ist' : 'hat') + '</i> ' + esc(v[3]) + '</div></div>').join('') + '</div>').join('') + '<div class="ls-note" id="lsIrNone" style="display:none;text-align:center">לא נמצא פועל כזה</div></div>' +
+      '<button class="ls-btn blue" data-go="aux">haben או sein ←</button>';
   }
   function pvAux() {
     return '<div class="ls-card"><h3>ברירת המחדל: haben</h3><p>רוב הפעלים הולכים עם haben: <span dir="ltr">machen, kaufen, essen, trinken, sehen, bezahlen, lernen…</span></p><div class="ls-ex"><button class="ls-say" data-say="Ich habe Kaffee getrunken.">🔊</button><span class="t">Ich habe Kaffee getrunken.</span><span class="h">שתיתי קפה</span></div></div>' +
@@ -2055,8 +2078,8 @@
   }
   function draw() {
     const pfl = cur === 'perfekt';
-    const L = pfl ? { idea: 'הרעיון', part: 'צורת עבר', aux: 'haben / sein', war: 'war / hatte', practice: 'תרגול' } : { idea: 'הרעיון', team: 'הצוות', six: 'ששת הפעלים', practice: 'תרגול' };
-    let body = tab === 'practice' ? viewPractice() : pfl ? (tab === 'idea' ? pvIdea() : tab === 'part' ? pvPart() : tab === 'aux' ? pvAux() : pvWar()) : (tab === 'idea' ? viewIdea() : tab === 'team' ? viewTeam() : viewSix());
+    const L = pfl ? { idea: 'הרעיון', part: 'צורת עבר', irr: 'לא רגילים', aux: 'haben / sein', war: 'war / hatte', practice: 'תרגול' } : { idea: 'הרעיון', team: 'הצוות', six: 'ששת הפעלים', practice: 'תרגול' };
+    let body = tab === 'practice' ? viewPractice() : pfl ? (tab === 'idea' ? pvIdea() : tab === 'part' ? pvPart() : tab === 'irr' ? pvIrr() : tab === 'aux' ? pvAux() : pvWar()) : (tab === 'idea' ? viewIdea() : tab === 'team' ? viewTeam() : viewSix());
     ov.innerHTML = '<div class="ls-wrap"><div class="ls-top"><button class="ls-x" id="lsX" aria-label="סגירה">✕</button><h2>' + (pfl ? '⏪ זמן עבר (Perfekt)' : '📘 פעלים מודאליים (Modalverben)') + '</h2></div><div class="ls-steps">' + Object.keys(L).map(k => '<button class="' + (k === tab ? 'on' : '') + '" data-go="' + k + '">' + L[k] + '</button>').join('') + '</div>' + body + '</div>';
     bind();
   }
@@ -2066,11 +2089,20 @@
     ov.querySelectorAll('[data-say]').forEach(b => { b.onclick = e => { e.stopPropagation(); say(b.dataset.say); }; });
     ov.querySelectorAll('[data-tg]').forEach(b => { b.onclick = () => b.closest('.ls-vc').classList.toggle('open'); });
     ov.querySelectorAll('[data-act]').forEach(b => { b.onclick = () => act(b.dataset.act); });
+    ov.querySelectorAll('.ls-ir').forEach(r => { r.onclick = () => r.classList.toggle('rev'); });
+    const iq = ov.querySelector('#lsIrQ');
+    if (iq) iq.oninput = () => {
+      const t = iq.value.trim().toLowerCase(); let any = false;
+      ov.querySelectorAll('.ls-ir').forEach(r => { const hit = !t || r.dataset.q.indexOf(t) >= 0; r.style.display = hit ? '' : 'none'; if (hit) any = true; });
+      ov.querySelectorAll('.ls-irg').forEach(g => { g.style.display = [...g.querySelectorAll('.ls-ir')].some(r => r.style.display !== 'none') ? '' : 'none'; });
+      const none = ov.querySelector('#lsIrNone'); if (none) none.style.display = any ? 'none' : '';
+    };
     ov.querySelectorAll('[data-opt]').forEach(b => { b.onclick = () => { const q = P.items[P.i].q, ok = b.dataset.opt === q.a; P.st = { ok: ok, pick: b.dataset.opt }; if (!ok) P.first = false; if (ok && P.first) P.ok++; P.first = true; draw(); say(q.pre + ' ' + q.a + ' ' + q.post); }; });
     ov.querySelectorAll('[data-w]').forEach(b => { b.onclick = () => { const B = P.b, k = +b.dataset.w, e = B.bank.find(x => x.k === k); if (!B.sel.some(s => s.k === k)) B.sel.push(e); draw(); }; });
     ov.querySelectorAll('[data-un]').forEach(b => { b.onclick = () => { if (P.st) return; P.b.sel.splice(+b.dataset.un, 1); draw(); }; });
   }
   function act(a) {
+    if (a === 'irrhide') { irrHide = !irrHide; draw(); return; }
     if (a === 'pf') { pf = true; draw(); say('Ich habe bar bezahlt.'); return; }
     if (a === 'mod') { mod = true; draw(); say('Ich muss einen Apfel essen.'); return; }
     if (a === 'again') { startPractice(); draw(); return; }
