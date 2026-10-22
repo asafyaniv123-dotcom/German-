@@ -234,6 +234,7 @@
     font-weight: 400;
     margin-inline-start: 6px;
   }
+  .vocab-hint { font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; direction: rtl; unicode-bidi: plaintext; }
   .vocab-he {
     font-size: 13.5px;
     color: var(--ink-soft);
@@ -4180,21 +4181,21 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     { de: "bezahlen", he: "לשלם (על משהו)", pos: "פועל", category: "פעלים", heForms: ["שילם","שילמה","שילמו"] },
     { de: "bar", he: "במזומן", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
     { de: "Bargeld", he: "כסף מזומן", pos: "שם עצם", gender: "das", category: "שמות עצם" },
-    { de: "gesagt", he: "אמר / נאמר (Partizip II של sagen: ich habe gesagt = אמרתי)", pos: "פועל (עבר)", category: "פעלים" },
-    { de: "hättest", he: "היית / היה לך (צורת תנאי של haben: hättest du erwartet = היית מצפה)", pos: "פועל עזר", category: "פעלים" },
-    { de: "allein", he: "לבד (בדיבור גם alleine, ובטקסט: ALLEINE!)", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
-    { de: "erfüllen", he: "למלא / לקיים (משאלה, חלום). erfüllt = מילא / מומש", pos: "פועל", category: "פעלים", heForms: ["מילא","מילאה","מילאו"] },
+    { de: "gesagt", he: "אמר / נאמר", hint: "Partizip II של sagen: ich habe gesagt = אמרתי", pos: "פועל (עבר)", category: "פעלים" },
+    { de: "hättest", he: "היית / היה לך", hint: "צורת תנאי של haben: hättest du erwartet = היית מצפה", pos: "פועל עזר", category: "פעלים" },
+    { de: "allein", he: "לבד", hint: "בדיבור גם alleine, ובטקסט: ALLEINE!", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "erfüllen", he: "למלא / לקיים (משאלה, חלום)", hint: "erfüllt = מילא / מומש", pos: "פועל", category: "פעלים", heForms: ["מילא","מילאה","מילאו"] },
     { de: "niemand", he: "אף אחד", pos: "כינוי", category: "כינויי גוף" },
-    { de: "davon", he: "מזה / מתוכו (da + von): keinen Taler davon = אף טאלר מזה", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
-    { de: "aufrecht", he: "זקוף / ישר (aufrecht stehen = לעמוד זקוף)", pos: "תואר", category: "תארים ותוארי פועל" },
-    { de: "einfach", he: "פשוט (einen einfachen Müllersjungen = נער טוחן פשוט)", pos: "תואר", category: "תארים ותוארי פועל" },
-    { de: "verkuppeln", he: "לשדך (ברוח קצת צינית או שובבה). verkuppelt = שידך", pos: "פועל", category: "פעלים", heForms: ["שידך","שידכה","שידכו"] },
-    { de: "Schuldige", he: "האשם (ein Schuldiger / den Schuldigen = את האשם)", pos: "שם עצם", gender: "der", category: "שמות עצם" },
-    { de: "aufbauen", he: "לבנות / להקים. aufgebaut = בנה", pos: "פועל", category: "פעלים", heForms: ["בנה","בנתה","בנו"] },
-    { de: "gemeinsam", he: "משותף / ביחד (Da haben wir was gemeinsam = יש לנו משהו משותף)", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
-    { de: "stecken", he: "להיות טמון / תקוע בתוך (was in mir steckt = מה שטמון בי)", pos: "פועל", category: "פעלים", heForms: ["היה טמון","הייתה טמונה","היו טמונים"] },
-    { de: "schätzen", he: "להעריך / לשער. schätze ich = אני מניח / כנראה", pos: "פועל", category: "פעלים", heForms: ["העריך","העריכה","העריכו"] },
-    { de: "weiter", he: "יותר רחוק / הלאה / ממשיך (ein bisschen weiter da? = קצת יותר רחוק שם?)", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "davon", he: "מזה / מתוכו", hint: "da + von: keinen Taler davon = אף טאלר מזה", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "aufrecht", he: "זקוף / ישר", hint: "aufrecht stehen = לעמוד זקוף", pos: "תואר", category: "תארים ותוארי פועל" },
+    { de: "einfach", he: "פשוט", hint: "einen einfachen Müllersjungen = נער טוחן פשוט", pos: "תואר", category: "תארים ותוארי פועל" },
+    { de: "verkuppeln", he: "לשדך (ברוח קצת צינית או שובבה)", hint: "verkuppelt = שידך", pos: "פועל", category: "פעלים", heForms: ["שידך","שידכה","שידכו"] },
+    { de: "Schuldige", he: "האשם", hint: "ein Schuldiger / den Schuldigen = את האשם", pos: "שם עצם", gender: "der", category: "שמות עצם" },
+    { de: "aufbauen", he: "לבנות / להקים", hint: "aufgebaut = בנה", pos: "פועל", category: "פעלים", heForms: ["בנה","בנתה","בנו"] },
+    { de: "gemeinsam", he: "משותף / ביחד", hint: "Da haben wir was gemeinsam = יש לנו משהו משותף", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "stecken", he: "להיות טמון / תקוע בתוך", hint: "was in mir steckt = מה שטמון בי", pos: "פועל", category: "פעלים", heForms: ["היה טמון","הייתה טמונה","היו טמונים"] },
+    { de: "schätzen", he: "להעריך / לשער", hint: "schätze ich = אני מניח / כנראה", pos: "פועל", category: "פעלים", heForms: ["העריך","העריכה","העריכו"] },
+    { de: "weiter", he: "יותר רחוק / הלאה / ממשיך", hint: "ein bisschen weiter da? = קצת יותר רחוק שם?", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
     { de: "vertrauen", he: "לבטוח", pos: "פועל", category: "פעלים", heForms: ["בטח","בטחה","בטחו"] },
     { de: "erkennen", he: "להכיר / לזהות", pos: "פועל", category: "פעלים", heForms: ["זיהה","זיהתה","זיהו"] },
     { de: "schnell", he: "מהר", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
@@ -4282,6 +4283,15 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   { de: 'man', he: 'אנשים בכלל / אפשר (כינוי כללי)', pos: 'כינוי כללי', category: 'כינויי גוף' },
   { de: 'Arzt', he: 'רופא', pos: 'שם עצם', gender: 'der', category: 'שמות עצם' }
 ];
+  // <<VOCABHINT>> keep the Hebrew translation clean: German words inside the translation move to a separate "hint" line (shown only in lists, never in quizzes)
+  VOCAB.forEach(function (v) {
+    if (v.hint || !/[A-Za-z\u00e4\u00f6\u00fc\u00df\u00c4\u00d6\u00dc]/.test(v.he)) return;
+    var orig = v.he, h = orig;
+    h = h.replace(/\s*\([^()]*[A-Za-z\u00e4\u00f6\u00fc\u00df][^()]*\)/g, '');
+    var cut = h.search(/\s[\u2014\-]\s.*[A-Za-z]/); if (cut > 0) h = h.slice(0, cut);
+    h = h.replace(/\s{2,}/g, ' ').replace(/[\s,;:]+$/, '').trim();
+    if (h && !/[A-Za-z\u00e4\u00f6\u00fc\u00df]/.test(h)) { v.hint = orig; v.he = h; }
+  });
   // <<CUSTOMVOCAB>> words the user added himself (kept in this browser)
   try { JSON.parse(localStorage.getItem('delearn_custom_vocab') || '[]').forEach(function (cv) { if (cv && cv.de && !VOCAB.some(function (x) { return x.de === cv.de; })) VOCAB.push(cv); }); } catch (e) {}
 
@@ -5013,7 +5023,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
             <div class="mnem-de">${escapeHtml(v.de)}</div>
             <button class="play-btn play-btn-sm" id="${speakId}" onclick="speak('${escapeJs(v.de)}', '${speakId}')" aria-label="השמע בגרמנית">🔊</button>
           </div>
-          <div class="mnem-he">${escapeHtml(v.he)}</div>
+          <div class="mnem-he">${escapeHtml(v.he)}</div>${v.hint ? `<div class="vocab-hint">💡 ${escapeHtml(v.hint)}</div>` : ''}
           <textarea class="mnem-note-input" placeholder="כתבו כאן אסוציאציה שעוזרת לכם לזכור את המילה..." onchange="setVocabNote('${escapeJs(v.de)}', this.value)">${escapeHtml(note)}</textarea>
           <button class="mnem-clear-btn" onclick="clearFromMissed('${escapeJs(v.de)}')">✓ כבר יודע/ת — הסר מהרשימה</button>
         </div>`;
@@ -5250,7 +5260,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       <div class="vocab-row">
         <div class="vocab-main">
           <div class="vocab-de" onclick="toggleNote('${rowId}', '${escapeJs(v.de)}')">${escapeHtml(v.de)}${v.pos ? `<span class="vocab-pos">${escapeHtml(v.pos)}</span>` : ''}${starHtml}</div>
-          <div class="vocab-he">${escapeHtml(v.he)}</div>
+          <div class="vocab-he">${escapeHtml(v.he)}</div>${v.hint ? `<div class="vocab-hint">💡 ${escapeHtml(v.hint)}</div>` : ''}
           <div class="ext-links">
             <a class="ext-link" href="${forvoUrl(v.de)}" target="_blank" rel="noopener noreferrer">Forvo</a>
             <a class="ext-link" href="${tatoebaUrl(v.de)}" target="_blank" rel="noopener noreferrer">Tatoeba</a>
