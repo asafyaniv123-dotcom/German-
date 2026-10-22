@@ -2119,14 +2119,233 @@
   function mount(el) {
     if (!el) return; injectCss(); const L = load(), m = L.modal, p = L.perfekt;
     const tile = (id, icon, title, st, sub) => '<div class="ls-tile" data-lesson="' + id + '"><span class="i">' + icon + '</span><div><b>' + title + '</b><small>' + (st && st.done ? '✓ תורגל · התוצאה הטובה ביותר ' + st.best + '/' + st.of : sub) + '</small></div><span class="go">' + (st && st.done ? 'שוב' : 'התחל') + '</span></div>';
-    el.innerHTML = '<div class="grammar-section-title">שיעורים</div>' + tile('modal', '📘', 'פעלים מודאליים', m, '6 פעלים, הכלל, תרגול') + tile('perfekt', '⏪', 'זמן עבר (Perfekt)', p, 'haben / sein, צורת עבר, תרגול');
-    el.querySelectorAll('[data-lesson]').forEach(t => { t.onclick = () => open(t.dataset.lesson); });
+    el.innerHTML = '<div class="grammar-section-title">שיעורים</div>' + tile('modal', '📘', 'פעלים מודאליים', m, '6 פעלים, הכלל, תרגול') + tile('perfekt', '⏪', 'זמן עבר (Perfekt)', p, 'haben / sein, צורת עבר, תרגול') + tile('genus', '🧺', 'der / die / das', window.Genus ? window.Genus.status() : null, 'שלושה סלים, רמזים, מיון המילים שלך');
+    el.querySelectorAll('[data-lesson]').forEach(t => { t.onclick = () => { if (t.dataset.lesson === 'genus' && window.Genus) window.Genus.open(); else open(t.dataset.lesson); }; });
   }
   window.Lessons = { open: open, mount: mount };
 })();
 
 </script>
 <!--LESSONS-END-->
+<!--GENUS-START-->
+<script>
+(function () {
+  'use strict';
+  var KEY = 'delearn_genus';
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var ctx = function () { return window.LESSONS_CTX || {}; };
+  var say = function (t) { try { ctx().speakDe && ctx().speakDe(t); } catch (e) {} };
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
+  function save(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+
+  var COL = { der: '#1cb0f6', die: '#ff4b6e', das: '#58cc02' };
+  var HE = { der: 'זכר', die: 'נקבה', das: 'ניטרלי' };
+  var CSS = '\n' +
+    '.gn-ov { position: fixed; inset: 0; z-index: 8400; overflow-y: auto; -webkit-overflow-scrolling: touch; background: var(--bg, #fff); color: var(--ink, #3c3c3c); direction: rtl; padding: max(12px, env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom)); }\n' +
+    '.gn-wrap { max-width: 560px; margin: 0 auto; }\n' +
+    '.gn-top { display: flex; align-items: center; gap: 10px; } .gn-top h2 { flex: 1; margin: 0; font-size: 19px; font-weight: 800; }\n' +
+    '.gn-x { background: none; border: 0; font-size: 26px; line-height: 1; color: var(--ink-soft, #777); padding: 6px 4px; cursor: pointer; }\n' +
+    '.gn-tabs { display: flex; gap: 6px; margin: 10px 0 14px; }\n' +
+    '.gn-tabs button { flex: 1; border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: var(--ink-soft, #777); border-radius: 12px; padding: 7px 2px; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }\n' +
+    '.gn-tabs button.on { border-color: var(--fun-blue, #1cb0f6); background: var(--accent-soft, #ddf4ff); color: var(--fun-blue-dk, #1899d6); }\n' +
+    '.gn-card { background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 20px; box-shadow: 0 4px 0 var(--line, #e5e5e5); padding: 14px; margin-bottom: 14px; line-height: 1.6; }\n' +
+    '.gn-card h3 { margin: 0 0 8px; font-size: 16px; }\n' +
+    '.gn-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }\n' +
+    '.gn-bk { border: 3px solid var(--c); border-radius: 18px; background: var(--surface, #fff); padding: 8px 4px 10px; text-align: center; font: inherit; color: inherit; box-shadow: 0 4px 0 var(--c); min-height: 120px; display: flex; flex-direction: column; align-items: center; }\n' +
+    'button.gn-bk { cursor: pointer; } button.gn-bk:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--c); }\n' +
+    '.gn-bk .em { font-size: 34px; line-height: 1.1; } .gn-bk .ar { font-size: 22px; font-weight: 900; color: var(--c); line-height: 1.1; } .gn-bk .hh { font-size: 11.5px; color: var(--ink-soft, #777); margin-bottom: 4px; }\n' +
+    '.gn-in { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; direction: ltr; margin-top: 2px; }\n' +
+    '.gn-in span { font-size: 11px; background: var(--c-soft); border-radius: 8px; padding: 1px 6px; font-weight: 700; }\n' +
+    '.gn-bk.bump { animation: gnBump .45s; } .gn-bk.shake { animation: gnShake .4s; }\n' +
+    '@keyframes gnBump { 0% { transform: scale(1); } 40% { transform: scale(1.1) rotate(-2deg); } 100% { transform: scale(1); } }\n' +
+    '@keyframes gnShake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }\n' +
+    '.gn-der { --c: #1cb0f6; --c-soft: #ddf4ff; } .gn-die { --c: #ff4b6e; --c-soft: #ffe0e7; } .gn-das { --c: #58cc02; --c-soft: #e3f7cf; }\n' +
+    '.gn-rule { display: flex; gap: 10px; align-items: flex-start; border-inline-start: 5px solid var(--c); padding: 6px 10px; margin: 8px 0; background: var(--c-soft); border-radius: 10px; }\n' +
+    '.gn-rule .k { min-width: 74px; font-weight: 900; color: var(--c); direction: ltr; text-align: left; } .gn-rule .v { flex: 1; font-size: 14px; } .gn-rule small { display: block; color: var(--ink-soft, #777); direction: ltr; text-align: right; }\n' +
+    '.gn-mine { font-size: 12.5px; color: var(--ink-soft, #777); direction: ltr; text-align: right; margin-top: 2px; }\n' +
+    '.gn-word { text-align: center; padding: 18px 8px 12px; } .gn-word .de { font-size: 34px; font-weight: 900; direction: ltr; } .gn-word .he { color: var(--ink-soft, #777); font-size: 15px; margin-top: 2px; }\n' +
+    '.gn-say { border: 0; background: var(--accent-soft, #ddf4ff); border-radius: 50%; width: 40px; height: 40px; font-size: 18px; cursor: pointer; margin-top: 6px; }\n' +
+    '.gn-fb { margin: 10px 0; padding: 10px 12px; border-radius: 14px; font-size: 14.5px; } .gn-fb.ok { background: #e3f7cf; color: #2b6a00; } .gn-fb.bad { background: #ffe0e7; color: #a3173a; }\n' +
+    '.gn-btn { display: block; width: 100%; border: 0; border-radius: 14px; background: var(--fun-green, #58cc02); color: #fff; font: inherit; font-weight: 900; font-size: 16px; padding: 12px; box-shadow: 0 4px 0 #46a302; cursor: pointer; margin-top: 8px; }\n' +
+    '.gn-btn.alt { background: var(--surface, #fff); color: var(--fun-blue-dk, #1899d6); border: 2px solid var(--fun-blue, #1cb0f6); box-shadow: 0 4px 0 var(--fun-blue, #1cb0f6); }\n' +
+    '.gn-bar { height: 8px; border-radius: 6px; background: var(--line, #e5e5e5); overflow: hidden; margin: 2px 0 10px; } .gn-bar i { display: block; height: 100%; background: var(--fun-green, #58cc02); }\n' +
+    '.gn-chip { display: inline-block; margin: 2px; padding: 3px 9px; border-radius: 10px; font-weight: 700; font-size: 13px; background: var(--c-soft); border: 0; font-family: inherit; color: inherit; direction: ltr; cursor: pointer; }\n' +
+    '.gn-chip.new { opacity: .55; } .gn-chip.bad { outline: 2px solid #ff4b6e; }\n' +
+    '.gn-sec { font-weight: 900; color: var(--c); margin: 10px 0 4px; direction: ltr; text-align: right; }\n';
+
+  var ov = null, tab = 'idea', G = null;
+
+  function nouns() {
+    var seen = {}, out = [];
+    (ctx().vocab || []).forEach(function (v) {
+      if (!v || !v.gender || !COL[v.gender] || !v.de || seen[v.de]) return;
+      seen[v.de] = 1; out.push({ de: v.de, he: v.he, g: v.gender });
+    });
+    return out;
+  }
+  var DAYS = /^(Montag|Dienstag|Mittwoch|Donnerstag|Freitag|Samstag|Sonntag|Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember|Frühling|Sommer|Herbst|Winter|Morgen|Mittag|Abend|Nachmittag|Vormittag)$/;
+  var RULES = [
+    { g: 'die', re: /(ung)$/i, t: 'סיומת -ung' }, { g: 'die', re: /(heit|keit)$/i, t: 'סיומת -heit / -keit' }, { g: 'die', re: /schaft$/i, t: 'סיומת -schaft' },
+    { g: 'die', re: /(tion|sion)$/i, t: 'סיומת -tion / -sion' }, { g: 'die', re: /tät$/i, t: 'סיומת -tät' }, { g: 'die', re: /[^e]in$/i, t: 'סיומת -in (נקבה של מקצוע / אישה)', min: 5 },
+    { g: 'das', re: /(chen|lein)$/i, t: 'סיומת -chen / -lein (הקטנה, תמיד das)' }, { g: 'das', re: /(ment|um)$/i, t: 'סיומת -ment / -um' }, { g: 'das', re: /ma$/i, t: 'סיומת -ma', min: 5 },
+    { g: 'der', re: /(ling|ismus)$/i, t: 'סיומת -ling / -ismus' },
+    { g: 'der', re: DAYS, t: 'ימים, חודשים, עונות וחלקי יום תמיד der' },
+    { g: 'die', re: /e$/i, t: 'סיומת -e (ברוב המקרים die)', soft: true },
+    { g: 'der', re: /er$/i, t: 'סיומת -er (בעיקר אנשים וכלים)', soft: true }
+  ];
+  function ruleFor(n) {
+    for (var i = 0; i < RULES.length; i++) {
+      var r = RULES[i]; if (r.min && n.de.length < r.min) continue;
+      if (r.re.test(n.de)) return { g: r.g, t: r.t, agrees: r.g === n.g, soft: !!r.soft };
+    }
+    return null;
+  }
+  function reason(n) {
+    var r = ruleFor(n);
+    if (r && r.agrees) return 'רמז: ' + r.t + '.';
+    if (r && !r.agrees) return 'שימו לב, יוצא דופן: ' + r.t + ', אבל המילה הזאת היא ' + n.g + '. כנראה צריך פשוט לשנן אותה.';
+    return 'אין כלל ברור במילה הזאת, פשוט צריך לשנן עם ה-' + n.g + '.';
+  }
+  function basketHtml(g, inner, tag, attrs) {
+    return '<' + tag + ' class="gn-bk gn-' + g + '" ' + (attrs || '') + '><span class="em">🧺</span><span class="ar">' + g + '</span><span class="hh">' + HE[g] + '</span>' + (inner || '') + '</' + tag + '>';
+  }
+  function chipsFor(list, cls) {
+    return list.map(function (n) { return '<button class="gn-chip gn-' + n.g + (cls ? ' ' + cls : '') + '" data-say="' + esc(n.g + ' ' + n.de) + '">' + esc(n.de) + '</button>'; }).join('');
+  }
+  function mine(re, g, max) {
+    var a = nouns().filter(function (n) { return n.g === g && re.test(n.de); }).slice(0, max || 4);
+    return a.length ? '<div class="gn-mine">מהמילים שלך: ' + a.map(function (n) { return esc(n.g + ' ' + n.de); }).join(' · ') + '</div>' : '';
+  }
+
+  // ---------- views ----------
+  function viewIdea() {
+    return '<div class="gn-card"><h3>לכל שם עצם בגרמנית יש "סל"</h3>' +
+      '<div class="gn-3">' + basketHtml('der', '', 'div') + basketHtml('die', '', 'div') + basketHtml('das', '', 'div') + '</div>' +
+      '<p style="margin:12px 0 0"><b>der</b> = הסל של הזכרים · <b>die</b> = הסל של הנקבות (וגם של כל הרבים) · <b>das</b> = הסל של הניטרליים.</p></div>' +
+      '<div class="gn-card"><h3>שלושה דברים שחשוב להבין</h3>' +
+      '<p>1. <b>הסל לא תמיד הגיוני.</b> "הילדה" (das Mädchen) היא ניטרלית, והשמש (die Sonne) נקבה. אז לא מנסים להבין, אלא לזכור.</p>' +
+      '<p>2. <b>תמיד לומדים שם עצם יחד עם הסל שלו.</b> לא "Apfel" אלא "der Apfel", כמו שם אחד.</p>' +
+      '<p>3. <b>ברבים כולם נכנסים לסל die</b>, גם אם ביחיד היו der או das.</p></div>' +
+      '<div class="gn-card"><h3>למה זה חשוב?</h3><p>הסל קובע גם איך נראות המילים סביב: <b>ein Apfel</b> (der) · <b>eine Lampe</b> (die) · <b>ein Kind</b> (das). ובנטייה: <b>der Apfel → den Apfel</b>, רק הזכר משתנה. לכן ההבדל בין der / die / das חוזר בכל משפט.</p></div>' +
+      '<button class="gn-btn" data-tab="sort">למיון, בואו נתרגל ←</button><button class="gn-btn alt" data-tab="clues">קודם: רמזים שעוזרים לנחש</button>';
+  }
+  function viewClues() {
+    var R = function (g, k, v, ex, re) { return '<div class="gn-rule gn-' + g + '"><span class="k">' + k + '</span><div class="v">' + v + (ex ? '<small>' + ex + '</small>' : '') + (re ? mine(re, g) : '') + '</div></div>'; };
+    return '<div class="gn-card"><div class="gn-sec" style="color:#a67c00">אין כללים של 100%, אבל אלה הרמזים שעובדים בדרך כלל:</div>' +
+      '<div class="gn-sec" style="color:' + COL.die + '">die 🧺</div>' +
+      R('die', '-ung', 'פעולה או תוצאה', 'die Zeitung, die Wohnung', /ung$/i) +
+      R('die', '-heit / -keit', 'תכונה', 'die Freiheit, die Möglichkeit', /(heit|keit)$/i) +
+      R('die', '-schaft', 'קבוצה / יחסים', 'die Freundschaft', /schaft$/i) +
+      R('die', '-tion / -sion', 'כמו בעברית ובאנגלית', 'die Information, die Station', /(tion|sion)$/i) +
+      R('die', '-in', 'האישה במקצוע', 'die Ärztin, die Lehrerin', null) +
+      R('die', '-e', 'ברוב המקרים (יוצאים: der Name, das Ende)', 'die Lampe, die Tasche, die Ziege', /e$/i) +
+      '<div class="gn-sec" style="color:' + COL.der + '">der 🧺</div>' +
+      R('der', 'ימים וזמנים', 'ימי השבוע, חודשים, עונות, חלקי היום', 'der Montag, der Januar, der Sommer, der Morgen', null) +
+      R('der', 'גברים', 'גברים ובעלי חיים זכרים', 'der Mann, der Vater, der Bruder', null) +
+      R('der', '-ling / -ismus', '', 'der Frühling, der Tourismus', /(ling|ismus)$/i) +
+      R('der', '-er', 'בעיקר אנשים וכלים (יוצאים: das Fenster, die Mutter)', 'der Lehrer, der Computer', /er$/i) +
+      R('der', 'מזג אוויר', 'גשם, שלג, רוח', 'der Regen, der Schnee, der Wind', null) +
+      '<div class="gn-sec" style="color:' + COL.das + '">das 🧺</div>' +
+      R('das', '-chen / -lein', 'הקטנה, זה תמיד das בלי יוצא מן הכלל', 'das Mädchen, das Brötchen', /(chen|lein)$/i) +
+      R('das', '-ment / -um / -ma', '', 'das Instrument, das Datum, das Thema', /(ment|um)$/i) +
+      R('das', 'פועל כשם עצם', 'כשהפועל הופך לשם עצם', 'das Essen (אוכל), das Lernen (הלמידה)', null) +
+      R('das', 'צבעים ומתכות', '', 'das Blau, das Gold', null) +
+      R('das', 'ילדים וצעירים', '', 'das Kind, das Baby', null) +
+      '</div><button class="gn-btn" data-tab="sort">למיון ←</button>';
+  }
+
+  function startGame(onlyMissed) {
+    var st = load().stats || {}, all = nouns();
+    if (onlyMissed) { var m = all.filter(function (n) { return st[n.de] && st[n.de].bad > 0; }); if (m.length >= 4) all = m; }
+    var scored = all.map(function (n) { var s = st[n.de] || { ok: 0, bad: 0 }; return { n: n, k: (s.bad * 2 - s.ok) + Math.random() * 3 }; });
+    scored.sort(function (a, b) { return b.k - a.k; });
+    var pick = scored.slice(0, Math.min(12, scored.length)).map(function (x) { return x.n; });
+    for (var i = pick.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = pick[i]; pick[i] = pick[j]; pick[j] = t; }
+    G = { q: pick.slice(), total: pick.length, first: {}, ok: 0, bask: { der: [], die: [], das: [] }, fb: null, missed: [] };
+  }
+  function viewSort() {
+    var all = nouns();
+    if (all.length < 4) return '<div class="gn-card">עוד אין מספיק שמות עצם עם der / die / das באוצר המילים. הוסיפו מילים ונחזור לכאן.</div>';
+    if (!G) return '<div class="gn-card"><h3>מיון לסלים</h3><p>תקבלו שם עצם בלי ה-der / die / das, ותלחצו על הסל שהוא שייך אליו. טעיתם? תראו את התשובה ולמה, והמילה תחזור עוד מעט. המילים מגיעות מאוצר המילים שלכם, ומילים שהתבלבלתם בהן יחזרו לפני האחרות.</p>' +
+      '<button class="gn-btn" data-act="start">להתחיל (12 מילים)</button>' + (hasMissed() ? '<button class="gn-btn alt" data-act="startmiss">רק מילים שטעיתי בהן</button>' : '') + '<p style="margin:12px 0 0;color:var(--ink-soft,#777);font-size:13px">יש לכם ' + all.length + ' שמות עצם עם סל באוצר המילים.</p></div>';
+    var done = G.q.length === 0 && !G.fb;
+    var inner = function (g) { var a = G.bask[g], more = a.length > 5 ? '<span>+' + (a.length - 5) + '</span>' : ''; return '<div class="gn-in">' + a.slice(-5).map(function (n) { return '<span>' + esc(n.de) + '</span>'; }).join('') + more + '</div>'; };
+    var pct = Math.round((G.total - G.q.length - (G.fb && !G.fb.ok ? 0 : 0)) / G.total * 100);
+    var head = '<div class="gn-bar"><i style="width:' + Math.max(0, Math.min(100, Math.round((G.ok / G.total) * 100))) + '%"></i></div>';
+    if (done) {
+      var pf = G.total - G.missed.length;
+      var s = load(); s.best = Math.max(s.best || 0, pf); s.of = G.total; s.done = true; s.at = Date.now(); save(s);
+      return head + '<div class="gn-card" style="text-align:center"><div style="font-size:42px">' + (pf === G.total ? '🏆' : '🧺') + '</div><h3>' + pf + ' מתוך ' + G.total + ' נכון בניסיון הראשון</h3>' +
+        (G.missed.length ? '<p>אלה שכדאי לחזור עליהן:</p><div>' + chipsFor(G.missed, 'bad') + '</div>' : '<p>מושלם, כל המילים נכנסו לסל הנכון.</p>') + '</div>' +
+        '<div class="gn-3">' + ['der', 'die', 'das'].map(function (g) { return basketHtml(g, inner(g), 'div'); }).join('') + '</div>' +
+        '<button class="gn-btn" data-act="start">סיבוב נוסף</button>' + (G.missed.length ? '<button class="gn-btn alt" data-act="startmiss">רק מה שטעיתי בו</button>' : '');
+    }
+    var cur = G.q[0], baskets = ['der', 'die', 'das'].map(function (g) { return basketHtml(g, inner(g), G.fb ? 'div' : 'button', G.fb ? 'data-b="' + g + '"' : 'data-pick="' + g + '"'); }).join('');
+    var fb = '';
+    if (G.fb) {
+      var f = G.fb;
+      fb = '<div class="gn-fb ' + (f.ok ? 'ok' : 'bad') + '"><b>' + (f.ok ? 'נכון! ' : 'לא בדיוק. ') + esc(f.n.g + ' ' + f.n.de) + '</b> · ' + esc(f.n.he) + '<br>' + esc(reason(f.n)) + '</div><button class="gn-btn" data-act="next">המשך</button>';
+    }
+    return head + '<div class="gn-card gn-word"><div class="de">' + esc(cur.de) + '</div><div class="he">' + esc(cur.he) + '</div>' +
+      (G.fb ? '<button class="gn-say" data-say="' + esc(cur.g + ' ' + cur.de) + '" aria-label="השמע">🔊</button>' : '') + '</div>' +
+      '<div class="gn-3" id="gnBaskets">' + baskets + '</div>' + fb;
+  }
+  function hasMissed() { var st = load().stats || {}; return nouns().filter(function (n) { return st[n.de] && st[n.de].bad > 0; }).length >= 4; }
+  function viewMine() {
+    var all = nouns(), st = load().stats || {};
+    var col = function (g) {
+      var a = all.filter(function (n) { return n.g === g; }).sort(function (x, y) { return x.de.localeCompare(y.de); });
+      return '<div class="gn-card gn-' + g + '" style="border-color:var(--c)"><div class="gn-sec" style="margin-top:0">' + g + ' 🧺 · ' + a.length + '</div><div>' +
+        a.map(function (n) { var s = st[n.de]; var cls = !s ? 'new' : (s.bad > s.ok ? 'bad' : ''); return '<button class="gn-chip gn-' + g + ' ' + cls + '" data-say="' + esc(g + ' ' + n.de) + '">' + esc(n.de) + '</button>'; }).join('') + '</div></div>';
+    };
+    return '<p style="margin:0 0 10px;color:var(--ink-soft,#777);font-size:13px">כל שמות העצם שלכם בסלים שלהם. לחיצה על מילה משמיעה אותה. מילה באפור עוד לא תורגלה, ומילה עם מסגרת אדומה גרמה לטעויות.</p>' + col('der') + col('die') + col('das');
+  }
+
+  function draw() {
+    if (!ov) return;
+    var body = tab === 'idea' ? viewIdea() : tab === 'clues' ? viewClues() : tab === 'sort' ? viewSort() : viewMine();
+    var tabs = [['idea', 'הרעיון'], ['clues', 'רמזים'], ['sort', 'מיון'], ['mine', 'הסלים שלי']];
+    ov.innerHTML = '<div class="gn-wrap"><div class="gn-top"><h2>🧺 der · die · das</h2><button class="gn-x" data-act="close" aria-label="סגור">×</button></div>' +
+      '<div class="gn-tabs">' + tabs.map(function (t) { return '<button data-tab="' + t[0] + '" class="' + (tab === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' + body + '</div>';
+    bind();
+  }
+  function bind() {
+    ov.querySelectorAll('[data-tab]').forEach(function (b) { b.onclick = function () { tab = b.dataset.tab; draw(); ov.scrollTop = 0; }; });
+    ov.querySelectorAll('[data-say]').forEach(function (b) { b.onclick = function () { say(b.dataset.say); }; });
+    ov.querySelectorAll('[data-act]').forEach(function (b) { b.onclick = function () { act(b.dataset.act); }; });
+    ov.querySelectorAll('[data-pick]').forEach(function (b) { b.onclick = function () { pick(b.dataset.pick); }; });
+  }
+  function pick(g) {
+    if (!G || G.fb || !G.q.length) return;
+    var n = G.q[0], ok = g === n.g, s = load(); s.stats = s.stats || {}; var st = s.stats[n.de] || { ok: 0, bad: 0 };
+    var firstTry = !G.first[n.de]; G.first[n.de] = 1;
+    if (ok) { st.ok++; if (firstTry) G.ok++; } else { st.bad++; if (G.missed.indexOf(n) < 0) G.missed.push(n); }
+    s.stats[n.de] = st; save(s);
+    G.fb = { ok: ok, n: n };
+    if (ok) G.bask[n.g].push(n);
+    draw();
+    var el = ov.querySelector('[data-b="' + g + '"]'); if (el) el.classList.add(ok ? 'bump' : 'shake');
+    say(n.g + ' ' + n.de);
+  }
+  function act(a) {
+    if (a === 'close') { close(); return; }
+    if (a === 'start') { startGame(false); draw(); return; }
+    if (a === 'startmiss') { startGame(true); draw(); return; }
+    if (a === 'next') {
+      var f = G.fb; G.fb = null; var n = G.q.shift();
+      if (!f.ok) G.q.splice(Math.min(3, G.q.length), 0, n);
+      draw(); ov.scrollTop = 0;
+    }
+  }
+  function injectCss() { if (document.getElementById('gnCss')) return; var s = document.createElement('style'); s.id = 'gnCss'; s.textContent = CSS; document.head.appendChild(s); }
+  function open() { injectCss(); if (ov) ov.remove(); tab = 'idea'; G = null; ov = document.createElement('div'); ov.className = 'gn-ov'; document.body.appendChild(ov); draw(); }
+  function close() { if (ov) { ov.remove(); ov = null; } try { var m = document.getElementById('lessonsMount'); if (m && window.Lessons) window.Lessons.mount(m); } catch (e) {} }
+  function status() { var s = load(); return { done: !!s.done, best: s.best || 0, of: s.of || 12 }; }
+  window.Genus = { open: open, status: status, _ruleFor: ruleFor, _nouns: nouns, _pick: pick, _state: function () { return G; } };
+})();
+
+</script>
+<!--GENUS-END-->
 <!--DAILY-START-->
 <script>
 /* A monthly calendar of daily words: 15 new words a day, tap a day to see its words, memorise them or be tested on them. */
@@ -4316,6 +4535,37 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     { de: "stecken", he: "להיות טמון / תקוע בתוך", hint: "was in mir steckt = מה שטמון בי", pos: "פועל", category: "פעלים", heForms: ["היה טמון","הייתה טמונה","היו טמונים"] },
     { de: "schätzen", he: "להעריך / לשער", hint: "schätze ich = אני מניח / כנראה", pos: "פועל", category: "פעלים", heForms: ["העריך","העריכה","העריכו"] },
     { de: "weiter", he: "יותר רחוק / הלאה / ממשיך", hint: "ein bisschen weiter da? = קצת יותר רחוק שם?", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "ihr", he: "אתם / לה / שלה", hint: "Wenn ihr einen Schuldigen sucht = אם אתם מחפשים אשם · Ich habe ihr einen Wunsch erfüllt = מילאתי לה משאלה", pos: "כינוי גוף", category: "כינויי גוף" },
+    { de: "euch", he: "אתכם / לכם", hint: "Ich helfe euch = אני עוזר לכם", pos: "כינוי גוף", category: "כינויי גוף" },
+    { de: "zu", he: "אל / ל- / מדי (לפני תואר)", hint: "Früher war ich zu faul = פעם הייתי עצלן מדי · Ich gehe zu dir = אני הולך אליך", pos: "מילת יחס", category: "מילות יחס ותוויות" },
+    { de: "für", he: "בשביל / עבור", hint: "für mich = בשבילי · Danke für alles = תודה על הכל", pos: "מילת יחס", category: "מילות יחס ותוויות" },
+    { de: "so", he: "כך / כל כך / כמו", hint: "ein Tier so klug wie ich = חיה חכמה כמוני", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "sich", he: "את עצמו / את עצמה / את עצמם", hint: "Er wäscht sich = הוא רוחץ את עצמו · sich merken = לזכור לעצמך", pos: "כינוי חוזר", category: "כינויי גוף" },
+    { de: "da", he: "שם / כאן / אז", hint: "Da haben wir was gemeinsam = יש לנו משהו משותף · ein bisschen weiter da? = קצת יותר רחוק שם?", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "wenn", he: "אם / כאשר", hint: "Wenn ihr einen Schuldigen sucht = אם אתם מחפשים אשם. אחרי wenn הפועל נדחף לסוף", pos: "מילת קישור", category: "מילות קישור" },
+    { de: "doch", he: "הרי / בכל זאת / כן! (בתשובה לשלילה)", hint: "Das ist doch nicht wahr! = זה הרי לא נכון! · Kommst du nicht? Doch! = אתה לא בא? כן, אני בא!", pos: "מילית", category: "תארים ותוארי פועל" },
+    { de: "jetzt", he: "עכשיו", hint: "Aber ich weiß jetzt, was in mir steckt = אבל עכשיו אני יודע מה יש בי", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "nur", he: "רק", hint: "Ich wollte nur etwas anderes sein = רק רציתי להיות משהו אחר", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "noch", he: "עוד / עדיין", hint: "Ich bin noch der gestiefelte Kater = אני עדיין חתול המגפיים · noch ein Bier = עוד בירה", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "schon", he: "כבר", hint: "Ich bin schon da = אני כבר כאן", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "ja", he: "כן", hint: "Ja, genau = כן, בדיוק", pos: "מילית", category: "ביטויים" },
+    { de: "bitte", he: "בבקשה (גם: בשמחה / סליחה?)", hint: "Bitte schön = בבקשה (כשנותנים משהו) · Wie bitte? = סליחה, מה אמרת?", pos: "מילית", category: "ביטויים" },
+    { de: "ohne", he: "בלי", hint: "Ohne mich hättest du nie die Prinzessin getroffen = בלעדיי לא היית פוגש את הנסיכה. אחרי ohne בא Akkusativ", pos: "מילת יחס", category: "מילות יחס ותוויות" },
+    { de: "immer", he: "תמיד", hint: "immer noch = עדיין, בכל זאת · Ich bin immer müde = אני תמיד עייף", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "mehr", he: "יותר / עוד", hint: "Ich möchte mehr Wasser = אני רוצה עוד מים", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "nie", he: "אף פעם", hint: "nie die Prinzessin getroffen = אף פעם לא פגש את הנסיכה", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "kein", he: "אף / לא (שלילה של שם עצם)", hint: "keinen Taler = אף טאלר · Ich habe keine Zeit = אין לי זמן", pos: "כינוי שלילה", category: "מילות יחס ותוויות" },
+    { de: "selbst", he: "בעצמו / אפילו", hint: "Ich mache es selbst = אני עושה את זה בעצמי", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "bei", he: "אצל / ליד", hint: "bei der Königin = אצל המלכה. אחרי bei בא Dativ", pos: "מילת יחס", category: "מילות יחס ותוויות" },
+    { de: "aus", he: "מתוך / מ- (מקור)", hint: "Ich komme aus Israel = אני מגיע מישראל. אחרי aus בא Dativ", pos: "מילת יחס", category: "מילות יחס ותוויות" },
+    { de: "also", he: "אז / אם כך", hint: "Also gut = טוב, אם כך · Also, los! = אז יאללה", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "bald", he: "בקרוב", hint: "Bis bald! = להתראות בקרוב", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "nein", he: "לא", hint: "Nein, danke = לא, תודה", pos: "מילית", category: "ביטויים" },
+    { de: "einmal", he: "פעם אחת / פעם", hint: "nur einmal für die Milchkuh = רק פעם אחת בשביל הפרה", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
+    { de: "halten", he: "להחזיק / לעצור", hint: "Halt! = עצור! · Er hält das Seil = הוא מחזיק את החבל", pos: "פועל", category: "פעלים", heForms: ["החזיק", "החזיקה", "החזיקו"] },
+    { de: "fragen", he: "לשאול", hint: "Er fragt den Müller = הוא שואל את הטוחן", pos: "פועל", category: "פעלים", heForms: ["שאל", "שאלה", "שאלו"] },
+    { de: "wissen", he: "לדעת (עובדה)", hint: "ich weiß = אני יודע · Ich weiß es nicht = אני לא יודע", pos: "פועל", category: "פעלים", heForms: ["ידע", "ידעה", "ידעו"] },
+    { de: "denken", he: "לחשוב", hint: "Ich denke, das ist gut = אני חושב שזה טוב", pos: "פועל", category: "פעלים", heForms: ["חשב", "חשבה", "חשבו"] },
     { de: "vertrauen", he: "לבטוח", pos: "פועל", category: "פעלים", heForms: ["בטח","בטחה","בטחו"] },
     { de: "erkennen", he: "להכיר / לזהות", pos: "פועל", category: "פעלים", heForms: ["זיהה","זיהתה","זיהו"] },
     { de: "schnell", he: "מהר", pos: "תואר הפועל", category: "תארים ותוארי פועל" },
@@ -7506,7 +7756,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   // <<CONVOADAPT-END>>
 
   // <<LESSONSADAPT-START>>
-  window.LESSONS_CTX = { speakDe: function (t) { try { speak(String(t)); } catch (e) {} }, verbs: VERBS };
+  window.LESSONS_CTX = { speakDe: function (t) { try { speak(String(t)); } catch (e) {} }, verbs: VERBS, vocab: VOCAB };
   // <<LESSONSADAPT-END>>
 
   // <<BOWLSADAPT-START>>
