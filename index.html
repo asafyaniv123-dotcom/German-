@@ -2546,7 +2546,7 @@
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
           '<div class="dl-streak"><div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
-          '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
+          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button></div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות בקערה הירוקה: ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
         if (!isFuture) {
@@ -2564,6 +2564,7 @@
         el.querySelectorAll('.dl-day').forEach(b => { b.onclick = () => { if (b.classList.contains('future')) return; sel = b.dataset.k; draw(); }; });
         if ($('dlAdd')) $('dlAdd').onclick = () => picker(el, sel, draw);
         if ($('dlMore')) $('dlMore').onclick = () => picker(el, sel, draw);
+        if ($('dlAll')) $('dlAll').onclick = () => cfg.testAll(draw);
         if ($('dlStudy')) $('dlStudy').onclick = () => cfg.study(ids, draw);
         if ($('dlTest')) $('dlTest').onclick = () => cfg.test(ids, draw);
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
@@ -5228,14 +5229,37 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       <div class="weak-toggle-row" id="vocabPoolRow">
         <button class="nav-btn${vocabPool === 'all' ? ' active-toggle' : ''}" onclick="setVocabPool('all')">כל האוצר</button>
         <button class="nav-btn${vocabPool === 'missed' ? ' active-toggle' : ''}" onclick="setVocabPool('missed')">מה שטעיתי (${missedCount})</button>
+        <button class="nav-btn${vocabPool === 'learned' ? ' active-toggle' : ''}" onclick="setVocabPool('learned')">מה שלמדתי (${getLearnedSet().size})</button>
       </div>`;
   }
+
+  // words the person added to the 15-a-day calendar, across all days (the growing "bucket")
+  function getLearnedSet() {
+    try {
+      const d = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {};
+      const out = new Set();
+      Object.keys(d).forEach(k => (d[k] || []).forEach(id => out.add(String(id))));
+      return out;
+    } catch (e) { return new Set(); }
+  }
+  // quiz direction: 'de2he', 'he2de', or 'mix' (each question flips a coin, kept until the next question)
+  let vocabMixCur = {};
+  function qDir(item) {
+    if (vocabDir !== 'mix') return vocabDir;
+    if (!(item.de in vocabMixCur)) vocabMixCur[item.de] = Math.random() < 0.5 ? 'de2he' : 'he2de';
+    return vocabMixCur[item.de];
+  }
+  function vocabDirLabel() { return vocabDir === 'de2he' ? '↔ גרמנית ← עברית' : vocabDir === 'he2de' ? '🔁 עברית ← גרמנית' : '🔀 ערבוב'; }
 
   function getFilteredVocabPool() {
     let pool = VOCAB;
     if (vocabPool === 'missed') {
       const missed = getMissedList();
       pool = pool.filter(v => missed.includes(v.de));
+    }
+    if (vocabPool === 'learned') {
+      const learned = getLearnedSet();
+      pool = pool.filter(v => learned.has(v.de));
     }
     if (vocabCategory !== 'all') {
       pool = pool.filter(v => (v.category || 'כללי') === vocabCategory);
@@ -5304,7 +5328,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     if (!availableCount) {
       const emptyMsg = vocabPool === 'missed'
         ? 'אין כרגע מילים לתרגול חוזר — כל הכבוד! 🎉'
-        : 'אין מילים בקטגוריה הזו.';
+        : (vocabPool === 'learned' ? 'עוד לא הוספת מילים ללוח ה-15 ביום, אז אין עוד מה לבחון.' : 'אין מילים בקטגוריה הזו.');
       return poolRow + categoryRow + dirRow + `<div class="vocab-missed-empty">${emptyMsg}</div>`;
     }
     const cellsHtml = gridCells.map((cell, i) => {
@@ -5444,7 +5468,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   }
 
   function toggleVocabDir() {
-    vocabDir = vocabDir === 'de2he' ? 'he2de' : 'de2he';
+    vocabDir = vocabDir === 'de2he' ? 'he2de' : vocabDir === 'he2de' ? 'mix' : 'de2he';
+    vocabMixCur = {};
     safeSet('delearn_vocab_dir', vocabDir);
     renderVocab();
   }
@@ -5469,18 +5494,18 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     const categoryRow = vocabCategoryRowHtml();
     const dirRow = `
       <div class="recall-toggle-row">
-        <button class="nav-btn" onclick="toggleVocabDir()">${vocabDir === 'de2he' ? '↔ גרמנית ← עברית' : '🔁 עברית ← גרמנית'}</button>
+        <button class="nav-btn" onclick="toggleVocabDir()">${vocabDirLabel()}</button>
       </div>`;
     if (!vocabQueue.length) {
       const emptyMsg = vocabPool === 'missed'
         ? 'אין כרגע מילים לתרגול חוזר — כל הכבוד! 🎉'
-        : 'אין מילים בקטגוריה הזו.';
+        : (vocabPool === 'learned' ? 'עוד לא הוספת מילים ללוח ה-15 ביום, אז אין עוד מה לבחון.' : 'אין מילים בקטגוריה הזו.');
       return poolRow + categoryRow + dirRow + `<div class="vocab-missed-empty">${emptyMsg}</div>`;
     }
     if (vocabIndex >= vocabQueue.length) vocabIndex = 0;
     if (vocabIndex < 0) vocabIndex = vocabQueue.length - 1;
     const item = vocabQueue[vocabIndex];
-    const isDePrompt = vocabDir === 'de2he';
+    const isDePrompt = qDir(item) === 'de2he';
     const promptText = isDePrompt ? item.de : item.he;
     const answerIsHebrew = isDePrompt;
     return poolRow + categoryRow + dirRow + `
@@ -5524,7 +5549,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     const input = document.getElementById('vocabQuizInput');
     if (!input || !vocabQueue.length) return;
     const item = vocabQueue[vocabIndex];
-    const isCorrect = isVocabAnswerCorrect(item, input.value, vocabDir);
+    const isCorrect = isVocabAnswerCorrect(item, input.value, qDir(item));
     recordAttempt(item.de, isCorrect);
     if (isCorrect) { removeMissed(item.de); } else { addMissed(item.de); }
     const resEl = document.getElementById('vocabQuizResult');
@@ -5532,7 +5557,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (isCorrect) {
         resEl.innerHTML = `<div class="check-result-correct">✓ נכון!</div>`;
       } else {
-        const correctAnswer = vocabDir === 'de2he' ? item.he : item.de;
+        const correctAnswer = qDir(item) === 'de2he' ? item.he : item.de;
         resEl.innerHTML = `<div class="check-result-wrong">✗ לא בדיוק</div><div class="check-answer-reveal">${escapeHtml(correctAnswer)}</div>`;
       }
       resEl.innerHTML += vocabNoteResultHtml(item.de);
@@ -5544,6 +5569,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   function nextVocabQuiz() {
     if (!vocabQueue.length) return;
     vocabIndex = (vocabIndex + 1) % vocabQueue.length;
+    vocabMixCur = {};
     saveVocabQueueState();
     renderVocab();
   }
@@ -5551,12 +5577,14 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   function prevVocabQuiz() {
     if (!vocabQueue.length) return;
     vocabIndex = (vocabIndex - 1 + vocabQueue.length) % vocabQueue.length;
+    vocabMixCur = {};
     saveVocabQueueState();
     renderVocab();
   }
 
   function generateMCOptions(item) {
-    const dispText = v => vocabDir === 'de2he' ? v.he : v.de;
+    const dd = qDir(item);
+    const dispText = v => dd === 'de2he' ? v.he : v.de;
     const targetText = dispText(item);
     const sameCat = shuffleArray(VOCAB.filter(v => v.category === item.category && v.de !== item.de && dispText(v) !== targetText));
     let distractors = sameCat.slice(0, 3);
@@ -5578,20 +5606,20 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     const categoryRow = vocabCategoryRowHtml();
     const dirRow = `
       <div class="recall-toggle-row">
-        <button class="nav-btn" onclick="toggleVocabDir()">${vocabDir === 'de2he' ? '↔ גרמנית ← עברית' : '🔁 עברית ← גרמנית'}</button>
+        <button class="nav-btn" onclick="toggleVocabDir()">${vocabDirLabel()}</button>
       </div>`;
     if (!vocabQueue.length) {
       const emptyMsg = vocabPool === 'missed'
         ? 'אין כרגע מילים לתרגול חוזר — כל הכבוד! 🎉'
-        : 'אין מילים בקטגוריה הזו.';
+        : (vocabPool === 'learned' ? 'עוד לא הוספת מילים ללוח ה-15 ביום, אז אין עוד מה לבחון.' : 'אין מילים בקטגוריה הזו.');
       return poolRow + categoryRow + dirRow + `<div class="vocab-missed-empty">${emptyMsg}</div>`;
     }
     if (vocabIndex >= vocabQueue.length) vocabIndex = 0;
     if (vocabIndex < 0) vocabIndex = vocabQueue.length - 1;
     const item = vocabQueue[vocabIndex];
-    const isDePrompt = vocabDir === 'de2he';
+    const isDePrompt = qDir(item) === 'de2he';
     const promptText = isDePrompt ? item.de : item.he;
-    const key = item.de + '|' + vocabDir;
+    const key = item.de + '|' + qDir(item);
     if (mcQuestionKey !== key) {
       mcOptions = generateMCOptions(item);
       mcQuestionKey = key;
@@ -7855,6 +7883,14 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           getGroups: spGermanGroups, getItems: () => [],
           onClose: redraw
         });
+      },
+      testAll: redraw => {
+        vocabPool = 'learned'; safeSet('delearn_vocab_pool', 'learned');
+        vocabDir = 'mix'; safeSet('delearn_vocab_dir', 'mix'); vocabMixCur = {};
+        try { const o = document.querySelector('.dl-ov'); if (o) o.remove(); } catch (e) {}
+        try { switchTab('vocab'); } catch (e) {}
+        setVocabMode('mc');
+        refreshDailyBanner();
       },
       openCalendar: () => openDaily(),
       onClose: () => refreshDailyBanner()
