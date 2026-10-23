@@ -8044,6 +8044,13 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function totalDays() { return Object.keys(days()).length; }
     function dayWord(n) { return n === 1 ? 'יום אחד' : n + ' ימים'; }
     function statusText() { return doneToday() ? '✓ בוצע היום · ' + dayWord(streak()) + ' ברצף' : (streak() ? '10 דקות עם מחברת · ' + dayWord(streak()) + ' ברצף' : '10 דקות עם מחברת ועט'); }
+    function noteOf(v) { try { return getVocabNotes()[v.de] || ''; } catch (e) { return ''; } }
+    function noteHtml(v) {
+      var n = noteOf(v);
+      return '<div class="wp-note-box" data-de="' + escapeHtml(v.de) + '">' +
+        (n ? '<div class="wp-mynote"><b>💭 הטריק שלי לזכור:</b> ' + escapeHtml(n) + '</div><button class="wp-edit" data-a="editnote">✏️ ערוך</button>'
+           : '<button class="wp-edit" data-a="editnote">💭 הוסיפו טריק לזכור את המילה</button>') + '</div>';
+    }
     function say(t) { try { speak(t, null); } catch (e) {} }
     function weak(v) { try { var r = masteryRatio(getStat(v.de)); return r === null ? 1 : (r < 0.6 ? 0 : 2); } catch (e) { return 1; } }
     function mmss(sec) { return pad(Math.floor(sec / 60)) + ':' + pad(sec % 60); }
@@ -8096,12 +8103,12 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var st = S.steps[S.i], h = head(), b = '';
       if (st.ph === 'warm') {
         var v = st.v, art = v.gender ? v.gender + ' ' : '';
-        b = '<div class="wp-card wp-q"><div class="wp-ins">כתבו במחברת בגרמנית' + (v.gender ? ' (עם der / die / das)' : '') + ':</div><div class="wp-prompt">' + escapeHtml(heOf(v)) + '</div>' + (v.hint ? '<div class="wp-hint">' + escapeHtml(v.hint) + '</div>' : '') + '</div>';
+        b = '<div class="wp-card wp-q"><div class="wp-ins">כתבו במחברת בגרמנית' + (v.gender ? ' (עם der / die / das)' : '') + ':</div><div class="wp-prompt">' + escapeHtml(heOf(v)) + '</div>' + (v.hint && !S.rev && !/[A-Za-z]/.test(v.hint) ? '<div class="wp-hint">' + escapeHtml(v.hint) + '</div>' : '') + '</div>';
         if (!S.rev) b += '<button class="wp-btn" data-a="rev">גלו תשובה</button>';
         else {
           var mn = ''; try { if (v.gender && window.Genus && Genus.mnemonic) mn = Genus.mnemonic(v.de); } catch (e) {}
           b += '<div class="wp-card wp-ans"><div class="wp-de" dir="ltr">' + escapeHtml(art + v.de) + ' <button class="wp-say" data-say="' + escapeHtml(art + v.de) + '" aria-label="השמע">🔊</button></div>' +
-            (window.vocabExampleHtml ? vocabExampleHtml(v.de) : '') + mn +
+            (v.hint && /[A-Za-z]/.test(v.hint) ? '<div class="wp-hint" style="margin:6px 0">' + escapeHtml(v.hint) + '</div>' : '') + (window.vocabExampleHtml ? vocabExampleHtml(v.de) : '') + mn + noteHtml(v) +
             '<div class="wp-copy">✍️ עכשיו העתיקו אותה פעם אחת <b>נכון</b> במחברת, ותגידו אותה בקול.</div></div>' + rate();
         }
       } else if (st.ph === 'trans') {
@@ -8118,7 +8125,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         b = '<div class="wp-card wp-q"><div class="wp-ins">כתבו במחברת <b>משפט אחד משלכם</b> (על החיים שלכם, על הקטר, על מה שבא לכם) שמשתמש בלפחות שתיים מהמילים האלה:</div>' +
           '<div class="wp-words">' + ws.map(function (v) { return '<span dir="ltr">' + escapeHtml((v.gender ? v.gender + ' ' : '') + v.de) + '</span>'; }).join('') + '</div></div>';
         if (!S.rev) b += '<button class="wp-btn" data-a="rev">סיימתי לכתוב, הראו דוגמאות</button>';
-        else b += '<div class="wp-card wp-ans"><div class="wp-copy" style="margin:0 0 6px">דוגמאות לאיך זה יכול להישמע (לא חייבים להיות דומים):</div>' + ws.map(function (v) { return window.vocabExampleHtml ? vocabExampleHtml(v.de) : ''; }).join('') +
+        else b += '<div class="wp-card wp-ans"><div class="wp-copy" style="margin:0 0 6px">דוגמאות לאיך זה יכול להישמע (לא חייבים להיות דומים):</div>' + ws.map(function (v) { return (window.vocabExampleHtml ? vocabExampleHtml(v.de) : '') + (noteOf(v) ? '<div class="wp-mynote" dir="rtl"><b>💭 ' + escapeHtml(v.de) + ':</b> ' + escapeHtml(noteOf(v)) + '</div>' : ''); }).join('') +
           '<div class="wp-copy">בדקו: הפועל במקום השני? שם העצם עם אות גדולה? ה-der / die / das הנכון?</div></div><button class="wp-btn" data-a="own">סיימתי ✓</button>';
       }
       return h + b + '<button class="wp-skip" data-a="quit">לסיים עכשיו</button>';
@@ -8175,6 +8182,12 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (a === 'close') { close(); return; }
       if (a === 'begin') { S.started = true; startClock(); try { if (navigator.wakeLock) navigator.wakeLock.request('screen').then(function (w) { wake = w; }).catch(function () {}); } catch (e) {} render(); return; }
       if (a === 'rev') { S.rev = true; render(); var st = S.steps[S.i]; if (st.ph === 'warm') say((st.v.gender ? st.v.gender + ' ' : '') + st.v.de); else if (st.ph === 'trans') say(st.s.de); return; }
+      if (a === 'editnote') {
+        var box = ov.querySelector('.wp-note-box'); if (!box) return; var v = S.steps[S.i].v; if (!v) return;
+        box.innerHTML = '<textarea class="wp-ta" rows="3" placeholder="איך אני זוכר את המילה הזאת? (תמונה, קשר, משפט מצחיק...)">' + escapeHtml(noteOf(v)) + '</textarea><button class="wp-btn alt" data-a="savenote">שמור טריק</button>';
+        box.querySelector('[data-a="savenote"]').onclick = function () { act('savenote'); }; var ta = box.querySelector('textarea'); if (ta) ta.focus(); return;
+      }
+      if (a === 'savenote') { var b2 = ov.querySelector('.wp-note-box'), t = b2 && b2.querySelector('textarea'), v2 = S.steps[S.i].v; if (t && v2) { try { setVocabNote(v2.de, t.value); } catch (e) {} } var keep = S.rev; render(); return; }
       if (a === 'yes') { mark(true); return; }
       if (a === 'no') { mark(false); return; }
       if (a === 'own') { next(); return; }
@@ -8197,6 +8210,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         '.wp-words{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:6px}.wp-words span{font-size:20px;font-weight:900;background:var(--accent-soft,#ddf4ff);border-radius:12px;padding:6px 12px}' +
         '.wp-btn{display:block;width:100%;border:0;border-radius:14px;background:var(--fun-green,#58cc02);color:#fff;font:inherit;font-weight:900;font-size:16px;padding:13px;box-shadow:0 4px 0 #46a302;cursor:pointer;margin-top:10px}.wp-btn.alt{background:var(--surface,#fff);color:var(--fun-blue-dk,#1899d6);border:2px solid var(--fun-blue,#1cb0f6);box-shadow:0 4px 0 var(--fun-blue,#1cb0f6)}.wp-btn.bad{background:#ff4b6e;box-shadow:0 4px 0 #d33a58}' +
         '.wp-rate{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wp-skip{display:block;margin:16px auto 0;border:0;background:none;color:var(--ink-soft,#777);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}' +
+        '.wp-mynote{margin:8px 0 0;padding:8px 10px;border-radius:12px;background:#efe7ff;color:#4b2a8a;font-size:14px;text-align:right}.wp-edit{margin-top:6px;border:2px dashed var(--line,#ccc);background:none;border-radius:12px;padding:6px 12px;font:inherit;font-size:13px;color:var(--ink-soft,#777);cursor:pointer}.wp-ta{width:100%;box-sizing:border-box;border:2px solid var(--line,#ddd);border-radius:12px;padding:8px;font:inherit;font-size:15px;direction:rtl;margin-top:8px}' +
         '.wp-miss div{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line,#eee)}.wp-miss span{color:var(--ink-soft,#777)}';
       document.head.appendChild(st);
     }
