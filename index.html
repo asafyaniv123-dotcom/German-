@@ -7885,12 +7885,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         });
       },
       testAll: redraw => {
-        vocabPool = 'learned'; safeSet('delearn_vocab_pool', 'learned');
-        vocabDir = 'mix'; safeSet('delearn_vocab_dir', 'mix'); vocabMixCur = {};
-        try { const o = document.querySelector('.dl-ov'); if (o) o.remove(); } catch (e) {}
-        try { switchTab('vocab'); } catch (e) {}
-        setVocabMode('mc');
-        refreshDailyBanner();
+        if (window.openLearnedTest) window.openLearnedTest(redraw);
       },
       openCalendar: () => openDaily(),
       onClose: () => refreshDailyBanner()
@@ -7899,6 +7894,106 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   }
   function openDaily() { const d = dailyDe(); if (d) d.overlay(); }
   function refreshDailyBanner() { const d = dailyDe(); const el = document.getElementById('dailyBanner'); if (d && el) d.refreshBanner(el); }
+
+  // <<LEARNEDTEST>> a self-contained test on ONLY the words added to the 15-a-day calendar, mixed directions
+  (function () {
+    var DIRK = 'delearn_lt_dir', ROUND = 20;
+    var ov = null, S = null, onClose = null;
+    var heOf = function (v) { return typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; };
+    function dirPref() { try { var d = localStorage.getItem(DIRK); return d === 'de2he' || d === 'he2de' ? d : 'mix'; } catch (e) { return 'mix'; } }
+    function items() { var set = getLearnedSet(), seen = {}; return VOCAB.filter(function (v) { if (!set.has(v.de) || seen[v.de]) return false; seen[v.de] = 1; return true; }); }
+    function dirOf(it) { var p = dirPref(); if (p !== 'mix') return p; if (!(it.de in S.dirs)) S.dirs[it.de] = Math.random() < 0.5 ? 'de2he' : 'he2de'; return S.dirs[it.de]; }
+    function weak(v) { try { var r = masteryRatio(getStat(v.de)); return r === null ? 1 : (r < 0.6 ? 0 : 2); } catch (e) { return 1; } }
+    function start(onlyMissed) {
+      var all = items(), pool = all;
+      if (onlyMissed && S && S.missed.length) { var m = {}; S.missed.forEach(function (x) { m[x.de] = 1; }); pool = all.filter(function (v) { return m[v.de]; }); }
+      var q = shuffleArray(pool).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.2 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, ROUND).map(function (x) { return x.v; });
+      S = { all: all, q: q, total: q.length, idx: 0, ok: 0, first: {}, missed: [], ans: null, opts: null, dirs: {}, requeued: {} };
+    }
+    function options(it) {
+      var d = dirOf(it), disp = function (v) { return d === 'de2he' ? heOf(v) : v.de; }, target = disp(it);
+      var cand = S.all.filter(function (v) { return v.de !== it.de && disp(v) !== target; });
+      var same = shuffleArray(cand.filter(function (v) { return v.category === it.category; })), rest = shuffleArray(cand.filter(function (v) { return v.category !== it.category; }));
+      var d3 = same.concat(rest).slice(0, 3);
+      if (d3.length < 3) {
+        var used = {}; d3.forEach(function (v) { used[v.de] = 1; }); used[it.de] = 1;
+        var texts = {}; texts[target] = 1; d3.forEach(function (v) { texts[disp(v)] = 1; });
+        shuffleArray(VOCAB).forEach(function (v) { if (d3.length >= 3 || used[v.de] || texts[disp(v)]) return; d3.push(v); used[v.de] = 1; texts[disp(v)] = 1; });
+      }
+      return shuffleArray([it].concat(d3));
+    }
+    function dirBtn() { var p = dirPref(); return p === 'de2he' ? '↔ גרמנית ← עברית' : p === 'he2de' ? '🔁 עברית ← גרמנית' : '🔀 ערבוב'; }
+    function render() {
+      if (!ov) return;
+      var head = '<div class="lt-top"><button class="lt-x" data-a="close" aria-label="סגור">✕</button><div class="lt-title">🎯 מבחן · כל מה שלמדתי</div><span style="width:30px"></span></div>';
+      if (!S.all.length) { ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-card">עוד לא הוספת מילים ללוח ה-15 ביום, אז אין עוד מה לבחון. בחר מילים בקלנדר ונחזור לכאן.</div></div>'; bind(); return; }
+      if (S.idx >= S.q.length) {
+        var pf = S.total - S.missed.length;
+        ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-card" style="text-align:center"><div style="font-size:46px">' + (S.missed.length ? '🧺' : '🏆') + '</div><h3 style="margin:6px 0">' + pf + ' מתוך ' + S.total + ' נכון בניסיון הראשון</h3>' +
+          '<div style="color:var(--ink-soft,#777);font-size:14px">המבחן הזה כולל רק את ' + S.all.length + ' המילים שהוספת ללוח.</div>' +
+          (S.missed.length ? '<div class="lt-miss">' + S.missed.map(function (x) { return '<div><b dir="ltr">' + escapeHtml(x.de) + '</b><span>' + escapeHtml(heOf(x)) + '</span></div>'; }).join('') + '</div>' : '') + '</div>' +
+          '<button class="lt-btn" data-a="again">סיבוב נוסף</button>' + (S.missed.length ? '<button class="lt-btn alt" data-a="miss">רק מה שטעיתי בו</button>' : '') + '<button class="lt-btn alt" data-a="close">חזרה ללוח</button></div>';
+        bind(); return;
+      }
+      var it = S.q[S.idx], d = dirOf(it), isDe = d === 'de2he';
+      if (!S.opts) S.opts = options(it);
+      var pct = Math.round(S.idx / S.q.length * 100);
+      var optsHtml = S.opts.map(function (o, i) {
+        var cls = 'lt-opt';
+        if (S.ans) { if (o.de === it.de) cls += ' ok'; else if (i === S.ans.pick) cls += ' bad'; }
+        return '<button class="' + cls + '" data-i="' + i + '" dir="' + (isDe ? 'rtl' : 'ltr') + '"' + (S.ans ? ' disabled' : '') + '>' + escapeHtml(isDe ? heOf(o) : o.de) + '</button>';
+      }).join('');
+      var res = '';
+      if (S.ans) res = '<div class="lt-res ' + (S.ans.ok ? 'ok' : 'bad') + '">' + (S.ans.ok ? '✓ נכון!' : '✗ לא בדיוק') + ' <b dir="ltr">' + escapeHtml((it.gender ? it.gender + ' ' : '') + it.de) + '</b> = ' + escapeHtml(heOf(it)) + '</div>' + vocabExampleHtml(it.de) + '<button class="lt-btn" data-a="next">המשך</button>';
+      ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-bar"><i style="width:' + pct + '%"></i></div>' +
+        '<div class="lt-sub"><span>' + (S.idx + 1) + ' / ' + S.q.length + '</span><button class="lt-dir" data-a="dir">' + dirBtn() + '</button></div>' +
+        '<div class="lt-card"><div class="lt-prompt' + (isDe ? ' de' : '') + '"' + (isDe ? ' dir="ltr"' : '') + '>' + escapeHtml(isDe ? it.de : heOf(it)) + '</div>' +
+        '<div class="lt-pos">' + escapeHtml(it.pos || '') + '</div>' +
+        '<button class="lt-say" data-a="say" aria-label="השמע">🔊</button></div>' +
+        '<div class="lt-opts">' + optsHtml + '</div>' + res + '</div>';
+      bind();
+    }
+    function bind() {
+      ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a); }; });
+      ov.querySelectorAll('.lt-opt[data-i]').forEach(function (b) { b.onclick = function () { pick(+b.dataset.i); }; });
+    }
+    function pick(i) {
+      if (!S || S.ans) return;
+      var it = S.q[S.idx], o = S.opts[i], ok = o.de === it.de;
+      S.ans = { pick: i, ok: ok };
+      try { recordAttempt(it.de, ok); if (ok) removeMissed(it.de); else addMissed(it.de); } catch (e) {}
+      if (!S.first[it.de]) { S.first[it.de] = 1; if (!ok) S.missed.push(it); }
+      if (!ok && !S.requeued[it.de]) { S.requeued[it.de] = 1; S.q.splice(Math.min(S.idx + 4, S.q.length), 0, it); }
+      render();
+      try { speak(it.de, null); } catch (e) {}
+    }
+    function act(a) {
+      if (a === 'close') { close(); return; }
+      if (a === 'again') { start(false); render(); return; }
+      if (a === 'miss') { start(true); render(); return; }
+      if (a === 'say') { try { var it = S.q[S.idx]; speak(it.de, null); } catch (e) {} return; }
+      if (a === 'dir') { var p = dirPref(); var n = p === 'mix' ? 'de2he' : p === 'de2he' ? 'he2de' : 'mix'; try { localStorage.setItem(DIRK, n); } catch (e) {} S.dirs = {}; S.opts = null; render(); return; }
+      if (a === 'next') { S.idx++; S.ans = null; S.opts = null; render(); ov.scrollTop = 0; }
+    }
+    function css() {
+      if (document.getElementById('ltCss')) return;
+      var st = document.createElement('style'); st.id = 'ltCss';
+      st.textContent = '.lt-ov{position:fixed;inset:0;z-index:9500;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}' +
+        '.lt-wrap{max-width:520px;margin:0 auto}.lt-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.lt-title{font-weight:900;font-size:17px}.lt-x{border:0;background:none;font-size:24px;color:var(--ink-soft,#777);cursor:pointer;padding:4px 8px}' +
+        '.lt-bar{height:8px;border-radius:6px;background:var(--line,#e5e5e5);overflow:hidden;margin:10px 0 6px}.lt-bar i{display:block;height:100%;background:var(--fun-green,#58cc02);transition:width .3s}' +
+        '.lt-sub{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-soft,#777);margin-bottom:10px;direction:ltr}.lt-dir{border:2px solid var(--line,#e5e5e5);background:var(--surface,#fff);border-radius:12px;padding:5px 11px;font:inherit;font-weight:800;font-size:13px;color:var(--fun-blue-dk,#1899d6);cursor:pointer;direction:rtl}' +
+        '.lt-card{position:relative;background:var(--surface,#fff);border:2px solid var(--line,#e5e5e5);border-radius:22px;box-shadow:0 4px 0 var(--line,#e5e5e5);padding:22px 14px 16px;text-align:center;margin-bottom:12px;line-height:1.5}.lt-prompt{font-size:28px;font-weight:900}.lt-prompt.de{direction:ltr}.lt-pos{font-size:13px;color:var(--ink-soft,#777);min-height:18px}' +
+        '.lt-say{border:0;background:var(--accent-soft,#ddf4ff);border-radius:50%;width:40px;height:40px;font-size:18px;cursor:pointer;margin-top:6px}' +
+        '.lt-opts{display:grid;gap:8px}.lt-opt{border:2px solid var(--line,#e5e5e5);background:var(--surface,#fff);border-radius:16px;box-shadow:0 3px 0 var(--line,#e5e5e5);padding:13px 12px;font:inherit;font-size:18px;font-weight:700;color:inherit;cursor:pointer;text-align:center}.lt-opt:active{transform:translateY(2px)}.lt-opt.ok{border-color:#58cc02;background:#e3f7cf}.lt-opt.bad{border-color:#ff4b6e;background:#ffe0e7}' +
+        '.lt-res{margin:12px 0 0;padding:10px 12px;border-radius:14px;font-size:15px}.lt-res.ok{background:#e3f7cf;color:#2b6a00}.lt-res.bad{background:#ffe0e7;color:#a3173a}' +
+        '.lt-btn{display:block;width:100%;border:0;border-radius:14px;background:var(--fun-green,#58cc02);color:#fff;font:inherit;font-weight:900;font-size:16px;padding:12px;box-shadow:0 4px 0 #46a302;cursor:pointer;margin-top:12px}.lt-btn.alt{background:var(--surface,#fff);color:var(--fun-blue-dk,#1899d6);border:2px solid var(--fun-blue,#1cb0f6);box-shadow:0 4px 0 var(--fun-blue,#1cb0f6)}' +
+        '.lt-miss{margin-top:10px;text-align:right}.lt-miss div{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line,#eee)}.lt-miss span{color:var(--ink-soft,#777)}';
+      document.head.appendChild(st);
+    }
+    function open(cb) { css(); if (ov) ov.remove(); onClose = cb || null; start(false); ov = document.createElement('div'); ov.className = 'lt-ov'; document.body.appendChild(ov); render(); }
+    function close() { if (ov) { ov.remove(); ov = null; } if (onClose) { try { onClose(); } catch (e) {} } }
+    window.openLearnedTest = open;
+  })();
   // <<DAILYADAPT-END>>
 
   // --- full progress backup: copy a code from one place, paste it in another ---
