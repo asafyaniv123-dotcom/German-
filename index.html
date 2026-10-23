@@ -7932,7 +7932,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-card" style="text-align:center"><div style="font-size:46px">' + (S.missed.length ? '🧺' : '🏆') + '</div><h3 style="margin:6px 0">' + pf + ' מתוך ' + S.total + ' נכון בניסיון הראשון</h3>' +
           '<div style="color:var(--ink-soft,#777);font-size:14px">המבחן הזה כולל רק את ' + S.all.length + ' המילים שהוספת ללוח.</div>' +
           (S.missed.length ? '<div class="lt-miss">' + S.missed.map(function (x) { return '<div><b dir="ltr">' + escapeHtml(x.de) + '</b><span>' + escapeHtml(heOf(x)) + '</span></div>'; }).join('') + '</div>' : '') + '</div>' +
-          '<button class="lt-btn" data-a="again">סיבוב נוסף</button>' + (S.missed.length ? '<button class="lt-btn alt" data-a="miss">רק מה שטעיתי בו</button>' : '') + '<button class="lt-btn alt" data-a="close">חזרה ללוח</button></div>';
+          '<button class="lt-btn" data-a="again">סיבוב נוסף</button><button class="lt-btn alt" data-a="speakmode">🎤 לתרגל את אותן מילים בדיבור</button>' + (S.missed.length ? '<button class="lt-btn alt" data-a="miss">רק מה שטעיתי בו</button>' : '') + '<button class="lt-btn alt" data-a="close">חזרה ללוח</button></div>';
         bind(); return;
       }
       var it = S.q[S.idx], d = dirOf(it), isDe = d === 'de2he';
@@ -7946,7 +7946,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var res = '';
       if (S.ans) res = '<div class="lt-res ' + (S.ans.ok ? 'ok' : 'bad') + '">' + (S.ans.ok ? '✓ נכון!' : '✗ לא בדיוק') + ' <b dir="ltr">' + escapeHtml((it.gender ? it.gender + ' ' : '') + it.de) + '</b> = ' + escapeHtml(heOf(it)) + '</div>' + vocabExampleHtml(it.de) + '<button class="lt-btn" data-a="next">המשך</button>';
       ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-bar"><i style="width:' + pct + '%"></i></div>' +
-        '<div class="lt-sub"><span>' + (S.idx + 1) + ' / ' + S.q.length + '</span><button class="lt-dir" data-a="dir">' + dirBtn() + '</button></div>' +
+        '<div class="lt-sub"><span>' + (S.idx + 1) + ' / ' + S.q.length + '</span><span style="display:flex;gap:6px"><button class="lt-dir" data-a="speakmode">🎤 בדיבור</button><button class="lt-dir" data-a="dir">' + dirBtn() + '</button></span></div>' +
         '<div class="lt-card"><div class="lt-prompt' + (isDe ? ' de' : '') + '"' + (isDe ? ' dir="ltr"' : '') + '>' + escapeHtml(isDe ? it.de : heOf(it)) + '</div>' +
         '<div class="lt-pos">' + escapeHtml(it.pos || '') + '</div>' +
         '<button class="lt-say" data-a="say" aria-label="השמע">🔊</button></div>' +
@@ -7971,14 +7971,28 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (a === 'close') { close(); return; }
       if (a === 'again') { start(false); render(); return; }
       if (a === 'miss') { start(true); render(); return; }
+      if (a === 'speakmode') { speakMode(); return; }
       if (a === 'say') { try { var it = S.q[S.idx]; speak(it.de, null); } catch (e) {} return; }
       if (a === 'dir') { var p = dirPref(); var n = p === 'mix' ? 'de2he' : p === 'de2he' ? 'he2de' : 'mix'; try { localStorage.setItem(DIRK, n); } catch (e) {} S.dirs = {}; S.opts = null; render(); return; }
       if (a === 'next') { S.idx++; S.ans = null; S.opts = null; render(); ov.scrollTop = 0; }
     }
+    // speaking version: see the Hebrew word, say it in German (same engine as the daily "בחן אותי"), only the learned words
+    function speakMode() {
+      if (!window.SpeakPractice) return;
+      var all = items(); if (!all.length) return;
+      var list = shuffleArray(all).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.2 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, ROUND).map(function (x) { return x.v; });
+      SpeakPractice.open({
+        title: 'מבחן בדיבור · כל מה שלמדתי', storeKey: 'delearn_sp_learned', autostart: true,
+        items: list.map(function (v) { return { ref: v, prompt: heOf(v), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos }; }),
+        onResult: function (v, ok) { try { recordAttempt(v.de, ok); } catch (e) {} },
+        getGroups: spGermanGroups, getItems: function () { return []; },
+        onClose: function () { if (ov) render(); }
+      });
+    }
     function css() {
       if (document.getElementById('ltCss')) return;
       var st = document.createElement('style'); st.id = 'ltCss';
-      st.textContent = '.lt-ov{position:fixed;inset:0;z-index:9500;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}' +
+      st.textContent = '.lt-ov{position:fixed;inset:0;z-index:8900;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}' +
         '.lt-wrap{max-width:520px;margin:0 auto}.lt-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.lt-title{font-weight:900;font-size:17px}.lt-x{border:0;background:none;font-size:24px;color:var(--ink-soft,#777);cursor:pointer;padding:4px 8px}' +
         '.lt-bar{height:8px;border-radius:6px;background:var(--line,#e5e5e5);overflow:hidden;margin:10px 0 6px}.lt-bar i{display:block;height:100%;background:var(--fun-green,#58cc02);transition:width .3s}' +
         '.lt-sub{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--ink-soft,#777);margin-bottom:10px;direction:ltr}.lt-dir{border:2px solid var(--line,#e5e5e5);background:var(--surface,#fff);border-radius:12px;padding:5px 11px;font:inherit;font-weight:800;font-size:13px;color:var(--fun-blue-dk,#1899d6);cursor:pointer;direction:rtl}' +
