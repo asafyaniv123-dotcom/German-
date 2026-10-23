@@ -7897,17 +7897,20 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
 
   // <<LEARNEDTEST>> a self-contained test on ONLY the words added to the 15-a-day calendar, mixed directions
   (function () {
-    var DIRK = 'delearn_lt_dir', ROUND = 20;
+    var DIRK = 'delearn_lt_dir', SIZEK = 'delearn_lt_size';
     var ov = null, S = null, onClose = null;
     var heOf = function (v) { return typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; };
     function dirPref() { try { var d = localStorage.getItem(DIRK); return d === 'de2he' || d === 'he2de' ? d : 'mix'; } catch (e) { return 'mix'; } }
+    function sizePref() { try { var z = localStorage.getItem(SIZEK); return z === '20' || z === '50' ? +z : 0; } catch (e) { return 0; } }
+    function limit(n) { var z = sizePref(); return z ? Math.min(z, n) : n; }
+    function sizeLbl() { var z = sizePref(); return z ? '📚 ' + z + ' מילים' : '📚 כל המילים (' + items().length + ')'; }
     function items() { var set = getLearnedSet(), seen = {}; return VOCAB.filter(function (v) { if (!set.has(v.de) || seen[v.de]) return false; seen[v.de] = 1; return true; }); }
     function dirOf(it) { var p = dirPref(); if (p !== 'mix') return p; if (!(it.de in S.dirs)) S.dirs[it.de] = Math.random() < 0.5 ? 'de2he' : 'he2de'; return S.dirs[it.de]; }
     function weak(v) { try { var r = masteryRatio(getStat(v.de)); return r === null ? 1 : (r < 0.6 ? 0 : 2); } catch (e) { return 1; } }
     function start(onlyMissed) {
       var all = items(), pool = all;
       if (onlyMissed && S && S.missed.length) { var m = {}; S.missed.forEach(function (x) { m[x.de] = 1; }); pool = all.filter(function (v) { return m[v.de]; }); }
-      var q = shuffleArray(pool).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.2 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, ROUND).map(function (x) { return x.v; });
+      var q = shuffleArray(pool).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.2 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, limit(pool.length)).map(function (x) { return x.v; });
       S = { all: all, q: q, total: q.length, idx: 0, ok: 0, first: {}, missed: [], ans: null, opts: null, dirs: {}, requeued: {} };
     }
     function options(it) {
@@ -7932,7 +7935,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-card" style="text-align:center"><div style="font-size:46px">' + (S.missed.length ? '🧺' : '🏆') + '</div><h3 style="margin:6px 0">' + pf + ' מתוך ' + S.total + ' נכון בניסיון הראשון</h3>' +
           '<div style="color:var(--ink-soft,#777);font-size:14px">המבחן הזה כולל רק את ' + S.all.length + ' המילים שהוספת ללוח.</div>' +
           (S.missed.length ? '<div class="lt-miss">' + S.missed.map(function (x) { return '<div><b dir="ltr">' + escapeHtml(x.de) + '</b><span>' + escapeHtml(heOf(x)) + '</span></div>'; }).join('') + '</div>' : '') + '</div>' +
-          '<button class="lt-btn" data-a="again">סיבוב נוסף</button><button class="lt-btn alt" data-a="speakmode">🎤 לתרגל את אותן מילים בדיבור</button>' + (S.missed.length ? '<button class="lt-btn alt" data-a="miss">רק מה שטעיתי בו</button>' : '') + '<button class="lt-btn alt" data-a="close">חזרה ללוח</button></div>';
+          '<button class="lt-btn" data-a="again">סיבוב נוסף</button><button class="lt-btn alt" data-a="size">' + sizeLbl() + ' (לחץ כדי לשנות)</button><button class="lt-btn alt" data-a="speakmode">🎤 לתרגל את אותן מילים בדיבור</button>' + (S.missed.length ? '<button class="lt-btn alt" data-a="miss">רק מה שטעיתי בו</button>' : '') + '<button class="lt-btn alt" data-a="close">חזרה ללוח</button></div>';
         bind(); return;
       }
       var it = S.q[S.idx], d = dirOf(it), isDe = d === 'de2he';
@@ -7946,7 +7949,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var res = '';
       if (S.ans) res = '<div class="lt-res ' + (S.ans.ok ? 'ok' : 'bad') + '">' + (S.ans.ok ? '✓ נכון!' : '✗ לא בדיוק') + ' <b dir="ltr">' + escapeHtml((it.gender ? it.gender + ' ' : '') + it.de) + '</b> = ' + escapeHtml(heOf(it)) + '</div>' + vocabExampleHtml(it.de) + '<button class="lt-btn" data-a="next">המשך</button>';
       ov.innerHTML = '<div class="lt-wrap">' + head + '<div class="lt-bar"><i style="width:' + pct + '%"></i></div>' +
-        '<div class="lt-sub"><span>' + (S.idx + 1) + ' / ' + S.q.length + '</span><span style="display:flex;gap:6px"><button class="lt-dir" data-a="speakmode">🎤 בדיבור</button><button class="lt-dir" data-a="dir">' + dirBtn() + '</button></span></div>' +
+        '<div class="lt-sub"><span>' + (S.idx + 1) + ' / ' + S.q.length + '</span><button class="lt-dir" data-a="dir">' + dirBtn() + '</button></div>' +
+        '<div class="lt-sub" style="direction:rtl;justify-content:flex-start;gap:6px"><button class="lt-dir" data-a="speakmode">🎤 בדיבור</button><button class="lt-dir" data-a="size">' + sizeLbl() + '</button></div>' +
         '<div class="lt-card"><div class="lt-prompt' + (isDe ? ' de' : '') + '"' + (isDe ? ' dir="ltr"' : '') + '>' + escapeHtml(isDe ? it.de : heOf(it)) + '</div>' +
         '<div class="lt-pos">' + escapeHtml(it.pos || '') + '</div>' +
         '<button class="lt-say" data-a="say" aria-label="השמע">🔊</button></div>' +
@@ -7971,6 +7975,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (a === 'close') { close(); return; }
       if (a === 'again') { start(false); render(); return; }
       if (a === 'miss') { start(true); render(); return; }
+      if (a === 'size') { var z = sizePref(); var nz = z === 0 ? '20' : z === 20 ? '50' : 'all'; try { localStorage.setItem(SIZEK, nz); } catch (e) {} start(false); render(); return; }
       if (a === 'speakmode') { speakMode(); return; }
       if (a === 'say') { try { var it = S.q[S.idx]; speak(it.de, null); } catch (e) {} return; }
       if (a === 'dir') { var p = dirPref(); var n = p === 'mix' ? 'de2he' : p === 'de2he' ? 'he2de' : 'mix'; try { localStorage.setItem(DIRK, n); } catch (e) {} S.dirs = {}; S.opts = null; render(); return; }
@@ -7980,7 +7985,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function speakMode() {
       if (!window.SpeakPractice) return;
       var all = items(); if (!all.length) return;
-      var list = shuffleArray(all).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.2 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, ROUND).map(function (x) { return x.v; });
+      var list = shuffleArray(all).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.2 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, limit(all.length)).map(function (x) { return x.v; });
       SpeakPractice.open({
         title: 'מבחן בדיבור · כל מה שלמדתי', storeKey: 'delearn_sp_learned', autostart: true,
         items: list.map(function (v) { return { ref: v, prompt: heOf(v), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos }; }),
