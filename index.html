@@ -8164,8 +8164,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function mmss(sec) { return pad(Math.floor(sec / 60)) + ':' + pad(sec % 60); }
     function pickWords() {
       var seen = {}, all = VOCAB.filter(function (v) { if (seen[v.de]) return false; seen[v.de] = 1; return true; });
-      var set = getLearnedSet(), learned = all.filter(function (v) { return set.has(v.de); });
-      var pool = learned.length >= 8 ? learned : all;
+      var set = getLearnedSet(), pool = all.filter(function (v) { return set.has(v.de); }); // only the words added to the 15-a-day calendar
       return shuffleArray(pool).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.3 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, 8).map(function (x) { return x.v; });
     }
     function pickSents(n) {
@@ -8177,11 +8176,12 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function build() {
       var words = pickWords(), sents = pickSents(5);
       var steps = [];
+      var noWords = !words.length;
       words.forEach(function (v) { steps.push({ ph: 'warm', v: v }); });
       sents.slice(0, 3).forEach(function (s) { steps.push({ ph: 'trans', s: s }); });
       sents.slice(3, 5).forEach(function (s) { steps.push({ ph: 'dict', s: s }); });
       steps.push({ ph: 'own', words: words.filter(function (v) { return v.pos !== 'phrase'; }).slice(0, 3) });
-      S = { steps: steps, i: 0, rev: false, ok: 0, tot: 0, missed: [], t0: null, sec: 0, started: false, finished: false, words: words, notified: false };
+      S = { steps: steps, i: 0, rev: false, ok: 0, tot: 0, missed: [], t0: null, sec: 0, started: false, finished: false, words: words, notified: false, noWords: noWords };
     }
     var PH = {
       warm: { t: 'חימום · מילים', m: 'כ-3 דקות', icon: '🔥' },
@@ -8197,7 +8197,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         (n ? '<div class="wp-note">🔥 ' + dayWord(n) + ' ברצף · ' + totalDays() + ' ימי תרגול בסך הכל</div>' : '') + '</div>' +
         '<div class="wp-card"><h3>איך זה בנוי</h3>' + ['warm', 'trans', 'dict', 'own'].map(function (k) { return '<div class="wp-ph"><span class="i">' + PH[k].icon + '</span><b>' + PH[k].t + '</b><span class="m">' + PH[k].m + '</span></div>'; }).join('') +
         '<p class="wp-tip">בכל שלב: קודם <b>כותבים במחברת</b>, ורק אז לוחצים "גלו תשובה" ובודקים את עצמכם בכנות. שמות עצם בגרמנית תמיד באות גדולה, ועם der / die / das.</p></div>' +
-        '<button class="wp-btn" data-a="begin">מוכן, יש לי מחברת ✍️</button>';
+        (S.noWords ? '<div class="wp-card"><p class="wp-tip" style="margin:0">התרגול בכתב משתמש רק במילים שהוספת ללוח של 15 המילים ביום. עוד לא הוספת מילים, אז קודם נוסיף כמה ב"15 מילים ביום".</p></div>'
+          : '<div class="wp-note">המילים של היום נבחרות מתוך ' + getLearnedSet().size + ' המילים שהוספת ללוח, והחלשות שבהן קודם.</div><button class="wp-btn" data-a="begin">מוכן, יש לי מחברת ✍️</button>');
     }
     function head() {
       var st = S.steps[S.i], total = S.steps.length, ph = PH[st.ph];
