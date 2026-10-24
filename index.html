@@ -8167,23 +8167,242 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var set = getLearnedSet(), pool = all.filter(function (v) { return set.has(v.de); }); // only the words added to the 15-a-day calendar
       return shuffleArray(pool).map(function (v) { return { v: v, k: weak(v) + Math.random() * 1.3 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, 8).map(function (x) { return x.v; });
     }
-    function pickSents(n) {
-      // only sentences that belong to the words added to the 15-a-day calendar: their example sentences, plus saved sentences that contain one of them
-      var set = getLearnedSet(), seen = {}, ws = {}, pool = [];
+    // sentences composed only of words from the 15-a-day calendar (+ everyday basics); shown once all words in need[] were added
+    var WSENT = [
+      {
+       "de": "Entschuldigung, wo ist die Kasse?",
+       "he": "סליחה, איפה הקופה?",
+       "need": [
+        "Entschuldigung",
+        "Kasse"
+       ]
+      },
+      {
+       "de": "Entschuldigung, wo ist die Haltestelle?",
+       "he": "סליחה, איפה התחנה?",
+       "need": [
+        "Entschuldigung",
+        "Haltestelle"
+       ]
+      },
+      {
+       "de": "Entschuldigung, haben Sie einen Einkaufswagen?",
+       "he": "סליחה, יש לכם עגלת קניות?",
+       "need": [
+        "Entschuldigung",
+        "Einkaufswagen"
+       ]
+      },
+      {
+       "de": "Entschuldigung, ich brauche Wechselgeld.",
+       "he": "סליחה, אני צריך כסף קטן.",
+       "need": [
+        "Entschuldigung",
+        "brauchen",
+        "Wechselgeld"
+       ]
+      },
+      {
+       "de": "Ich brauche eine Tüte.",
+       "he": "אני צריך שקית.",
+       "need": [
+        "brauchen",
+        "Tüte"
+       ]
+      },
+      {
+       "de": "Brauchen Sie eine Tüte?",
+       "he": "אתם צריכים שקית?",
+       "need": [
+        "brauchen",
+        "Tüte"
+       ]
+      },
+      {
+       "de": "Brauchen Sie die Rechnung?",
+       "he": "אתם צריכים את החשבון?",
+       "need": [
+        "brauchen",
+        "Rechnung"
+       ]
+      },
+      {
+       "de": "Ich brauche die Rechnung, bitte.",
+       "he": "אני צריך את החשבון, בבקשה.",
+       "need": [
+        "brauchen",
+        "Rechnung"
+       ]
+      },
+      {
+       "de": "Ich brauche einen Termin.",
+       "he": "אני צריך תור.",
+       "need": [
+        "brauchen",
+        "Termin"
+       ]
+      },
+      {
+       "de": "Für den Einkaufswagen brauche ich einen Euro.",
+       "he": "בשביל עגלת הקניות אני צריך אירו.",
+       "need": [
+        "brauchen",
+        "Einkaufswagen"
+       ]
+      },
+      {
+       "de": "An der Kasse brauche ich eine Tüte.",
+       "he": "בקופה אני צריך שקית.",
+       "need": [
+        "Kasse",
+        "brauchen",
+        "Tüte"
+       ]
+      },
+      {
+       "de": "Wo finde ich die Kasse?",
+       "he": "איפה אני מוצא את הקופה?",
+       "need": [
+        "Wo finde ich",
+        "Kasse"
+       ]
+      },
+      {
+       "de": "Wo finde ich die Haltestelle?",
+       "he": "איפה אני מוצא את התחנה?",
+       "need": [
+        "Wo finde ich",
+        "Haltestelle"
+       ]
+      },
+      {
+       "de": "Wo finde ich den Einkaufswagen?",
+       "he": "איפה אני מוצא את עגלת הקניות?",
+       "need": [
+        "Wo finde ich",
+        "Einkaufswagen"
+       ]
+      },
+      {
+       "de": "Wo ist mein Wechselgeld?",
+       "he": "איפה הכסף הקטן שלי?",
+       "need": [
+        "Wechselgeld"
+       ]
+      },
+      {
+       "de": "Ich hätte gern einen Kaffee.",
+       "he": "הייתי רוצה קפה.",
+       "need": [
+        "Ich hätte gern"
+       ]
+      },
+      {
+       "de": "Ich hätte gern eine Tüte, bitte.",
+       "he": "הייתי רוצה שקית, בבקשה.",
+       "need": [
+        "Ich hätte gern",
+        "Tüte"
+       ]
+      },
+      {
+       "de": "Ich hätte gern die Rechnung, bitte.",
+       "he": "הייתי רוצה את החשבון, בבקשה.",
+       "need": [
+        "Ich hätte gern",
+        "Rechnung"
+       ]
+      },
+      {
+       "de": "Ich habe einen Termin.",
+       "he": "יש לי תור.",
+       "need": [
+        "Termin"
+       ]
+      },
+      {
+       "de": "Ich habe um zehn Uhr einen Termin.",
+       "he": "יש לי תור בעשר.",
+       "need": [
+        "Termin"
+       ]
+      },
+      {
+       "de": "Das Pfand ist zwei Euro.",
+       "he": "הפיקדון הוא שני אירו.",
+       "need": [
+        "Pfand"
+       ]
+      },
+      {
+       "de": "Das Pfand bekomme ich an der Kasse.",
+       "he": "את הפיקדון אני מקבל בקופה.",
+       "need": [
+        "Pfand",
+        "Kasse"
+       ]
+      },
+      {
+       "de": "Wie bitte? Was ist Pfand?",
+       "he": "סליחה? מה זה פפאנד?",
+       "need": [
+        "Wie bitte?",
+        "Pfand"
+       ]
+      },
+      {
+       "de": "Wie bitte? Wo ist die Kasse?",
+       "he": "סליחה? איפה הקופה?",
+       "need": [
+        "Wie bitte?",
+        "Kasse"
+       ]
+      },
+      {
+       "de": "Wir bestellen zwei Kaffee.",
+       "he": "אנחנו מזמינים שני קפה.",
+       "need": [
+        "bestellen"
+       ]
+      },
+      {
+       "de": "Ich möchte einen Kaffee bestellen.",
+       "he": "אני רוצה להזמין קפה.",
+       "need": [
+        "bestellen"
+       ]
+      },
+      {
+       "de": "Danke! – Gern geschehen.",
+       "he": "תודה! – בשמחה.",
+       "need": [
+        "Gern geschehen"
+       ]
+      }
+    ];
+    function pickSents(n, words) {
+      var set = getLearnedSet(), seen = {}, ws = {}, comp = [], rest = [], mine = {};
+      (words || []).forEach(function (v) { mine[v.de] = 1; });
+      WSENT.forEach(function (s) {
+        if (!s.need.every(function (w) { return set.has(w); })) return;
+        seen[s.de] = 1; comp.push({ s: { de: s.de, he: s.he }, k: (s.need.some(function (w) { return mine[w]; }) ? 0 : 1) + Math.random() * 1.2 });
+      });
       VOCAB.forEach(function (v) {
         if (!set.has(v.de)) return;
         ws[v.de.toLowerCase()] = 1;
-        if (v.ex && v.ex[0] && v.ex[1] && !seen[v.ex[0]]) { seen[v.ex[0]] = 1; pool.push({ de: v.ex[0], he: v.ex[1] }); }
+        if (v.ex && v.ex[0] && v.ex[1] && !seen[v.ex[0]]) { seen[v.ex[0]] = 1; rest.push({ de: v.ex[0], he: v.ex[1] }); }
       });
       SENTENCES.forEach(function (s) {
         if (!s.de || !s.he || seen[s.de]) return;
         var toks = s.de.toLowerCase().replace(/[.,!?;:"„“]/g, ' ').split(/\s+/);
-        if (toks.some(function (t) { return ws[t]; })) { seen[s.de] = 1; pool.push(s); }
+        if (toks.some(function (t) { return ws[t]; })) { seen[s.de] = 1; rest.push(s); }
       });
-      return shuffleArray(pool.filter(function (s) { return s.de.length <= 80; })).slice(0, n);
+      var out = comp.sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.s; }).slice(0, n);
+      if (out.length < n) out = out.concat(shuffleArray(rest.filter(function (s) { return s.de.length <= 80; })).slice(0, n - out.length));
+      return shuffleArray(out);
     }
     function build() {
-      var words = pickWords(), sents = words.length ? pickSents(5) : [];
+      var words = pickWords(), sents = words.length ? pickSents(5, words) : [];
       var steps = [];
       var noWords = !words.length;
       words.forEach(function (v) { steps.push({ ph: 'warm', v: v }); });
