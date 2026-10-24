@@ -8692,6 +8692,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     ];
     // 3 sentences for a calendar day: only words added up to that day, preferring ones that mix that day's words with older words
     window.composedSentences = function (dayDe, key, n, bump) {
+      if (String(key) < '2026-10-25') return []; // the feature starts today; earlier days stay as they were
       var data = {}; try { data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}; } catch (e) {}
       var known = {}, mine = {};
       Object.keys(data).forEach(function (k) { if (k <= key) (data[k] || []).forEach(function (w) { known[w] = 1; }); });
