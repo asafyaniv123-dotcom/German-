@@ -1551,7 +1551,7 @@
       let nt = ''; try { nt = NG(c) || ''; } catch (e) {}
       if (S.noteEdit && NS) noteBox = '<div class="sp-note"><textarea id="spNoteTx" placeholder="אסוציאציה, משפט, צליל דומה בעברית…">' + esc(nt) + '</textarea><div class="sp-note-acts"><button id="spNoteSave">שמירה</button><button class="sec" id="spNoteCancel">ביטול</button></div></div>';
       else if (nt) noteBox = '<div class="sp-note show"><span>💡 ' + esc(nt) + '</span>' + (NS ? '<button id="spNoteEdit" aria-label="עריכה">✏️</button>' : '') + '</div>';
-      else if (NS) noteBox = '<div class="sp-note"><button class="add" id="spNoteEdit">💡 איך אזכור את המילה? הוסיפו אסוציאציה</button></div>';
+      else if (NS) noteBox = (window.assocBoxHtml ? window.assocBoxHtml(c.answer, 'sp') : '') + '<div class="sp-note"><button class="add" id="spNoteEdit">💡 איך אזכור את המילה? הוסיפו אסוציאציה</button></div>';
     }
     let actions;
     if (S.state !== 'ask') {
@@ -1588,6 +1588,8 @@
     if ($('spNext')) $('spNext').onclick = advance;
     if ($('spNoteEdit')) $('spNoteEdit').onclick = () => { S.noteEdit = true; render(); const t = document.getElementById('spNoteTx'); if (t) t.focus(); };
     if ($('spNoteCancel')) $('spNoteCancel').onclick = () => { S.noteEdit = false; render(); };
+    if ($('spAssocKeep')) $('spAssocKeep').onclick = () => { const NS = S.opts.setNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.set), a = window.assocCur(cur().answer); try { if (NS && a) NS(cur(), a.text); } catch (e) {} render(); };
+    if ($('spAssocNext')) $('spAssocNext').onclick = () => { window.assocNext(cur().answer); render(); };
     if ($('spNoteSave')) $('spNoteSave').onclick = () => { const NS = S.opts.setNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.set); try { if (NS) NS(cur(), document.getElementById('spNoteTx').value.trim()); } catch (e) {} S.noteEdit = false; render(); };
     if ($('spSkip')) $('spSkip').onclick = () => { reveal(false); };
     if ($('spToggle')) $('spToggle').onclick = () => {
@@ -2690,7 +2692,7 @@
         h += '<div class="bw-stack"><div class="bw-layer l2"></div><div class="bw-layer l1"></div><div class="bw-card' + (rev ? ' rev' : '') + '" id="bwCard">' + (rev ? back : front + '<div class="bw-small" style="margin-top:6px">' + (dir === 'he2de' ? 'אמרו את המילה בגרמנית' : 'מה המשמעות?') + '</div>') + '</div></div>';
         if (rev && cfg.getNote) {
           const nt = cfg.getNote(cur) || '';
-          h += '<div class="bw-note">' + (editing ? '<textarea id="bwNoteTx" placeholder="אסוציאציה, משפט, צליל דומה בעברית…">' + esc(nt) + '</textarea><div class="bw-note-acts"><button id="bwNoteSave">שמירה</button><button class="sec" id="bwNoteCancel">ביטול</button></div>' : nt ? '<div class="bw-note-show"><span>💡 ' + esc(nt) + '</span><button id="bwNoteEdit" aria-label="עריכה">✏️</button></div>' : '<button class="bw-note-add" id="bwNoteEdit">💡 איך קל לי לזכור את המילה?</button>') + '</div>';
+          h += '<div class="bw-note">' + (editing ? '<textarea id="bwNoteTx" placeholder="אסוציאציה, משפט, צליל דומה בעברית…">' + esc(nt) + '</textarea><div class="bw-note-acts"><button id="bwNoteSave">שמירה</button><button class="sec" id="bwNoteCancel">ביטול</button></div>' : nt ? '<div class="bw-note-show"><span>💡 ' + esc(nt) + '</span><button id="bwNoteEdit" aria-label="עריכה">✏️</button></div>' : (window.assocBoxHtml ? window.assocBoxHtml(cur.de, 'bw') : '') + '<button class="bw-note-add" id="bwNoteEdit">💡 איך קל לי לזכור את המילה?</button>') + '</div>';
         }
         h += '<div class="bw-actions">' + (rev ? '<div class="bw-rate"><button class="r" data-s="0">לא ידעתי</button><button class="o" data-s="1">כמעט</button><button class="g" data-s="2">ידעתי</button></div>' : '<button class="bw-show" id="bwShow">הצג</button>') + '</div>';
       }
@@ -2708,6 +2710,8 @@
       if ($('bwReview')) $('bwReview').onclick = () => { queue = shuffle(knownList().map(it => it.id)).slice(0, 12); idx = 0; rev = false; reviewKnown = true; draw(); };
       if ($('bwNoteEdit')) $('bwNoteEdit').onclick = () => { editing = true; draw(); const t = ov.querySelector('#bwNoteTx'); if (t) t.focus(); };
       if ($('bwNoteCancel')) $('bwNoteCancel').onclick = () => { editing = false; draw(); };
+      if ($('bwAssocKeep')) $('bwAssocKeep').onclick = () => { const c = byId.get(String(queue[idx % queue.length])), a = c && window.assocCur(c.de); if (a && cfg.setNote) cfg.setNote(c, a.text); draw(); };
+      if ($('bwAssocNext')) $('bwAssocNext').onclick = () => { const c = byId.get(String(queue[idx % queue.length])); if (c) window.assocNext(c.de); draw(); };
       if ($('bwNoteSave')) $('bwNoteSave').onclick = () => { const c = byId.get(String(queue[idx % queue.length])); if (c && cfg.setNote) cfg.setNote(c, $('bwNoteTx').value.trim()); editing = false; draw(); };
       ov.querySelectorAll('.bw-rate button').forEach(b => { b.onclick = () => rate(+b.dataset.s); });
       $('bw-learn').onclick = () => openSheet('learn'); $('bw-known').onclick = () => openSheet('known');
@@ -7857,6 +7861,23 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   }
   // <<BOWLSADAPT-END>>
 
+  // <<ASSOC>> ready-made memory associations (sound-alikes, pictures) offered for a word; "pick another" cycles, "keep" saves it as the word's note
+  window.ASSOC = {"Tüte": ["נשמע כמו \"טיוטה\": אתה שם טיוטה של מסמך בתוך שקית ויוצא מהסופר.", "Tüte ≈ \"טיול\": לוקחים שקית לטיול, ובה הסנדוויצ'ים.", "תמונה: גברת די (die) סוחבת שקית ענקית וצועקת \"די! היא נקרעת!\""], "Pfand": ["Pfand ≈ \"פנקס\": כסף שרשום על הבקבוק במין פנקס קטן ומחכה שתחזיר אותו.", "באנגלית pawn = משכון, וזה בדיוק Pfand: משאיר משכון על הבקבוק ומקבל אותו בחזרה.", "נשמע כמו \"פנדה\": הפנדה מחזירה בקבוק למכונה ומקבלת עליו כסף."], "Kasse": ["Kasse ≈ cash: מי שמשלם cash עומד ליד ה-Kasse.", "Kasse ≈ \"כספת\": הקופה היא הכספת של הסופר.", "באיטלקית cassa וגם בספרדית caja = קופה, אותו שורש."], "Wechselgeld": ["Wechsel = החלפה, Geld = כסף: כסף שמחליפים לך = עודף.", "Geld נשמע כמו \"גלד\": המטבעות הקטנים שהתגלדו בכיס אחרי שהחליפו שטר.", "הקופאית מחליפה (wechseln) שטר גדול למטבעות קטנים, וזה ה-Wechselgeld."], "Einkaufswagen": ["Wagen כמו Volkswagen = \"מכונית העם\": Einkaufswagen הוא מכונית קטנה של קניות.", "kaufen ≈ \"קופון\": \"אין קופון אבל יש עגלה\", Ein-kauf-s-wagen.", "תמונה: אתה נוהג בפולקסווגן קטנה בתוך הסופר ומעמיס אליה קניות."], "Rechnung": ["Rechnung ≈ \"רק נאנח\": רק נאנח כשרואים את החשבון.", "rechnen = לחשב, וגם Rechner = מחשבון: Rechnung הוא מה שחושב.", "תמונה: המלצר רוכן אליך (רכן ≈ Rechnung) ומניח חשבון על השולחן."], "Haltestelle": ["halten = לעצור (כמו Halt! = עצור), Stelle = מקום: המקום שבו עוצרים.", "Stelle נשמע כמו \"שתילה\": שותלים את עצמך בתחנה ומחכים לאוטובוס.", "תמונה: צועקים \"הלט!\" והאוטובוס עוצר בדיוק במקום המסומן."], "Termin": ["Termin = Terminator: הטרמינטור קבע לך פגישה מדויקת ולא מאחרים.", "Termin ≈ \"טרם\": צריך להגיע טרם הזמן שנקבע.", "תמונה: הטרמינטור עומד ליד השעון ואומר \"I'll be back, ב-Termin של עשר\"."], "bestellen": ["bestellen ≈ \"בשלן\": מזמינים אוכל מהבשלן.", "be-stellen: שמים הזמנה במקום (Stelle = מקום) והאוכל מגיע.", "באנגלית stall = דוכן: מזמינים מהדוכן."], "brauchen": ["braucht ≈ broke: אני broke, אני צריך כסף.", "\"ברח, אוכל!\": אני צריך אוכל = brauchen.", "brauchen ≈ \"ברוך\": ברוך הבא, מה אתה צריך?"], "Entschuldigung": ["Ent = מורידים, Schuld = אשמה: מורידים את האשמה = סליחה.", "Schuld ≈ \"שולד/חוב\": סולחים על החוב.", "תמונה: אתה מתנגש במישהו ומוריד מעצמך תיק כבד של אשמה, Ent-Schuld-igung."], "Ich hätte gern": ["gern ≈ \"גרגרן\": הגרגרן אומר \"Ich hätte gern עוד אחד!\"", "Ich hätte ≈ \"איך היתה לי\": \"איך היתה לי קפה?\"", "תמונה: גרגרן עומד ליד הדלפק וממלמל \"היתה לי... גרן...\"."], "Wo finde ich": ["Wo נשמע כמו \"וואו\": אתה מסתובב בסופר ואומר \"וואו, איפה...?\"", "finde ≈ find באנגלית: איפה אני find.", "Wo = איפה, finde ≈ \"פיינד\": Where do I find."], "Wie bitte?": ["Wie = איך, bitte = בבקשה: \"איך, בבקשה?\" כשמבקשים שיחזרו.", "\"ווי ביטה\" ≈ \"ווי! ביטה?\": ווי = אוי, וביטה = מה אמרת?", "תמונה: אתה מחזיק יד על האוזן ומתכופף קדימה: Wie bitte?"], "Gern geschehen": ["gern = בשמחה (הגרגרן שמח), geschehen = קרה: \"זה קרה בשמחה\".", "geschehen ≈ \"גשם\": גשם של שמחה יורד עליך.", "\"גרן גשהן\" ≈ \"גרגרן, גש הנה!\": מזמין אותו לקחת עוד."]};
+  window.ASSOC_IDX = {};
+  window.assocCur = function (de) { var a = window.ASSOC[de]; if (!a || !a.length) return null; var i = (window.ASSOC_IDX[de] || 0) % a.length; return { text: a[i], i: i, n: a.length }; };
+  window.assocNext = function (de) { window.ASSOC_IDX[de] = (window.ASSOC_IDX[de] || 0) + 1; };
+  window.assocCss = function () {
+    if (document.getElementById('asCss')) return;
+    var s = document.createElement('style'); s.id = 'asCss';
+    s.textContent = '.as-box{margin:8px auto 0;max-width:380px;background:#efe7ff;color:#3f2a78;border:2px solid #cdb9ff;border-radius:14px;padding:9px 12px;text-align:right;line-height:1.5}.as-t{font-size:12px;font-weight:800;opacity:.8}.as-x{font-size:15px;margin:3px 0 7px}.as-b{display:flex;gap:6px}.as-b button{flex:1;border:0;border-radius:10px;background:#7c4dff;color:#fff;font:inherit;font-weight:800;font-size:13.5px;padding:7px;cursor:pointer}.as-b button.sec{background:#fff;color:#5b3fc4;border:2px solid #cdb9ff}';
+    document.head.appendChild(s);
+  };
+  window.assocBoxHtml = function (de, p) {
+    var c = window.assocCur(de); if (!c) return '';
+    window.assocCss();
+    return '<div class="as-box"><div class="as-t">💡 הצעה לאסוציאציה' + (c.n > 1 ? ' (' + (c.i + 1) + '/' + c.n + ')' : '') + '</div><div class="as-x">' + escapeHtml(c.text) + '</div><div class="as-b"><button id="' + p + 'AssocKeep">✓ אשמור את זו</button>' + (c.n > 1 ? '<button class="sec" id="' + p + 'AssocNext">🔄 בחר אחרת</button>' : '') + '</div></div>';
+  };
+
   // <<DAILYADAPT-START>>
   var _dailyDe = null;
   function dailyDeItems() {
@@ -8086,7 +8107,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var n = noteOf(v);
       return '<div class="wp-note-box" data-de="' + escapeHtml(v.de) + '">' +
         (n ? '<div class="wp-mynote"><b>💭 הטריק שלי לזכור:</b> ' + escapeHtml(n) + '</div><button class="wp-edit" data-a="editnote">✏️ ערוך</button>'
-           : '<button class="wp-edit" data-a="editnote">💭 הוסיפו טריק לזכור את המילה</button>') + '</div>';
+           : (window.assocBoxHtml ? window.assocBoxHtml(v.de, 'wp') : '') + '<button class="wp-edit" data-a="editnote">💭 הוסיפו טריק לזכור את המילה</button>') + '</div>';
     }
     function say(t) { try { speak(t, null); } catch (e) {} }
     function weak(v) { try { var r = masteryRatio(getStat(v.de)); return r === null ? 1 : (r < 0.6 ? 0 : 2); } catch (e) { return 1; } }
@@ -8182,6 +8203,10 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       ov.innerHTML = '<div class="wp-wrap"><div class="wp-top"><div class="wp-title">✍️ תרגול בכתב</div><button class="wp-x" data-a="close" aria-label="סגור">✕</button></div>' + body + '</div>';
       ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a); }; });
       ov.querySelectorAll('[data-say]').forEach(function (b) { b.onclick = function () { say(b.dataset.say); }; });
+      var st0 = S.steps[S.i], w0 = st0 && st0.v;
+      var ak = ov.querySelector('#wpAssocKeep'), an = ov.querySelector('#wpAssocNext');
+      if (ak && w0) ak.onclick = function () { var a = window.assocCur(w0.de); if (a) { try { setVocabNote(w0.de, a.text); } catch (e) {} } render(); };
+      if (an && w0) an.onclick = function () { window.assocNext(w0.de); render(); };
     }
     function startClock() {
       stopClock(); S.t0 = Date.now() - S.sec * 1000;
