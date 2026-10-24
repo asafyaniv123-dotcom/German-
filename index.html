@@ -2454,6 +2454,12 @@
   .dl-btn:active { transform: translateY(2px); }
   .dl-row { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line, #e5e5e5); padding: 8px 2px; }
   .dl-row:last-child { border-bottom: 0; }
+  .dl-sent { margin-top: 14px; padding: 12px; border-radius: 18px; background: var(--accent-soft, #ddf4ff); }
+  .dl-sent h4 { margin: 0 0 8px; font-size: 15px; } .dl-sent .sub2 { font-size: 12.5px; color: var(--ink-soft, #777); margin: -4px 0 8px; }
+  .dl-sn { background: var(--surface, #fff); border: 2px solid var(--line, #e5e5e5); border-radius: 14px; padding: 9px 11px; margin-bottom: 8px; cursor: pointer; }
+  .dl-sn .de { direction: ltr; text-align: left; font-weight: 800; font-size: 17px; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .dl-sn .he { margin-top: 5px; color: var(--ink-soft, #777); font-size: 14px; } .dl-sn .tp { margin-top: 5px; color: var(--ink-soft, #999); font-size: 12px; }
+  .dl-sn button { border: 0; background: var(--surface, #fff); border-radius: 50%; width: 34px; height: 34px; font-size: 16px; cursor: pointer; flex: none; }
   .dl-dot { width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--fun-orange, #ff9600); } .dl-dot.k { background: var(--fun-green, #58cc02); }
   .dl-row .t { flex: 1; min-width: 0; } .dl-row .d { direction: ltr; text-align: left; font-weight: 800; } .dl-row .h { font-size: 13px; color: var(--ink-soft, #777); }
   .dl-row button { border: 2px solid var(--line, #e5e5e5); background: var(--surface, #fff); color: inherit; border-radius: 12px; padding: 4px 9px; font: inherit; font-size: 15px; cursor: pointer; }
@@ -2593,7 +2599,7 @@
         ov.remove(); done();
       };
     }
-    let view = new Date(); view.setDate(1); let sel = todayKey();
+    let view = new Date(); view.setDate(1); let sel = todayKey(); const sentBump = {};
     function mount(el, onExit) {
       injectCss(); load();
       const draw = () => {
@@ -2603,7 +2609,7 @@
           const k = y + '-' + pad(m + 1) + '-' + pad(d), future = k > tk;
           cells += '<button class="dl-day' + (k === sel ? ' sel' : '') + (k === tk ? ' today' : '') + (future ? ' future' : '') + '" data-k="' + k + '" aria-label="' + d + ' ' + MONTHS[m] + '">' + ring(k, k === sel, k === tk, future, d) + '</button>';
         }
-        const ids = wordsOf(sel), n = ids.length, kn = cfg.getKnown(), by = byId();
+        let sents = []; const ids = wordsOf(sel), n = ids.length, kn = cfg.getKnown(), by = byId();
         const known = ids.filter(id => kn.has(id)).length, sd = sel.split('-').map(Number), isToday = sel === tk, isFuture = sel > tk;
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
@@ -2616,6 +2622,12 @@
           if (n) h += '<div class="dl-btns"><button class="dl-btn blue" id="dlStudy">🥣 שנן</button><button class="dl-btn blue" id="dlTest">🎤 בחן אותי</button></div>';
           h += (n ? ids.map(id => { const it = by.get(String(id)); return '<div class="dl-row"><i class="dl-dot' + (kn.has(id) ? ' k' : '') + '"></i><div class="t"><div class="d">' + esc(it.de) + '</div><div class="h">' + esc(it.he) + '</div>' + (window.vocabExampleHtml ? window.vocabExampleHtml(it.de, 'vx-sm') : '') + (cfg.getNote && cfg.getNote(it) ? '<div class="h" style="color:#8a6a00">💡 ' + esc(cfg.getNote(it)) + '</div>' : '') + '</div><button data-say="' + esc(id) + '" aria-label="השמע">🔊</button><button data-rm="' + esc(id) + '" aria-label="הסר" style="color:var(--ink-soft)">✕</button></div>'; }).join('') : '<div class="dl-empty">לחצו על "בחר" ובחרו בעצמכם ' + GOAL + ' מילים ליום הזה. אפשר לבקש הצעות מהמילים שעוד לא שולטים בהן.</div>');
           if (n >= GOAL) h += '<div class="dl-btns"><button class="dl-btn sec" id="dlMore">+ בחר עוד מילים</button></div>';
+          if (n >= GOAL && cfg.sentences) {
+            try { sents = cfg.sentences(ids, sel, sentBump[sel] || 0) || []; } catch (e) { sents = []; }
+            if (sents.length) h += '<div class="dl-sent"><h4>📝 ' + sents.length + ' משפטים מהמילים שלמדנו</h4><div class="sub2">הכול ממילים שכבר עברת בלוח. נסו להבין, ואז לחצו לתרגום.</div>' +
+              sents.map((s, i) => '<div class="dl-sn" data-si="' + i + '"><div class="de"><span>' + esc(s.de) + '</span><button data-ss="' + i + '" aria-label="השמע">🔊</button></div><div class="tp">לחצו לתרגום</div><div class="he" hidden>' + esc(s.he) + '</div></div>').join('') +
+              '<div class="dl-btns" style="margin:6px 0 0"><button class="dl-btn sec" id="dlSentMore">🔄 משפטים אחרים</button></div></div>';
+          }
         }
         h += '</div></div>';
         el.innerHTML = h;
@@ -2630,6 +2642,9 @@
         if ($('dlStudy')) $('dlStudy').onclick = () => cfg.study(ids, draw);
         if ($('dlTest')) $('dlTest').onclick = () => cfg.test(ids, draw);
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
+        el.querySelectorAll('.dl-sn').forEach(b => { b.onclick = e => { if (e.target.closest('[data-ss]')) return; const he = b.querySelector('.he'), tp = b.querySelector('.tp'); he.hidden = !he.hidden; if (tp) tp.hidden = !he.hidden; }; });
+        el.querySelectorAll('[data-ss]').forEach(b => { b.onclick = () => { const s = sents[Number(b.dataset.ss)]; if (s && cfg.speak) cfg.speak(s.de); }; });
+        if ($('dlSentMore')) $('dlSentMore').onclick = () => { sentBump[sel] = (sentBump[sel] || 0) + 1; draw(); };
         el.querySelectorAll('[data-rm]').forEach(b => { b.onclick = () => { data[sel] = (data[sel] || []).filter(x => String(x) !== b.dataset.rm); save(); draw(); }; });
       };
       draw();
@@ -7990,6 +8005,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       key: 'delearn_daywords', title: '15 מילים ביום',
       items: dailyDeItems, getKnown: dailyDeKnown,
       categories: vocabCategoryList().map(c => ({ id: c, label: c })), allLabel: 'כל הקטגוריות',
+      sentences: (ids, key, bump) => window.composedSentences ? window.composedSentences(ids, key, 3, bump) : [],
       status: it => { if (dailyDeKnown().has(it.id)) return 'known'; const r = masteryRatio(getStat(it.de)); return (r !== null && r < 0.6) ? 'weak' : 'new'; },
       priority: it => { if (dailyDeKnown().has(it.id)) return 3; const r = masteryRatio(getStat(it.de)); return r === null ? 1 : r < 0.6 ? 0 : 2; },
       speak: t => { try { speak(String(t), null); } catch (e) {} },
@@ -8674,6 +8690,26 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
        ]
       }
     ];
+    // 3 sentences for a calendar day: only words added up to that day, preferring ones that mix that day's words with older words
+    window.composedSentences = function (dayDe, key, n, bump) {
+      var data = {}; try { data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}; } catch (e) {}
+      var known = {}, mine = {};
+      Object.keys(data).forEach(function (k) { if (k <= key) (data[k] || []).forEach(function (w) { known[w] = 1; }); });
+      (dayDe || []).forEach(function (w) { mine[w] = 1; });
+      var seed = 0; String(key).split('').forEach(function (c) { seed = (seed * 31 + c.charCodeAt(0)) % 2147483647; }); seed = (seed + (bump || 0) * 7919) % 2147483647 || 1;
+      function rnd() { seed = (seed * 48271) % 2147483647; return seed / 2147483647; }
+      var cand = WSENT.filter(function (s) { return s.need.every(function (w) { return known[w]; }); }).map(function (s) {
+        var m = s.need.filter(function (w) { return mine[w]; }).length, old = s.need.length - m;
+        return { s: { de: s.de, he: s.he }, k: (m ? 0 : 2) + (m && old ? -0.6 : 0) + rnd() * 1.6 };
+      }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.s; });
+      var out = cand.slice(0, n);
+      if (out.length < n) {
+        var seen = {}; out.forEach(function (s) { seen[s.de] = 1; });
+        VOCAB.forEach(function (v) { if (out.length < n && mine[v.de] && v.ex && v.ex[0] && v.ex[1] && !seen[v.ex[0]]) { seen[v.ex[0]] = 1; out.push({ de: v.ex[0], he: v.ex[1] }); } });
+      }
+      return out;
+    };
+
     function pickSents(n, words) {
       var set = getLearnedSet(), seen = {}, ws = {}, comp = [], rest = [], mine = {};
       (words || []).forEach(function (v) { mine[v.de] = 1; });
