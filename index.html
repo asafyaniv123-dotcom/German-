@@ -7865,8 +7865,30 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     return items;
   }
   function dailyDeKnown() { try { return new Set(JSON.parse(localStorage.getItem('delearn_bowls') || '[]')); } catch (e) { return new Set(); } }
+  // words I picked for a day on his behalf: merged once into the 15-a-day calendar (he can still remove or add words afterwards)
+  function applyDaySeeds() {
+    try {
+    const DAY_SEEDS = [
+      { id: 'seed-2026-10-24-life', date: 'today', words: ['Tüte', 'Pfand', 'Kasse', 'Wechselgeld', 'Einkaufswagen', 'Rechnung', 'Haltestelle', 'Termin', 'bestellen', 'brauchen', 'Entschuldigung', 'Ich hätte gern', 'Wo finde ich', 'Wie bitte?', 'Gern geschehen'] }
+    ];
+      const now = new Date(), today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+      const have = new Set(VOCAB.map(v => v.de));
+      DAY_SEEDS.forEach(s => {
+        const flag = 'delearn_' + s.id;
+        if (localStorage.getItem(flag)) return;
+        const data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {};
+        const key = s.date === 'today' ? today : s.date;
+        const cur = data[key] || [];
+        s.words.forEach(w => { if (have.has(w) && cur.indexOf(w) < 0) cur.push(w); });
+        data[key] = cur;
+        localStorage.setItem('delearn_daywords', JSON.stringify(data));
+        localStorage.setItem(flag, '1');
+      });
+    } catch (e) {}
+  }
   function dailyDe() {
     if (_dailyDe || !window.Daily) return _dailyDe;
+    applyDaySeeds();
     const toSpeak = it => ({ ref: it.ref, prompt: it.he, answer: it.de, display: (it.ref.gender ? it.ref.gender + ' ' : '') + it.de, hint: it.pos });
     const byIds = ids => { const m = new Map(dailyDeItems().map(i => [i.id, i])); return ids.map(id => m.get(id)).filter(Boolean); };
     _dailyDe = Daily.create({
