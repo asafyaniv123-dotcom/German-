@@ -2637,7 +2637,7 @@
         const known = ids.filter(id => kn.has(id)).length, sd = sel.split('-').map(Number), isToday = sel === tk, isFuture = sel > tk;
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
-          '<div class="dl-streak"><div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
+          '<div class="dl-streak">' + (window.DailyPlan ? '<button class="dl-stat" id="dlCopy" style="cursor:pointer;font:inherit;color:inherit;flex:0 0 74px"><b>📋</b><span>העתק נתונים</span></button>' : '') + '<div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
           (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">🗓️ האימון של היום</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות בקערה הירוקה: ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
@@ -2669,6 +2669,7 @@
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
         el.querySelectorAll('.dl-sn').forEach(b => { b.onclick = e => { if (e.target.closest('[data-ss]')) return; const he = b.querySelector('.he'), tp = b.querySelector('.tp'); he.hidden = !he.hidden; if (tp) tp.hidden = !he.hidden; }; });
         el.querySelectorAll('[data-ss]').forEach(b => { b.onclick = () => { const s = sents[Number(b.dataset.ss)]; if (s && cfg.speak) cfg.speak(s.de); }; });
+        if ($('dlCopy')) $('dlCopy').onclick = () => { const b = $('dlCopy'); window.DailyPlan.copy(ok => { b.querySelector('b').textContent = ok ? '✔' : '⚠️'; b.querySelector('span').textContent = ok ? 'הועתק, הדבק לי' : 'לא הועתק'; setTimeout(() => { if (b.isConnected) { b.querySelector('b').textContent = '📋'; b.querySelector('span').textContent = 'העתק נתונים'; } }, 3500); }); };
         if ($('dlHealth')) $('dlHealth').onclick = () => cfg.health(draw);
         if ($('dlNumbers')) $('dlNumbers').onclick = () => cfg.numbers(draw);
         if ($('dlPlan')) $('dlPlan').onclick = () => cfg.plan(draw);
@@ -7084,7 +7085,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '2233e5d29f';
+  const APP_BUILD = '7e0b7e6cec';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -9107,7 +9108,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       else if (a === 'garden') openWordHealth({ onClose: render });
     }
     function close() { if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
-    window.DailyPlan = { summaryText: summaryText, current: current, compose: compose, insights: insights, areaList: areaList };
+    window.DailyPlan = { copy: function (cb) { var t = summaryText(); copyText(t, function (ok) { if (!ok) { try { window.prompt('העתק את הטקסט:', t); } catch (e) {} } cb(ok); }); }, summaryText: summaryText, current: current, compose: compose, insights: insights, areaList: areaList };
     window.openDailyPlan = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; view = (o && o.view) || 'plan'; ov = document.createElement('div'); ov.className = 'nm-ov'; ov.style.zIndex = 8950; document.body.appendChild(ov); render(); };
   })();
 
