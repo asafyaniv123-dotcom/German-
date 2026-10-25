@@ -6962,6 +6962,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { view: 'vocab', icon: '🗂️', label: 'אוצר מילים', sub: 'מילים, חידונים וכרטיסים' },
       { view: 'flow', icon: '🔀', label: 'תרשימי זרימה', sub: 'משפטים מילה אחר מילה' },
       { view: 'grammar', icon: '📐', label: 'דקדוק', sub: 'שיעורים, פעלים וכללים' },
+      { view: 'reader', icon: '📖', label: 'קורא טקסט', sub: 'הדביקו טקסט, לחצו על מילה', act: 'openReader()' },
     ] },
     { title: 'לתרגל', items: [
       { view: 'flashcards', icon: '🃏', label: 'כרטיסיות', sub: 'שינון משפטים' },
@@ -8242,6 +8243,176 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function close() { if (ov) { ov.remove(); ov = null; } if (onClose) { try { onClose(); } catch (e) {} } }
     window.openLearnedTest = open;
   })();
+  // <<READER>> text reader: paste any German text (kept only on this phone), tap a word or two to see the translation, add words to today's 15
+  (function () {
+    var KEY = 'delearn_reader', DKEY = 'delearn_reader_dict', CKEY = 'delearn_reader_cache';
+    var ov = null, cur = null, sel = null, sheet = null;
+    // very common small words (so the tap works even when they are not in the vocabulary list)
+    var BUILTIN = {
+      ich: 'אני', du: 'אתה / את', er: 'הוא', sie: 'היא / הם (או Sie = אתם בנימוס)', es: 'זה / הוא', wir: 'אנחנו', ihr: 'אתם / שלה', mich: 'אותי', mir: 'לי', dich: 'אותך', dir: 'לך', ihn: 'אותו', ihm: 'לו', uns: 'לנו / אותנו', euch: 'לכם / אתכם',
+      mein: 'שלי', dein: 'שלך', sein: 'להיות / שלו', unser: 'שלנו', und: 'ו-', oder: 'או', aber: 'אבל', denn: 'כי', weil: 'כי / מפני ש-', dass: 'ש- (מילת קישור)', wenn: 'אם / כאשר', als: 'כאשר / כמו', wie: 'איך / כמו', was: 'מה', wer: 'מי', wo: 'איפה', wohin: 'לאן', woher: 'מאיפה', wann: 'מתי', warum: 'למה', wieso: 'למה',
+      nicht: 'לא', kein: 'אין / לא (לפני שם עצם)', nein: 'לא', ja: 'כן', doch: 'כן! / בכל זאת', nur: 'רק', auch: 'גם', noch: 'עוד / עדיין', schon: 'כבר', immer: 'תמיד', nie: 'אף פעם', nichts: 'כלום', alles: 'הכול', alle: 'כולם', viel: 'הרבה', viele: 'הרבה', wenig: 'מעט', mehr: 'יותר', sehr: 'מאוד', ganz: 'לגמרי / שלם', so: 'כך / כל כך', da: 'שם / אז', hier: 'כאן', dort: 'שם', jetzt: 'עכשיו', heute: 'היום', morgen: 'מחר / בוקר', gestern: 'אתמול', dann: 'אז', mal: 'פעם / רגע (מרכך)',
+      ein: 'תווית לא מוגדרת: אחד', eine: 'תווית לא מוגדרת: אחת', einen: 'אחד (פעולה על זכר)', der: 'התווית של זכר', die: 'התווית של נקבה / רבים', das: 'התווית של ניטרלי / זה', den: 'התווית של זכר (פעולה)', dem: 'התווית (למי / לאן)', des: 'של',
+      in: 'ב-', an: 'ליד / על', auf: 'על', mit: 'עם', von: 'מ- / של', zu: 'אל / ל-', für: 'בשביל', über: 'מעל / על', unter: 'מתחת', vor: 'לפני / מול', nach: 'אחרי / אל', aus: 'מתוך', bei: 'אצל / ליד', um: 'סביב / ב- (שעה)', durch: 'דרך', gegen: 'נגד', ohne: 'בלי', bis: 'עד', seit: 'מאז', zwischen: 'בין',
+      ist: 'הוא / היא / זה (להיות)', bin: 'אני (להיות)', bist: 'אתה (להיות)', sind: 'אנחנו / הם (להיות)', seid: 'אתם (להיות)', war: 'היה (להיות, עבר)', waren: 'היינו / היו (להיות, עבר)', habe: 'יש לי (haben)', hast: 'יש לך (haben)', hat: 'יש לו / לה (haben)', haben: 'יש / להיות ל-', hatte: 'היה לי / לו (haben, עבר)', werden: 'להיות / להפוך', wird: 'יהיה / ייהפך', wurde: 'היה / נהפך (עבר)',
+      kann: 'יכול', können: 'יכולים / להיות מסוגל', muss: 'חייב', müssen: 'חייבים', will: 'רוצה', wollen: 'רוצים', soll: 'אמור', darf: 'מותר ל-', möchte: 'הייתי רוצה', mag: 'אוהב / מחבב',
+      gehen: 'ללכת', geht: 'הולך', komm: 'בוא', kommen: 'לבוא', kommt: 'בא', sehen: 'לראות', sieht: 'רואה', machen: 'לעשות', macht: 'עושה', sagen: 'לומר', sagt: 'אומר', geben: 'לתת', gibt: 'נותן / יש', nehmen: 'לקחת', wissen: 'לדעת', weiß: 'יודע'
+    };
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function load() { try { var a = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+    function save(a) { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch (e) {} }
+    function dict() { try { return JSON.parse(localStorage.getItem(DKEY) || '{}') || {}; } catch (e) { return {}; } }
+    function saveDict(d) { try { localStorage.setItem(DKEY, JSON.stringify(d)); } catch (e) {} }
+    function cache() { try { return JSON.parse(localStorage.getItem(CKEY) || '{}') || {}; } catch (e) { return {}; } }
+    function saveCache(c) { try { localStorage.setItem(CKEY, JSON.stringify(c)); } catch (e) {} }
+    function heOf(v) { return typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; }
+    function today() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+    var vIdx = null;
+    function vocabIndex() {
+      if (vIdx && vIdx.n === VOCAB.length) return vIdx.m;
+      var m = {}; VOCAB.forEach(function (v) { var k = v.de.toLowerCase(); if (!m[k]) m[k] = v; }); vIdx = { n: VOCAB.length, m: m }; return m;
+    }
+    function lemmas(t) {
+      var out = [t], ends = ['e', 'en', 'n', 's', 'es', 'er', 'em', 'st', 't', 'te', 'ten', 'test', 'et'];
+      ends.forEach(function (e) { if (t.length > e.length + 2 && t.slice(-e.length) === e) { var b = t.slice(0, -e.length); out.push(b, b + 'en', b + 'n', b + 'e'); } });
+      return out;
+    }
+    // find a translation for a word / phrase (lowercased); returns { he, src, v?, lemma? } or null
+    function lookup(key) {
+      var d = dict(); if (d[key]) return { he: d[key], src: 'mine' };
+      var vi = vocabIndex(), v = vi[key];
+      if (v) return { he: heOf(v), src: 'vocab', v: v };
+      if (BUILTIN[key]) return { he: BUILTIN[key], src: 'built' };
+      if (key.indexOf(' ') < 0) {
+        var ls = lemmas(key);
+        for (var i = 1; i < ls.length; i++) { if (vi[ls[i]]) return { he: heOf(vi[ls[i]]), src: 'vocab', v: vi[ls[i]], lemma: vi[ls[i]].de }; if (BUILTIN[ls[i]] && ls[i].length > 2) return { he: BUILTIN[ls[i]], src: 'built', lemma: ls[i] }; }
+      }
+      return null;
+    }
+    function online(key) {
+      var c = cache(); if (c[key]) return Promise.resolve(c[key]);
+      if (!navigator.onLine) return Promise.resolve(null);
+      var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null, to = setTimeout(function () { try { ctl && ctl.abort(); } catch (e) {} }, 7000);
+      return fetch('https://api.mymemory.translated.net/get?q=' + encodeURIComponent(key) + '&langpair=de|he', ctl ? { signal: ctl.signal } : {}).then(function (r) { return r.json(); }).then(function (j) {
+        clearTimeout(to);
+        var t = j && j.responseData && j.responseData.translatedText;
+        if (!t || /MYMEMORY|INVALID|QUERY LENGTH/i.test(t) || t.toLowerCase() === key.toLowerCase()) return null;
+        var c2 = cache(); c2[key] = t; saveCache(c2); return t;
+      }).catch(function () { clearTimeout(to); return null; });
+    }
+    function css() {
+      if (document.getElementById('rdCss')) return;
+      var st = document.createElement('style'); st.id = 'rdCss';
+      st.textContent = '.rd-ov{position:fixed;inset:0;z-index:8940;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(150px + env(safe-area-inset-bottom))}' +
+        '.rd-wrap{max-width:560px;margin:0 auto}.rd-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}.rd-title{flex:1;font-weight:900;font-size:17px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rd-x{border:0;background:none;font-size:24px;color:var(--ink-soft,#777);cursor:pointer;padding:4px 8px}' +
+        '.rd-card{background:var(--surface,#fff);border:2px solid var(--line,#e5e5e5);border-radius:18px;box-shadow:0 3px 0 var(--line,#e5e5e5);padding:12px 14px;margin-bottom:10px}.rd-item{display:flex;align-items:center;gap:8px;cursor:pointer}.rd-item b{flex:1;min-width:0}.rd-item small{color:var(--ink-soft,#777)}' +
+        '.rd-btn{display:block;width:100%;border:0;border-radius:14px;background:var(--fun-green,#58cc02);color:#fff;font:inherit;font-weight:900;font-size:16px;padding:12px;box-shadow:0 4px 0 #46a302;cursor:pointer;margin-top:8px}.rd-btn.alt{background:var(--surface,#fff);color:var(--fun-blue-dk,#1899d6);border:2px solid var(--fun-blue,#1cb0f6);box-shadow:0 3px 0 var(--fun-blue,#1cb0f6)}' +
+        '.rd-in{width:100%;box-sizing:border-box;border:2px solid var(--line,#ddd);border-radius:12px;padding:9px;font:inherit;font-size:15px;margin-top:8px;background:var(--surface,#fff);color:inherit}.rd-ta{min-height:260px;direction:ltr}' +
+        '.rd-tip{font-size:13px;color:var(--ink-soft,#777);line-height:1.6;margin:6px 0}.rd-line{display:flex;align-items:flex-start;gap:6px;direction:ltr;margin:0 0 7px}.rd-line.blank{height:12px}.rd-say{flex:none;border:0;background:var(--accent-soft,#ddf4ff);border-radius:50%;width:28px;height:28px;font-size:13px;cursor:pointer;margin-top:2px}' +
+        '.rd-txt{flex:1;font-size:19px;line-height:1.9;text-align:left;word-break:break-word}.rd-w{cursor:pointer;border-radius:6px;padding:1px 1px;-webkit-tap-highlight-color:transparent}.rd-w.k{border-bottom:3px solid #58cc02}.rd-w.s{background:#ffe27a;color:#3c3c3c}' +
+        '.rd-sheet{position:fixed;left:0;right:0;bottom:0;z-index:8945;background:var(--surface,#fff);border-top:3px solid var(--fun-blue,#1cb0f6);border-radius:22px 22px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.18);padding:14px 16px calc(16px + env(safe-area-inset-bottom));direction:rtl;max-height:55vh;overflow-y:auto}' +
+        '.rd-sheet .ph{font-size:24px;font-weight:900;direction:ltr;text-align:left}.rd-sheet .tr{font-size:19px;margin:6px 0;font-weight:700}.rd-sheet .sm{font-size:13px;color:var(--ink-soft,#777);margin:2px 0}.rd-sheet .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.rd-sheet .row button{flex:1 1 auto;border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:12px;padding:8px 10px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;color:inherit}.rd-sheet .row button.go{background:var(--fun-green,#58cc02);color:#fff;border-color:var(--fun-green,#58cc02)}';
+      document.head.appendChild(st);
+    }
+    function shell(inner, title, withBack) {
+      ov.innerHTML = '<div class="rd-wrap"><div class="rd-top"><button class="rd-x" data-a="' + (withBack ? 'back' : 'close') + '" aria-label="חזרה">' + (withBack ? '‹' : '✕') + '</button><div class="rd-title">' + esc(title) + '</div></div>' + inner + '</div>';
+      ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a, b.dataset.id); }; });
+    }
+    function listView() {
+      closeSheet(); cur = null; var a = load();
+      shell((a.length ? a.map(function (t) { return '<div class="rd-card rd-item" data-a="open" data-id="' + esc(t.id) + '"><b>' + esc(t.title || 'ללא שם') + '<br><small>' + t.text.split(/\s+/).length + ' מילים</small></b><span>‹</span></div>'; }).join('') : '<div class="rd-card"><div class="rd-tip" style="margin:0">עוד לא הוספת טקסט. הדביקו כאן כל טקסט בגרמנית שאתם קוראים או שומעים: מילות שיר שאתם רואים ב-Spotify, תמליל של פודקאסט, שלט, תפריט.</div></div>') +
+        '<button class="rd-btn" data-a="new">➕ טקסט חדש</button><div class="rd-tip">הטקסטים נשמרים רק בטלפון הזה. הם לא נשלחים לשום מקום ולא נכנסים לקוד של האפליקציה.</div>', 'קורא טקסט', false);
+    }
+    function newView() {
+      shell('<input class="rd-in" id="rdT" placeholder="שם (למשל: שם השיר או הפרק)" dir="auto"><input class="rd-in" id="rdU" placeholder="קישור (לא חובה), למשל ל-Spotify" dir="ltr"><textarea class="rd-in rd-ta" id="rdX" placeholder="הדביקו כאן את הטקסט בגרמנית…"></textarea><button class="rd-btn" data-a="savenew">שמירה וקריאה</button><div class="rd-tip">אחרי השמירה לוחצים על מילה כדי לראות תרגום. לחיצה על מילה צמודה נוספת מרחיבה לשתי מילים או יותר.</div>', 'טקסט חדש', true);
+    }
+    function words(line) { var out = [], re = /([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß'’\-]*)|([^A-Za-zÄÖÜäöüß]+)/g, m; while ((m = re.exec(line))) out.push(m[1] ? { w: m[1] } : { s: m[2] }); return out; }
+    function readView(t) {
+      cur = t; sel = null; closeSheet();
+      var set = {}; try { set = getLearnedSet(); } catch (e) {}
+      var n = 0, html = t.text.split(/\r?\n/).map(function (line, li) {
+        if (!line.trim()) return '<div class="rd-line blank"></div>';
+        var toks = words(line).map(function (x) {
+          if (!x.w) return esc(x.s);
+          var r = lookup(x.w.toLowerCase()), k = r && r.v && set.has && set.has(r.v.de) ? ' k' : '';
+          return '<span class="rd-w' + k + '" data-n="' + (n++) + '" data-l="' + li + '">' + esc(x.w) + '</span>';
+        }).join('');
+        return '<div class="rd-line"><button class="rd-say" data-line="' + li + '" aria-label="השמע">🔊</button><div class="rd-txt">' + toks + '</div></div>';
+      }).join('');
+      shell('<div class="rd-tip">לחצו על מילה לתרגום. לחצו על מילה צמודה כדי להרחיב לשתי מילים או יותר. קו ירוק מתחת למילה = מילה שכבר למדת בלוח.</div>' + (t.url ? '<button class="rd-btn alt" data-a="link">🎧 פתח את הקישור</button>' : '') + '<div style="margin-top:12px">' + html + '</div><button class="rd-btn alt" style="margin-top:18px" data-a="del">🗑️ מחיקת הטקסט</button>', t.title || 'טקסט', true);
+      ov.querySelectorAll('.rd-w').forEach(function (el) { el.onclick = function () { pick(+el.dataset.n, +el.dataset.l, el); }; });
+      ov.querySelectorAll('[data-line]').forEach(function (b) { b.onclick = function () { var l = t.text.split(/\r?\n/)[+b.dataset.line]; try { speak(l, null); } catch (e) {} }; });
+    }
+    function pick(n, li, el) {
+      if (sel && sel.l === li && (n === sel.b + 1 || n === sel.a - 1) && sel.b - sel.a < 3) { sel.a = Math.min(sel.a, n); sel.b = Math.max(sel.b, n); }
+      else sel = { a: n, b: n, l: li };
+      ov.querySelectorAll('.rd-w').forEach(function (e) { var k = +e.dataset.n; e.classList.toggle('s', k >= sel.a && k <= sel.b); });
+      var txt = []; ov.querySelectorAll('.rd-w').forEach(function (e) { var k = +e.dataset.n; if (k >= sel.a && k <= sel.b) txt.push(e.textContent); });
+      showSheet(txt.join(' '));
+    }
+    function closeSheet() { if (sheet) { sheet.remove(); sheet = null; } if (ov) ov.querySelectorAll('.rd-w.s').forEach(function (e) { e.classList.remove('s'); }); sel = null; }
+    function showSheet(phrase) {
+      if (sheet) sheet.remove();
+      sheet = document.createElement('div'); sheet.className = 'rd-sheet'; document.body.appendChild(sheet);
+      var key = phrase.toLowerCase(), r = lookup(key), parts = key.split(' ');
+      var body = '<div class="ph" dir="ltr">' + esc(phrase) + ' <button class="rd-say" id="rdSay" aria-label="השמע">🔊</button></div><div id="rdRes"></div>';
+      sheet.innerHTML = body + '<div class="row"><button id="rdMine">✏️ תרגום משלי</button><button id="rdClose">סגור</button></div>';
+      var res = sheet.querySelector('#rdRes');
+      function paint(r2, extra) {
+        var h2 = '';
+        if (r2) {
+          h2 += '<div class="tr">' + esc(r2.he) + '</div>';
+          if (r2.v) h2 += '<div class="sm" dir="ltr">' + esc((r2.v.gender ? r2.v.gender + ' ' : '') + r2.v.de) + (r2.lemma ? ' (צורה של ' + esc(r2.lemma) + ')' : '') + '</div>';
+          else if (r2.lemma) h2 += '<div class="sm">צורה של ' + esc(r2.lemma) + '</div>';
+          if (r2.src === 'auto') h2 += '<div class="sm">תרגום אוטומטי, עלול לטעות</div>';
+        } else if (parts.length > 1) {
+          var pr = parts.map(function (p) { var q = lookup(p); return q ? '<div class="sm" dir="ltr"><b>' + esc(p) + '</b> ← <span dir="rtl">' + esc(q.he) + '</span></div>' : ''; }).join('');
+          h2 += (pr ? '<div class="sm" style="margin-top:6px">מילה במילה:</div>' + pr : '') ;
+        }
+        res.innerHTML = h2 + (extra || '');
+        var add = sheet.querySelector('#rdAdd'); if (add) add.onclick = addToday;
+      }
+      var addBtn = '<div class="row"><button class="go" id="rdAdd">➕ הוסף ללוח של היום</button></div>';
+      sheet.querySelector('#rdSay').onclick = function () { try { speak(phrase, null); } catch (e) {} };
+      sheet.querySelector('#rdClose').onclick = closeSheet;
+      sheet.querySelector('#rdMine').onclick = function () { var v = prompt('התרגום שלך ל-"' + phrase + '":', r ? r.he : ''); if (v && v.trim()) { var d = dict(); d[key] = v.trim(); saveDict(d); showSheet(phrase); } };
+      function addToday() {
+        var tr = (lookup(key) || {}).he, v = vocabIndex()[key] || (lookup(key) || {}).v;
+        if (!v) {
+          var he = tr || (cache()[key]) || ''; if (!he) { var x = prompt('מה התרגום? (הוא יישמר ויתווסף ללוח)', ''); if (!x || !x.trim()) return; he = x.trim(); }
+          v = { de: phrase, he: he, pos: /\s/.test(phrase) ? 'ביטוי' : 'מילה', category: 'המילים שלי', custom: true };
+          VOCAB.push(v); try { var arr = JSON.parse(localStorage.getItem('delearn_custom_vocab') || '[]'); arr.push(v); localStorage.setItem('delearn_custom_vocab', JSON.stringify(arr)); } catch (e) {}
+        }
+        try { var data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}, k = today(), a = data[k] || []; if (a.indexOf(v.de) < 0) a.push(v.de); data[k] = a; localStorage.setItem('delearn_daywords', JSON.stringify(data)); } catch (e) {}
+        var b = sheet.querySelector('#rdAdd'); if (b) { b.textContent = '✓ נוסף ללוח של היום'; b.disabled = true; }
+      }
+      if (r) { paint(r, addBtn); return; }
+      paint(null, '<div class="sm" id="rdWait">מחפש תרגום…</div>' + addBtn);
+      online(key).then(function (t) {
+        if (!sheet) return;
+        var w = sheet.querySelector('#rdWait');
+        if (t) { paint({ he: t, src: 'auto' }, addBtn); }
+        else if (w) w.textContent = 'לא נמצא תרגום. אפשר ללחוץ על "תרגום משלי" ולהקליד.';
+      });
+    }
+    function act(a, id) {
+      if (a === 'close') { close(); return; }
+      if (a === 'back') { if (cur) listView(); else if (ov) listView(); return; }
+      if (a === 'new') { newView(); return; }
+      if (a === 'open') { var t = load().filter(function (x) { return x.id === id; })[0]; if (t) readView(t); return; }
+      if (a === 'savenew') {
+        var text = (ov.querySelector('#rdX').value || '').replace(/\r/g, '').trim(); if (!text) return;
+        var title = (ov.querySelector('#rdT').value || '').trim(), url = (ov.querySelector('#rdU').value || '').trim();
+        if (url && !/^https?:\/\//i.test(url)) url = '';
+        var t2 = { id: 't' + Date.now(), title: title || text.split(/\n/)[0].slice(0, 30), url: url, text: text, ts: Date.now() }, arr = load(); arr.unshift(t2); save(arr); readView(t2); return;
+      }
+      if (a === 'link') { if (cur && cur.url) window.open(cur.url, '_blank', 'noopener'); return; }
+      if (a === 'del') { if (cur && confirm('למחוק את הטקסט?')) { save(load().filter(function (x) { return x.id !== cur.id; })); listView(); } return; }
+    }
+    function close() { closeSheet(); if (ov) { ov.remove(); ov = null; } cur = null; }
+    window.openReader = function () { css(); if (ov) close(); ov = document.createElement('div'); ov.className = 'rd-ov'; document.body.appendChild(ov); listView(); };
+  })();
+
   // <<DERDASDIE>> voice game: a noun and its translation appear, you say der / die / das (or tap)
   (function () {
     var KEY = 'delearn_dds', SR = window.SpeechRecognition || window.webkitSpeechRecognition;
