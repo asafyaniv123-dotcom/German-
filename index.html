@@ -2635,13 +2635,13 @@
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
           '<div class="dl-streak"><div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
-          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
+          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button></div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות בקערה הירוקה: ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
         if (!isFuture) {
           if (n < GOAL) h += '<div class="dl-btns"><button class="dl-btn" id="dlAdd">✋ בחר ' + (GOAL - n) + ' מילים' + (isToday ? ' להיום' : '') + '</button></div>';
           if (n) h += '<div class="dl-btns"><button class="dl-btn blue" id="dlStudy">🥣 שנן</button><button class="dl-btn blue" id="dlTest">🎤 בחן אותי</button></div>';
-          h += (n ? ids.map(id => { const it = by.get(String(id)); return '<div class="dl-row"><i class="dl-dot' + (kn.has(id) ? ' k' : '') + '"></i><div class="t"><div class="d">' + esc(it.de) + '</div><div class="h">' + esc(it.he) + '</div>' + (window.vocabExampleHtml ? window.vocabExampleHtml(it.de, 'vx-sm') : '') + (cfg.getNote && cfg.getNote(it) ? '<div class="h" style="color:#8a6a00">💡 ' + esc(cfg.getNote(it)) + '</div>' : '') + '</div><button data-say="' + esc(id) + '" aria-label="השמע">🔊</button><button data-rm="' + esc(id) + '" aria-label="הסר" style="color:var(--ink-soft)">✕</button></div>'; }).join('') : '<div class="dl-empty">לחצו על "בחר" ובחרו בעצמכם ' + GOAL + ' מילים ליום הזה. אפשר לבקש הצעות מהמילים שעוד לא שולטים בהן.</div>');
+          h += (n ? ids.map(id => { const it = by.get(String(id)); return '<div class="dl-row"><i class="dl-dot' + (kn.has(id) ? ' k' : '') + '"></i><div class="t"><div class="d">' + esc(it.de) + (cfg.badge ? ' ' + cfg.badge(it.de) : '') + '</div><div class="h">' + esc(it.he) + '</div>' + (window.vocabExampleHtml ? window.vocabExampleHtml(it.de, 'vx-sm') : '') + (cfg.getNote && cfg.getNote(it) ? '<div class="h" style="color:#8a6a00">💡 ' + esc(cfg.getNote(it)) + '</div>' : '') + '</div><button data-say="' + esc(id) + '" aria-label="השמע">🔊</button><button data-rm="' + esc(id) + '" aria-label="הסר" style="color:var(--ink-soft)">✕</button></div>'; }).join('') : '<div class="dl-empty">לחצו על "בחר" ובחרו בעצמכם ' + GOAL + ' מילים ליום הזה. אפשר לבקש הצעות מהמילים שעוד לא שולטים בהן.</div>');
           if (n >= GOAL) h += '<div class="dl-btns"><button class="dl-btn sec" id="dlMore">+ בחר עוד מילים</button></div>';
           if (n >= GOAL && cfg.sentences) {
             try { sents = cfg.sentences(ids, sel, sentBump[sel] || 0) || []; } catch (e) { sents = []; }
@@ -2666,6 +2666,7 @@
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
         el.querySelectorAll('.dl-sn').forEach(b => { b.onclick = e => { if (e.target.closest('[data-ss]')) return; const he = b.querySelector('.he'), tp = b.querySelector('.tp'); he.hidden = !he.hidden; if (tp) tp.hidden = !he.hidden; }; });
         el.querySelectorAll('[data-ss]').forEach(b => { b.onclick = () => { const s = sents[Number(b.dataset.ss)]; if (s && cfg.speak) cfg.speak(s.de); }; });
+        if ($('dlHealth')) $('dlHealth').onclick = () => cfg.health(draw);
         if ($('dlGame')) $('dlGame').onclick = () => cfg.game(ids, draw);
         if ($('dlGameAll')) $('dlGameAll').onclick = () => cfg.gameAll(draw);
         if ($('dlSentTest')) $('dlSentTest').onclick = () => cfg.testSentences(sents, draw);
@@ -6548,6 +6549,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     const stat = getStat(de);
     if (isCorrect) stat.correct++; else stat.wrong++;
     try { localStorage.setItem(statKey(de), JSON.stringify(stat)); } catch (e) {}
+    try { if (window.wordLogAttempt) window.wordLogAttempt(de, !!isCorrect); } catch (e) {}
   }
 
   function masteryRatio(stat) {
@@ -8087,6 +8089,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         });
       },
       testSentences: (sents, redraw) => runDailySentences(sents, redraw),
+      health: redraw => { if (window.openWordHealth) window.openWordHealth({ onClose: redraw }); },
+      badge: de => (window.wordBadge ? window.wordBadge(de) : ''),
       gameCount: ids => (window.derDasDieNouns ? window.derDasDieNouns(ids).length : 0),
       game: (ids, redraw) => { if (window.openDerDasDie) window.openDerDasDie({ words: ids, onClose: redraw }); },
       gameAll: redraw => { if (window.openDerDasDie) window.openDerDasDie({ pool: 'cal', onClose: redraw }); },
@@ -8260,6 +8264,114 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function close() { if (ov) { ov.remove(); ov = null; } if (onClose) { try { onClose(); } catch (e) {} } }
     window.openLearnedTest = open;
   })();
+  // <<WORDHEALTH>> "my words" garden: how well each 15-a-day word is known, from the attempts so far (counts, mistakes, recency)
+  (function () {
+    var LOG = 'delearn_wlog';
+    var ov = null, sheet = null, flt = 'all', onClose = null;
+    var KIND = { new: { e: '🌱', t: 'עוד לא תורגלה', c: '#9aa0a6' }, weak: { e: '🥀', t: 'צריכה תשומת לב', c: '#ff4b6e' }, prog: { e: '🌿', t: 'בדרך', c: '#f5a300' }, strong: { e: '🌳', t: 'חזקה', c: '#58cc02' } };
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function logGet() { try { return JSON.parse(localStorage.getItem(LOG) || '{}') || {}; } catch (e) { return {}; } }
+    function logAdd(de, ok) { try { var o = logGet(), r = o[de] || { t: 0, h: '' }; r.t = Date.now(); r.h = (r.h + (ok ? '1' : '0')).slice(-8); o[de] = r; localStorage.setItem(LOG, JSON.stringify(o)); } catch (e) {} }
+    window.wordLogAttempt = logAdd; // called from recordAttempt
+    function heOf(v) { return typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; }
+    function ago(t) { if (!t) return null; var d = Math.floor((Date.now() - t) / 86400000); return d <= 0 ? 'היום' : d === 1 ? 'אתמול' : 'לפני ' + d + ' ימים'; }
+    function statusOf(de, lg) {
+      var s = getStat(de), n = s.correct + s.wrong, rec = (lg || logGet())[de] || null, h = rec ? rec.h : '';
+      var ratio = n ? s.correct / n : null, recent = h.length >= 3 ? (h.slice(-5).split('').filter(function (x) { return x === '1'; }).length / h.slice(-5).length) : ratio;
+      var k;
+      if (!n) k = 'new'; else if (recent >= 0.8 && n >= 3) k = 'strong'; else if (recent < 0.5) k = 'weak'; else k = 'prog';
+      var days = rec && rec.t ? (Date.now() - rec.t) / 86400000 : (n ? 3 : null);
+      var prio = k === 'new' ? 0.7 : (1 - (recent == null ? 0.5 : recent)) + Math.min(0.6, (days || 0) * 0.08);
+      var miss = false; try { miss = getMissedList().indexOf(de) >= 0; } catch (e) {} if (miss) prio += 0.3; if (k === 'strong') prio -= 0.2;
+      return { k: k, c: s.correct, w: s.wrong, n: n, h: h, t: rec ? rec.t : 0, prio: prio };
+    }
+    window.wordBadge = function (de) { try { return KIND[statusOf(de).k].e; } catch (e) { return ''; } };
+    function dayWords() {
+      var data = {}; try { data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}; } catch (e) {}
+      var by = {}; VOCAB.forEach(function (v) { if (!by[v.de]) by[v.de] = v; });
+      return Object.keys(data).sort().reverse().map(function (k) { return { k: k, ws: (data[k] || []).map(function (d) { return by[d]; }).filter(Boolean) }; }).filter(function (d) { return d.ws.length; });
+    }
+    function css() {
+      if (document.getElementById('whCss')) return;
+      var st = document.createElement('style'); st.id = 'whCss';
+      st.textContent = '.wh-ov{position:fixed;inset:0;z-index:8970;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom))}' +
+        '.wh-wrap{max-width:560px;margin:0 auto}.wh-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}.wh-top h2{flex:1;margin:0;font-size:19px}.wh-x{border:0;background:none;font-size:24px;color:var(--ink-soft,#777);cursor:pointer;padding:4px 8px}' +
+        '.wh-card{background:var(--surface,#fff);border:2px solid var(--line,#e5e5e5);border-radius:18px;box-shadow:0 3px 0 var(--line,#e5e5e5);padding:12px 14px;margin-bottom:12px}.wh-card h3{margin:0 0 6px;font-size:15px}.wh-sub{font-size:12.5px;color:var(--ink-soft,#777);line-height:1.5}' +
+        '.wh-bar{display:flex;height:16px;border-radius:9px;overflow:hidden;background:var(--line,#e5e5e5);margin:8px 0}.wh-bar i{display:block;height:100%}.wh-leg{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:13px;font-weight:700}.wh-chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}' +
+        '.wh-chip{border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:999px;padding:6px 11px;font:inherit;font-weight:800;font-size:13px;cursor:pointer;color:inherit}.wh-chip.on{border-color:var(--fun-blue,#1cb0f6);background:var(--accent-soft,#ddf4ff)}' +
+        '.wh-day{font-weight:900;font-size:14px;margin:12px 2px 6px}.wh-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}' +
+        '.wh-t{border:2px solid var(--line,#e5e5e5);border-radius:16px;background:var(--surface,#fff);padding:8px 4px 7px;text-align:center;cursor:pointer;font:inherit;color:inherit;min-width:0}.wh-t .e{font-size:26px;line-height:1.1}.wh-t .w{font-size:12.5px;font-weight:800;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}.wh-t .d{font-size:10.5px;color:var(--ink-soft,#777);margin-top:1px;direction:ltr}' +
+        '.wh-t.weak{border-color:#ff4b6e;background:#fff0f3}.wh-t.prog{border-color:#f5a300;background:#fff8e6}.wh-t.strong{border-color:#58cc02;background:#eefbe0}' +
+        '.wh-btn{display:block;width:100%;border:0;border-radius:14px;background:var(--fun-green,#58cc02);color:#fff;font:inherit;font-weight:900;font-size:16px;padding:12px;box-shadow:0 4px 0 #46a302;cursor:pointer;margin-top:10px}' +
+        '.wh-rev{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line,#eee);cursor:pointer}.wh-rev:first-of-type{border-top:0}.wh-rev .e{font-size:22px}.wh-rev b{direction:ltr;display:block}.wh-rev span{font-size:12.5px;color:var(--ink-soft,#777)}' +
+        '.wh-sheet{position:fixed;left:0;right:0;bottom:0;z-index:8975;background:var(--surface,#fff);border-top:3px solid var(--fun-blue,#1cb0f6);border-radius:22px 22px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.18);padding:14px 16px calc(16px + env(safe-area-inset-bottom));direction:rtl;max-height:60vh;overflow-y:auto}' +
+        '.wh-sheet .ph{font-size:24px;font-weight:900;direction:ltr;text-align:left}.wh-sheet .he{font-size:18px;margin:4px 0}.wh-dots{display:flex;gap:5px;direction:ltr;margin:8px 0}.wh-dots i{width:14px;height:14px;border-radius:50%}.wh-sheet .row{display:flex;gap:8px;margin-top:8px}.wh-sheet .row button{flex:1;border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:12px;padding:8px;font:inherit;font-weight:800;cursor:pointer;color:inherit}' +
+        '.wh-note{margin-top:8px;padding:8px 10px;border-radius:12px;background:#efe7ff;color:#4b2a8a;font-size:14px}';
+      document.head.appendChild(st);
+    }
+    function all() { var lg = logGet(); return dayWords().map(function (d) { return { k: d.k, ws: d.ws.map(function (v) { return { v: v, s: statusOf(v.de, lg) }; }) }; }); }
+    function flat(days) { var seen = {}, out = []; days.forEach(function (d) { d.ws.forEach(function (x) { if (!seen[x.v.de]) { seen[x.v.de] = 1; out.push(x); } }); }); return out; }
+    function dstr(k) { var p = k.split('-'); return Number(p[2]) + '.' + Number(p[1]); }
+    function render() {
+      if (!ov) return;
+      var days = all(), items = flat(days), cnt = { new: 0, weak: 0, prog: 0, strong: 0 };
+      items.forEach(function (x) { cnt[x.s.k]++; });
+      var tot = items.length || 1;
+      var seg = ['strong', 'prog', 'weak', 'new'].map(function (k) { return '<i style="width:' + (cnt[k] / tot * 100) + '%;background:' + KIND[k].c + '"></i>'; }).join('');
+      var leg = ['strong', 'prog', 'weak', 'new'].map(function (k) { return '<span>' + KIND[k].e + ' ' + KIND[k].t + ' · ' + cnt[k] + '</span>'; }).join('');
+      var rev = items.filter(function (x) { return x.s.k !== 'strong' || x.s.prio > 0.35; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 10);
+      var revHtml = rev.length ? rev.map(function (x) {
+        var why = x.s.k === 'new' ? 'עוד לא תורגלה' : (x.s.c + ' מתוך ' + x.s.n + ' נכון' + (ago(x.s.t) ? ' · ' + ago(x.s.t) : ''));
+        return '<div class="wh-rev" data-de="' + esc(x.v.de) + '"><span class="e">' + KIND[x.s.k].e + '</span><div style="flex:1;min-width:0"><b>' + esc((x.v.gender ? x.v.gender + ' ' : '') + x.v.de) + '</b><span>' + esc(heOf(x.v)) + ' · ' + why + '</span></div></div>';
+      }).join('') + '<button class="wh-btn" data-a="practice">🎤 תרגל את ה-' + rev.length + ' האלה</button>' : '<div class="wh-sub">אין מה לחזור עליו כרגע. כל הכבוד!</div>';
+      var chip = function (f, label) { return '<button class="wh-chip' + (flt === f ? ' on' : '') + '" data-f="' + f + '">' + label + '</button>'; };
+      var grid = days.map(function (d) {
+        var xs = d.ws.filter(function (x) { return flt === 'all' || x.s.k === flt; });
+        if (!xs.length) return '';
+        return '<div class="wh-day">' + dstr(d.k) + '</div><div class="wh-grid">' + xs.map(function (x) {
+          return '<button class="wh-t ' + x.s.k + '" data-de="' + esc(x.v.de) + '"><div class="e">' + KIND[x.s.k].e + '</div><div class="w">' + esc(x.v.de) + '</div><div class="d">' + (x.s.n ? x.s.c + '/' + x.s.n : '—') + '</div></button>';
+        }).join('') + '</div>';
+      }).join('') || '<div class="wh-sub">אין מילים בקטגוריה הזאת.</div>';
+      ov.innerHTML = '<div class="wh-wrap"><div class="wh-top"><button class="wh-x" data-a="close" aria-label="סגור">✕</button><h2>🌳 הגן של המילים שלי</h2></div>' +
+        '<div class="wh-card"><h3>' + items.length + ' מילים בלוח</h3><div class="wh-bar">' + seg + '</div><div class="wh-leg">' + leg + '</div>' +
+        '<div class="wh-sub" style="margin-top:8px">כל מילה היא צמח: 🌱 עוד לא תורגלה, 🥀 צריכה תשומת לב, 🌿 בדרך, 🌳 חזקה. התיעוד של הפעמים האחרונות מתחיל מהיום, לכן מילים ישנות יתעדכנו עם התרגול.</div></div>' +
+        '<div class="wh-card"><h3>🎯 מה לחזור עליו היום</h3><div class="wh-sub" style="margin-bottom:4px">לפי טעויות, כמה זמן עבר מהתרגול האחרון, ומילים שעוד לא תרגלת.</div>' + revHtml + '</div>' +
+        '<div class="wh-chips">' + chip('all', 'הכול') + chip('weak', '🥀 חלשות · ' + cnt.weak) + chip('prog', '🌿 בדרך · ' + cnt.prog) + chip('strong', '🌳 חזקות · ' + cnt.strong) + chip('new', '🌱 חדשות · ' + cnt.new) + '</div>' + grid + '</div>';
+      ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a, rev); }; });
+      ov.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { flt = b.dataset.f; render(); }; });
+      ov.querySelectorAll('[data-de]').forEach(function (b) { b.onclick = function () { show(b.dataset.de); }; });
+    }
+    function show(de) {
+      var v = VOCAB.filter(function (x) { return x.de === de; })[0]; if (!v) return;
+      if (sheet) sheet.remove(); sheet = document.createElement('div'); sheet.className = 'wh-sheet'; document.body.appendChild(sheet);
+      var s = statusOf(de), note = ''; try { note = getVocabNotes()[de] || ''; } catch (e) {}
+      var dots = s.h ? '<div class="wh-dots">' + s.h.split('').map(function (x) { return '<i style="background:' + (x === '1' ? '#58cc02' : '#ff4b6e') + '"></i>'; }).join('') + '</div><div class="wh-sub">הניסיונות האחרונים (מהישן לחדש)</div>' : '';
+      sheet.innerHTML = '<div class="ph">' + KIND[s.k].e + ' ' + esc((v.gender ? v.gender + ' ' : '') + v.de) + '</div><div class="he">' + esc(heOf(v)) + '</div>' +
+        '<div class="wh-sub">' + KIND[s.k].t + (s.n ? ' · ' + s.c + ' מתוך ' + s.n + ' נכון' : '') + (ago(s.t) ? ' · תורגלה ' + ago(s.t) : '') + '</div>' + dots +
+        (note ? '<div class="wh-note">💭 ' + esc(note) + '</div>' : '') + '<div class="row"><button id="whSay">🔊 השמע</button><button id="whOne">🎤 תרגל רק אותה</button><button id="whClose">סגור</button></div>';
+      sheet.querySelector('#whSay').onclick = function () { try { speak((v.gender ? v.gender + ' ' : '') + v.de, null); } catch (e) {} };
+      sheet.querySelector('#whOne').onclick = function () { closeSheet(); practice([v]); };
+      sheet.querySelector('#whClose').onclick = closeSheet;
+    }
+    function closeSheet() { if (sheet) { sheet.remove(); sheet = null; } }
+    function practice(words) {
+      if (!window.SpeakPractice || !words.length) return;
+      SpeakPractice.open({
+        title: 'תרגול מה שצריך חיזוק', storeKey: 'delearn_sp_health', autostart: true,
+        items: words.map(function (v) { return { ref: v, prompt: heOf(v), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos }; }),
+        onResult: function (v, ok) { try { recordAttempt(v.de, ok); if (ok) removeMissed(v.de); else addMissed(v.de); } catch (e) {} },
+        getGroups: spGermanGroups, getItems: function () { return []; }, onClose: render
+      });
+    }
+    function act(a, rev) {
+      if (a === 'close') { close(); return; }
+      if (a === 'practice') practice(rev.map(function (x) { return x.v; }));
+    }
+    function close() { closeSheet(); if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
+    window.WordHealth = { statusOf: statusOf };
+    window.openWordHealth = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; flt = 'all'; ov = document.createElement('div'); ov.className = 'wh-ov'; document.body.appendChild(ov); render(); };
+  })();
+
   // <<READER>> text reader: paste any German text (kept only on this phone), tap a word or two to see the translation, add words to today's 15
   (function () {
     var KEY = 'delearn_reader', DKEY = 'delearn_reader_dict', CKEY = 'delearn_reader_cache';
