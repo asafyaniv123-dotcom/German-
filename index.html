@@ -1499,9 +1499,29 @@
     }
     return false;
   }
-  function ensureDir(c) { if (!c.dir) { const d = (S && S.cfg && S.cfg.dir) || 'he2de'; c.dir = c.ltr ? 'he2de' : (d === 'mix' ? (Math.random() < 0.5 ? 'he2de' : 'de2he') : d); } return c.dir; }
+  function ensureDir(c) { if (!c.dir) { const d = (S && S.opts && S.opts.fixedDir) || (S && S.cfg && S.cfg.dir) || 'he2de'; c.dir = c.ltr || (S && S.opts && S.opts.fixedDir) ? 'he2de' : (d === 'mix' ? (Math.random() < 0.5 ? 'he2de' : 'de2he') : d); } return c.dir; }
   function langOf(c) { return c && c.dir === 'de2he' ? 'he-IL' : 'de-DE'; }
-  function matchCard(c, alts) { return c.dir === 'de2he' ? matchesHe(c.prompt, alts) : matches(c.answer, alts); }
+  // whole-sentence check: every content word must be heard, in order (articles may be dropped, a few extra words are fine)
+  const OPT_W = ['ein', 'eine', 'einen', 'einem', 'einer', 'der', 'die', 'das', 'den', 'dem', 'des'];
+  function matchSentence(answer, transcripts) {
+    const tg = norm(answer).split(' ').filter(Boolean);
+    if (!tg.length) return false;
+    for (const t of transcripts) {
+      for (const raw of [t, digitsToWords(String(t))]) {
+        for (const nv of norms(raw)) {
+          const hd = nv.split(' ').filter(Boolean); let i = 0, ok = true, used = 0;
+          for (const w of tg) {
+            let f = -1;
+            for (let j = i; j < hd.length && j < i + 4; j++) { if (near(hd[j], w) || (Math.abs(hd[j].length - w.length) === 1 && Math.min(hd[j].length, w.length) >= 3 && (hd[j].indexOf(w) === 0 || w.indexOf(hd[j]) === 0))) { f = j; break; } }
+            if (f >= 0) { used += f - i; i = f + 1; } else if (OPT_W.indexOf(w) === -1) { ok = false; break; }
+          }
+          if (ok && used <= 2 && hd.length - i <= 2) return true;
+        }
+      }
+    }
+    return false;
+  }
+  function matchCard(c, alts) { if (S && S.opts && S.opts.matcher) return S.opts.matcher(c.answer, alts); return c.dir === 'de2he' ? matchesHe(c.prompt, alts) : matches(c.answer, alts); }
   function autoSayDe() { try { const c = cur(); if (c && c.dir === 'de2he' && S.state === 'ask' && !S.done) later(() => { if (S && S.state === 'ask' && cur() === c) speakWord(c.display || c.answer, true); }, 350); } catch (e) {} }
   const DIR_LBL = { he2de: '🇮🇱→🇩🇪 עברית לגרמנית', de2he: '🇩🇪→🇮🇱 גרמנית לעברית', mix: '🔀 מעורב' };
 
@@ -1591,7 +1611,7 @@
     else if (S.heard) heard = '<div class="sp-heard">' + esc(S.heard) + '</div>';
     else heard = '<div class="sp-heard"></div>';
     let noteBox = '';
-    const NG = S.opts.getNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.get), NS = S.opts.setNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.set);
+    const NG = S.opts.noNotes ? null : (S.opts.getNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.get)), NS = S.opts.noNotes ? null : (S.opts.setNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.set));
     if (S.state !== 'ask' && NG) {
       let nt = ''; try { nt = NG(c) || ''; } catch (e) {}
       if (S.noteEdit && NS) noteBox = '<div class="sp-note"><textarea id="spNoteTx" placeholder="אסוציאציה, משפט, צליל דומה בעברית…">' + esc(nt) + '</textarea><div class="sp-note-acts"><button id="spNoteSave">שמירה</button><button class="sec" id="spNoteCancel">ביטול</button></div></div>';
@@ -1610,7 +1630,7 @@
     if (S.state === 'ask') {
       if (SR) links += '<button class="sp-link" id="spToggle">' + (S.typing ? 'אני יכול לדבר' : 'לא יכול לדבר עכשיו') + '</button>';
       links += '<button class="sp-link" id="spSkip">לא יודע</button>';
-      if (!c.ltr) links += '<button class="sp-link" id="spDir">' + DIR_LBL[S.cfg.dir || 'he2de'] + '</button>';
+      if (!c.ltr && !S.opts.fixedDir) links += '<button class="sp-link" id="spDir">' + DIR_LBL[S.cfg.dir || 'he2de'] + '</button>';
     }
     links += '<button class="sp-link" id="spDbgBtn" style="opacity:.45">אבחון</button>';
     const pill = (S.live && S.state !== 'ask') ? '<button class="sp-livepill" id="spLiveStop">🎤 מקשיב · לחצו לעצירה</button>' : '';
@@ -1819,6 +1839,7 @@
     open: open,
     ensureCss: injectCss,
     matches: matches, // exported for tests
+    matchSentence: matchSentence,
     matchesHe: matchesHe,
     _state: function () { return S; },
     supported: !!SR
@@ -2640,7 +2661,7 @@
         if ($('dlMore')) $('dlMore').onclick = () => picker(el, sel, draw);
         if ($('dlAll')) $('dlAll').onclick = () => cfg.testAll(draw);
         if ($('dlStudy')) $('dlStudy').onclick = () => cfg.study(ids, draw);
-        if ($('dlTest')) $('dlTest').onclick = () => cfg.test(ids, draw);
+        if ($('dlTest')) $('dlTest').onclick = () => cfg.test(ids, draw, sel, sents);
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
         el.querySelectorAll('.dl-sn').forEach(b => { b.onclick = e => { if (e.target.closest('[data-ss]')) return; const he = b.querySelector('.he'), tp = b.querySelector('.tp'); he.hidden = !he.hidden; if (tp) tp.hidden = !he.hidden; }; });
         el.querySelectorAll('[data-ss]').forEach(b => { b.onclick = () => { const s = sents[Number(b.dataset.ss)]; if (s && cfg.speak) cfg.speak(s.de); }; });
@@ -8033,12 +8054,20 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           onClose: redraw
         });
       },
-      test: (ids, redraw) => {
+      test: (ids, redraw, key, sents) => {
         if (!window.SpeakPractice) return;
+        const sentRound = () => SpeakPractice.open({
+          title: 'אמרו את המשפט בגרמנית', storeKey: 'delearn_sp_daily_sent', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
+          matcher: SpeakPractice.matchSentence,
+          items: sents.map(s => ({ ref: { de: s.de }, prompt: s.he, answer: s.de, display: s.de, sub: s.he })),
+          onResult: () => {}, getGroups: () => [], getItems: () => [],
+          onClose: redraw
+        });
         SpeakPractice.open({
           title: 'מבחן · המילים של היום', storeKey: 'delearn_sp_daily', autostart: true,
           items: byIds(ids).map(toSpeak),
           onResult: (v, ok) => { recordAttempt(v.de, ok); },
+          onFinish: info => { if (sents && sents.length && window.dailySplash) window.dailySplash({ total: info.total, firstTry: info.firstTry, n: sents.length, go: sentRound }); },
           getGroups: spGermanGroups, getItems: () => [],
           onClose: redraw
         });
@@ -8051,6 +8080,35 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     });
     return _dailyDe;
   }
+  // celebration screen shown when the day's word test is finished; leads into the sentence test
+  window.dailySplash = function (o) {
+    if (!document.getElementById('dsCss')) {
+      const st = document.createElement('style'); st.id = 'dsCss';
+      st.textContent = '.ds-ov{position:fixed;inset:0;z-index:9500;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;direction:rtl;padding:24px;overflow:hidden;color:#fff;background:radial-gradient(circle at 50% 30%,#7be03a 0%,#46a302 55%,#2f7a00 100%);animation:dsIn .35s ease}' +
+        '@keyframes dsIn{from{opacity:0;transform:scale(1.06)}to{opacity:1;transform:none}}' +
+        '.ds-trophy{font-size:92px;line-height:1;animation:dsPop .7s cubic-bezier(.2,1.6,.4,1) both,dsBob 2.2s ease-in-out .8s infinite}' +
+        '@keyframes dsPop{0%{transform:scale(0) rotate(-30deg)}100%{transform:scale(1) rotate(0)}}@keyframes dsBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}' +
+        '.ds-h{font-size:34px;font-weight:900;margin:14px 0 4px;animation:dsUp .5s .25s both}.ds-s{font-size:17px;opacity:.95;margin:2px 0;animation:dsUp .5s .4s both}' +
+        '.ds-sc{display:inline-block;margin:16px 0 6px;padding:8px 20px;border-radius:999px;background:rgba(255,255,255,.22);font-weight:900;font-size:22px;animation:dsUp .5s .55s both}' +
+        '@keyframes dsUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}' +
+        '.ds-go{margin-top:22px;border:0;border-radius:16px;background:#fff;color:#2f7a00;font:inherit;font-weight:900;font-size:18px;padding:14px 30px;box-shadow:0 5px 0 rgba(0,0,0,.25);cursor:pointer;animation:dsUp .5s .75s both}' +
+        '.ds-skip{margin-top:14px;border:0;background:none;color:#fff;opacity:.8;font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}' +
+        '.ds-c{position:absolute;top:-24px;width:10px;height:16px;border-radius:2px;opacity:.95;animation:dsFall linear infinite}' +
+        '@keyframes dsFall{to{transform:translateY(110vh) rotate(720deg)}}';
+      document.head.appendChild(st);
+    }
+    const ov = document.createElement('div'); ov.className = 'ds-ov';
+    const cols = ['#ffd84d', '#ff6b8a', '#4dd2ff', '#fff', '#b388ff', '#ffa94d'];
+    let conf = ''; for (let i = 0; i < 34; i++) conf += '<i class="ds-c" style="left:' + Math.round(Math.random() * 100) + '%;background:' + cols[i % cols.length] + ';animation-duration:' + (2.4 + Math.random() * 2.4).toFixed(2) + 's;animation-delay:' + (Math.random() * 2).toFixed(2) + 's"></i>';
+    ov.innerHTML = conf + '<div class="ds-trophy">🏆</div><div class="ds-h">כל הכבוד!</div><div class="ds-s">סיימת את כל מילות היום</div>' +
+      (o.total ? '<div class="ds-sc">' + o.firstTry + '/' + o.total + ' בניסיון הראשון</div>' : '') +
+      '<div class="ds-s">עכשיו נראה איך אומרים ' + o.n + ' משפטים בגרמנית 🇩🇪</div>' +
+      '<button class="ds-go">למשפטים ←</button><button class="ds-skip">אולי אחר כך</button>';
+    document.body.appendChild(ov);
+    try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (e) {}
+    ov.querySelector('.ds-go').onclick = () => { ov.remove(); try { o.go(); } catch (e) { console.error(e); } };
+    ov.querySelector('.ds-skip').onclick = () => ov.remove();
+  };
   function openDaily() { const d = dailyDe(); if (d) d.overlay(); }
   function refreshDailyBanner() { const d = dailyDe(); const el = document.getElementById('dailyBanner'); if (d && el) d.refreshBanner(el); }
 
