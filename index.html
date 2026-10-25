@@ -2635,7 +2635,7 @@
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
           '<div class="dl-streak"><div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
-          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button></div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
+          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות בקערה הירוקה: ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
         if (!isFuture) {
@@ -2650,6 +2650,7 @@
               '<div class="dl-btns" style="margin:6px 0 0">' + (cfg.testSentences ? '<button class="dl-btn blue" id="dlSentTest">🎤 בחן אותי על המשפטים</button>' : '') + '<button class="dl-btn sec" id="dlSentMore">🔄 אחרים</button></div></div>';
           }
         }
+        if (!isFuture && n && cfg.gameCount) { const gc = cfg.gameCount(ids); if (gc >= 3) h += '<div class="dl-btns" style="margin-top:12px"><button class="dl-btn blue" id="dlGame">🎙️ דר דאס די · רק מילות היום (' + gc + ')</button></div>'; }
         h += '</div></div>';
         el.innerHTML = h;
         const $ = id => el.querySelector('#' + id);
@@ -2665,6 +2666,8 @@
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
         el.querySelectorAll('.dl-sn').forEach(b => { b.onclick = e => { if (e.target.closest('[data-ss]')) return; const he = b.querySelector('.he'), tp = b.querySelector('.tp'); he.hidden = !he.hidden; if (tp) tp.hidden = !he.hidden; }; });
         el.querySelectorAll('[data-ss]').forEach(b => { b.onclick = () => { const s = sents[Number(b.dataset.ss)]; if (s && cfg.speak) cfg.speak(s.de); }; });
+        if ($('dlGame')) $('dlGame').onclick = () => cfg.game(ids, draw);
+        if ($('dlGameAll')) $('dlGameAll').onclick = () => cfg.gameAll(draw);
         if ($('dlSentTest')) $('dlSentTest').onclick = () => cfg.testSentences(sents, draw);
         if ($('dlSentMore')) $('dlSentMore').onclick = () => { sentBump[sel] = (sentBump[sel] || 0) + 1; draw(); };
         el.querySelectorAll('[data-rm]').forEach(b => { b.onclick = () => { data[sel] = (data[sel] || []).filter(x => String(x) !== b.dataset.rm); save(); draw(); }; });
@@ -6965,7 +6968,6 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { view: 'check', icon: '✍️', label: 'בדיקה עצמית', sub: 'כתבו את המשפט בגרמנית' },
       { view: 'convo', icon: '🌳', label: 'שיחות', sub: 'עץ שיחה עם המשכים' },
       { view: 'games', icon: '🎮', label: 'משחקים', sub: 'פאזל, זיכרון, מרתון ותשחץ' },
-      { view: 'dds', icon: '🎙️', label: 'דר דאס די', sub: 'אומרים בקול der, die או das', act: 'openDerDasDie()' },
     ] },
     { title: 'כל יום', items: [
       { view: 'written', icon: '✍️', label: 'תרגול בכתב', sub: '10 דקות עם מחברת ועט', act: 'openWrittenPractice()' },
@@ -8067,6 +8069,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         });
       },
       testSentences: (sents, redraw) => runDailySentences(sents, redraw),
+      gameCount: ids => (window.derDasDieNouns ? window.derDasDieNouns(ids).length : 0),
+      game: (ids, redraw) => { if (window.openDerDasDie) window.openDerDasDie({ words: ids, onClose: redraw }); },
+      gameAll: redraw => { if (window.openDerDasDie) window.openDerDasDie({ pool: 'cal', onClose: redraw }); },
       test: (ids, redraw, key, sents) => {
         if (!window.SpeakPractice) return;
         const sentRound = () => runDailySentences(sents, redraw);
@@ -8259,11 +8264,13 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (kind === 'cal') { var set = getLearnedSet(); all = all.filter(function (v) { return set.has(v.de); }); }
       return all;
     }
+    var FIX = null, ONCLOSE = null; // FIX: the words of one calendar day
     function build() {
-      var c = cfg(), st = load().stats || {}, list = pool(c.pool);
+      var c = cfg(), st = load().stats || {}, list = FIX ? FIX.slice() : pool(c.pool);
+      if (FIX) c = { pool: 'day', n: list.length };
       var q = shuffleArray(list).map(function (v) { var s = st[v.de] || { ok: 0, bad: 0 }; return { v: v, k: (s.bad > s.ok ? 0 : (s.ok + s.bad === 0 ? 1 : 2)) + Math.random() * 1.4 }; })
         .sort(function (a, b) { return a.k - b.k; }).slice(0, c.n).map(function (x) { return x.v; });
-      S = { q: q, total: q.length, first: {}, ok: 0, missed: [], fb: null, heard: '', msg: '', live: false, done: false, started: false, voice: false, n: c.n };
+      S = { q: q, total: q.length, first: {}, ok: 0, missed: [], fb: null, heard: '', msg: '', live: false, done: false, started: false, voice: false, n: c.n, fixed: !!FIX };
     }
     function articleOf(alts) {
       for (var i = 0; i < alts.length; i++) {
@@ -8388,8 +8395,17 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         '.dd-note{background:#fff6d6;color:#6b5400;border-radius:12px;padding:8px 10px;font-size:13.5px;margin:8px 0}.dd-score{font-size:42px;font-weight:900}.dd-miss{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line,#eee)}.dd-miss span{color:var(--ink-soft,#777)}';
       document.head.appendChild(st);
     }
-    function close() { clearTimers(); stopRec(); if (S) { S.live = false; S.done = true; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {} if (ov) { ov.remove(); ov = null; } S = null; }
-    window.openDerDasDie = function () { css(); if (ov) close(); build(); ov = document.createElement('div'); ov.className = 'dd-ov'; document.body.appendChild(ov); render(); };
+    function close() { clearTimers(); stopRec(); if (S) { S.live = false; S.done = true; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {} if (ov) { ov.remove(); ov = null; } S = null; var cb = ONCLOSE; ONCLOSE = null; if (cb) { try { cb(); } catch (e) {} } }
+    // nouns (with der / die / das) among the given words
+    window.derDasDieNouns = function (words) { var set = {}; (words || []).forEach(function (w) { set[w] = 1; }); return allNouns().filter(function (v) { return set[v.de]; }); };
+    // opts: { words: [de...] } plays only those words (a calendar day); { pool: 'cal' } opens the setup with "what I learned" selected; { onClose }
+    window.openDerDasDie = function (opts) {
+      opts = opts || {}; css(); if (ov) close();
+      FIX = opts.words ? window.derDasDieNouns(opts.words) : null; ONCLOSE = opts.onClose || null;
+      if (opts.pool === 'cal') { var o = load(), c0 = cfg(); c0.pool = 'cal'; o.cfg = c0; save(o); }
+      build(); ov = document.createElement('div'); ov.className = 'dd-ov'; document.body.appendChild(ov);
+      if (FIX && S.q.length) { S.started = true; S.live = !!SR; render(); startRec(); } else render();
+    };
   })();
 
   // <<WRITTEN>> daily 10-minute notebook session ("תרגול בכתב"): write on paper, reveal, self-check
