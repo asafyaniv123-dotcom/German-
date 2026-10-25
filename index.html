@@ -1578,6 +1578,7 @@
       listening: false, live: false, typing: !!typing || !SR, focusInput: false, base: 0, lastLen: 0, muteUntil: 0, heardAny: false,
       queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr }))
     });
+    S.askAt = Date.now();
     restarts = [];
     render();
     if (!S.typing) startLive(); // this runs inside the click that pressed "start", so the browser allows the microphone
@@ -1756,7 +1757,9 @@
     if (c.requeued) return;
     S.results.push({ item: c, ok });
     if (ok) { S.firstTry++; S.combo++; if (S.combo > S.best) S.best = S.combo; } else S.combo = 0;
-    try { if (S.opts.onResult) S.opts.onResult(c.ref, ok); } catch (e) {}
+    const ms = S.askAt ? Date.now() - S.askAt : 0;
+    try { if (S.opts.onResult) S.opts.onResult(c.ref, ok, ms); } catch (e) {}
+    try { if (c.ref && typeof c.ref.de === 'string' && window.wordLogTime) window.wordLogTime(c.ref.de, ms, ok); } catch (e) {}
   }
   function onCorrect() {
     const first = !cur().failed;
@@ -1803,7 +1806,7 @@
     S.enter = true;
     S.noteEdit = false;
     S.idx++; S.attempts = 0; S.state = 'ask'; S.msg = ''; S.heard = ''; S.wrong = false; S.wrongHeard = '';
-    S.muteUntil = Date.now() + 350; consumeNow();
+    S.muteUntil = Date.now() + 350; consumeNow(); S.askAt = Date.now();
     if (S.idx >= S.queue.length) { S.done = true; S.idx = S.queue.length; stopLive(); }
     else ensureDir(cur());
     if (S.live && !S.typing && !S.done && (!rec || recLang !== langOf(cur()))) { clearTimeout(S.resumeT); if (rec) stopRec(); later(openRec, 150); } // the word that was playing is cut off (or the next card needs the other language), so listen again right away
@@ -8491,7 +8494,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
 
     // ---- stats ----
     function stats() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
-    function bump(id, ok, n) { try { var s = stats(), r = s[id] || { ok: 0, n: 0, best: 0 }; r.ok += ok; r.n += n; r.best = Math.max(r.best, ok); r.last = Date.now(); s[id] = r; localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+    function bump(id, ok, n, times) { try { var s = stats(), r = s[id] || { ok: 0, n: 0, best: 0 }; r.ok += ok; r.n += n; r.best = Math.max(r.best, ok); r.last = Date.now(); if (times && times.length) r.tt = (r.tt || []).concat(times.map(function (x) { return Math.round(Math.min(x, 30000)); })).slice(-20); s[id] = r; localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+    function goodTimes(res) { return res.filter(function (x) { return x.good && x.ms > 300; }).map(function (x) { return x.ms; }); }
+    window.__nmGoodTimes = goodTimes;
     function known(words) { var set = null; try { set = getLearnedSet(); } catch (e) {} if (!set) return [0, words.length]; var k = 0; words.forEach(function (w) { if (set.has(w)) k++; }); return [k, words.length]; }
 
     // ---- speech out ----
@@ -8569,7 +8574,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var st = stats();
       return ORDER.map(function (id) {
         var t = T[id], r = st[id], kn = known(t.words), pct = r && r.n ? Math.round(r.ok / r.n * 100) : 0;
-        return '<div class="nm-topic"><span class="e">' + t.e + '</span><div class="b"><b>' + t.t + '</b><span>' + esc(t.d) + '</span><div class="nm-sub" style="font-size:12px;margin-top:2px">מילים בלוח: ' + kn[0] + '/' + kn[1] + (r && r.n ? ' · הצלחה ' + pct + '% · שיא ' + r.best + '/10' : '') + '</div><div class="nm-mini"><i style="width:' + pct + '%"></i></div></div>' +
+        return '<div class="nm-topic"><span class="e">' + t.e + '</span><div class="b"><b>' + t.t + '</b><span>' + esc(t.d) + '</span><div class="nm-sub" style="font-size:12px;margin-top:2px">מילים בלוח: ' + kn[0] + '/' + kn[1] + (r && r.n ? ' · הצלחה ' + pct + '% · שיא ' + r.best + '/10' + speedTxt(r) : '') + '</div><div class="nm-mini"><i style="width:' + pct + '%"></i></div></div>' +
           '<div class="btns">' + (t.say ? '' : '<button class="nm-ear" data-ear="' + id + '">👂 שמע</button>') + '<button class="nm-say" data-say-mode="' + id + '">🎤 אמור</button></div></div>';
       }).join('');
     }
@@ -8627,7 +8632,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var el = document.createElement('div'); el.className = 'nm-ov'; el.style.zIndex = 8964; document.body.appendChild(el);
       function finish(aborted) { el.remove(); if (cfg.onDone) { try { cfg.onDone({ ok: Q.ok, n: Q.res.length, total: items.length, aborted: !!aborted, results: Q.res }); } catch (e) {} } }
       function draw(auto) {
-        var it = items[Q.i];
+        var it = items[Q.i]; Q.t0 = Date.now();
         if (Q.done) {
           var stars = Q.ok >= items.length * .9 ? '🏆' : Q.ok >= items.length * .7 ? '🌟' : Q.ok >= items.length * .5 ? '👍' : '💪';
           var miss = Q.res.filter(function (r) { return !r.good; });
@@ -8651,7 +8656,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         function answer(good, u) {
           if (Q.shown) return; Q.shown = true; if (good) Q.ok++;
           var tag = good ? null : tagFor(it, u); if (tag) tagBump(tag);
-          Q.res.push({ it: it, good: good, user: u, tag: tag });
+          Q.res.push({ it: it, good: good, user: u, tag: tag, ms: Date.now() - Q.t0 });
           el.querySelector('#nmRes').innerHTML = '<div class="nm-res ' + (good ? 'ok' : 'bad') + '">' + (good ? '✔ נכון!' : '✖ לא בדיוק') + '<br>' + (it.fb ? it.fb : '<b>' + esc(it.valShow || it.show) + '</b> = <b>' + esc(it.main) + '</b>') + (it.clock ? clockSvg(it.clock[0], it.clock[1], 78) : '') + '</div><button class="nm-btn" id="nmNext">' + (Q.i + 1 >= items.length ? 'סיום' : 'הבא ◀') + '</button>';
           el.querySelector('#nmNext').onclick = function () { Q.i++; Q.shown = false; if (Q.i >= items.length) Q.done = true; draw(true); };
           var g = el.querySelector('#nmGo'); if (g) g.style.display = 'none';
@@ -8677,29 +8682,36 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function mk(id) { var it = T[id].gen(); it.tid = id; return it; }
     function startSay(id, o) {
       o = o || {}; var t = T[id], its = [], n0 = o.n || 10; for (var i = 0; i < n0; i++) its.push(mk(id));
-      var ok = 0, n = 0;
+      var ok = 0, n = 0, times = [];
       if (!window.SpeakPractice) { if (o.cb) o.cb({ ok: 0, n: 0, aborted: true }); return; }
       SpeakPractice.open({
         title: t.t + ' · אמרו בגרמנית', storeKey: 'delearn_sp_numbers', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
         matcher: t.say ? null : matcher,
         items: its.map(function (x) { return { ref: x, prompt: x.show, answer: x.alts.join(' / '), display: x.main, sub: x.show, hint: x.hint }; }),
-        onResult: function (x, good) { n++; if (good) ok++; if (x.rec) { try { recordAttempt(x.rec, good); } catch (e) {} } },
+        onResult: function (x, good, ms) { n++; if (good) { ok++; if (ms > 300) times.push(ms); } if (x.rec) { try { recordAttempt(x.rec, good); } catch (e) {} } },
         getGroups: function () { return []; }, getItems: function () { return []; },
-        onClose: function () { if (n) bump(id, ok, n); if (o.cb) o.cb({ ok: ok, n: n, aborted: n < its.length }); else if (ov) render(); }
+        onClose: function () { if (n) bump(id, ok, n, times); if (o.cb) o.cb({ ok: ok, n: n, aborted: n < its.length }); else if (ov) render(); }
       });
     }
     function startListen(id, o) {
       o = o || {}; var t = T[id], its = [], n0 = o.n || 10; for (var i = 0; i < n0; i++) its.push(mk(id));
       runQuiz({ title: t.e + ' ' + t.t, items: its, doneLabel: o.cb ? 'המשך' : 'חזרה לרשימה',
         again: o.cb ? null : function () { startListen(id); },
-        onDone: function (r) { if (r.n) bump(id, r.ok, r.n); if (o.cb) o.cb(r); else if (ov) render(); } });
+        onDone: function (r) { if (r.n) bump(id, r.ok, r.n, goodTimes(r.results)); if (o.cb) o.cb(r); else if (ov) render(); } });
     }
     function mixItems(ids, per) { var out = []; ids.forEach(function (id) { for (var i = 0; i < per; i++) out.push(mk(id)); }); return out.sort(function () { return Math.random() - .5; }); }
     function runMix(ids, per, cb) {
       runQuiz({ title: '🔢 מספרים ושעון', items: mixItems(ids.filter(function (i) { return !T[i].say; }), per), doneLabel: 'המשך',
-        onDone: function (r) { var by = {}; r.results.forEach(function (x) { var k = x.it.tid; by[k] = by[k] || [0, 0]; by[k][1]++; if (x.good) by[k][0]++; }); Object.keys(by).forEach(function (k) { bump(k, by[k][0], by[k][1]); }); if (cb) cb(r); } });
+        onDone: function (r) { var by = {}; r.results.forEach(function (x) { var k = x.it.tid; by[k] = by[k] || [0, 0, []]; by[k][1]++; if (x.good) { by[k][0]++; if (x.ms > 300) by[k][2].push(x.ms); } }); Object.keys(by).forEach(function (k) { bump(k, by[k][0], by[k][1], by[k][2]); }); if (cb) cb(r); } });
     }
     function close() { if (ov) { ov.remove(); ov = null; } L = null; var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
+    function speedTxt(r) {
+      var t = r && r.tt; if (!t || t.length < 3) return ''; var m = function (a) { return a.reduce(function (x, y) { return x + y; }, 0) / a.length; };
+      var avg = m(t.slice(-10)) / 1000, s = ' · ⏱️ ' + avg.toFixed(1) + ' שנ׳';
+      if (t.length >= 10) { var a = m(t.slice(-5)), b = m(t.slice(-10, -5)); if (a < b * 0.85) s += ' (מתקצר ↘)'; else if (a > b * 1.2) s += ' (מתארך ↗)'; }
+      return s;
+    }
+    window.speedTxt = speedTxt;
     window.runQuiz = runQuiz;
     window.NumberTools = { card: card, ordN: ordN, clockSay: clockSay, priceSay: priceSay, matcher: matcher, gen: T, order: ORDER, stats: stats, known: known, listen: startListen, say: startSay, mix: runMix, css: css, sayDe: sayDe };
     window.openNumbers = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; tab = (o && o.tab) || 'practice'; L = null; ov = document.createElement('div'); ov.className = 'nm-ov'; document.body.appendChild(ov); render(); };
@@ -8737,17 +8749,17 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     var META = { ear: { t: 'שמע ובחר אות', e: '👂', d: 'שומעים אות ובוחרים' }, name: { t: 'איך קוראים לה', e: '🔤', d: 'רואים אות ובוחרים את השם' }, spell: { t: 'איות מילה', e: '✍️', d: 'שומעים איות ומקלידים את המילה' } };
     var ORDER = ['ear', 'name', 'spell'];
     function stats() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
-    function bump(id, ok, n) { try { var s = stats(), r = s[id] || { ok: 0, n: 0, best: 0 }; r.ok += ok; r.n += n; r.best = Math.max(r.best, ok); r.last = Date.now(); s[id] = r; localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+    function bump(id, ok, n, times) { try { var s = stats(), r = s[id] || { ok: 0, n: 0, best: 0 }; r.ok += ok; r.n += n; r.best = Math.max(r.best, ok); r.last = Date.now(); if (times && times.length) r.tt = (r.tt || []).concat(times.map(function (x) { return Math.round(Math.min(x, 30000)); })).slice(-20); s[id] = r; localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
     function items(id, n) { var o = []; for (var i = 0; i < n; i++) o.push(G[id]()); return o; }
     function run(id, n, cb) {
       NumberTools.css();
       runQuiz({ title: META[id].e + ' ' + META[id].t, items: items(id, n || 8), doneLabel: cb ? 'המשך' : 'חזרה לרשימה',
         again: cb ? null : function () { run(id, 8); },
-        onDone: function (r) { if (r.n) bump(id, r.ok, r.n); if (cb) cb(r); else if (ov) render(); } });
+        onDone: function (r) { if (r.n) bump(id, r.ok, r.n, window.__nmGoodTimes(r.results)); if (cb) cb(r); else if (ov) render(); } });
     }
     function mix(cb) {
       NumberTools.css(); var its = items('ear', 3).concat(items('name', 2), items('spell', 2));
-      runQuiz({ title: '🔤 אותיות', items: shuffle(its), doneLabel: 'המשך', onDone: function (r) { var by = {}; r.results.forEach(function (x) { var k = x.it.tid; by[k] = by[k] || [0, 0]; by[k][1]++; if (x.good) by[k][0]++; }); Object.keys(by).forEach(function (k) { bump(k, by[k][0], by[k][1]); }); if (cb) cb(r); } });
+      runQuiz({ title: '🔤 אותיות', items: shuffle(its), doneLabel: 'המשך', onDone: function (r) { var by = {}; r.results.forEach(function (x) { var k = x.it.tid; by[k] = by[k] || [0, 0, []]; by[k][1]++; if (x.good) { by[k][0]++; if (x.ms > 300) by[k][2].push(x.ms); } }); Object.keys(by).forEach(function (k) { bump(k, by[k][0], by[k][1], by[k][2]); }); if (cb) cb(r); } });
     }
     function tile(L, name, he) { return '<button class="nm-t" data-say="' + esc(name) + '"><b>' + esc(L) + '</b><span>' + esc(name) + '</span><span style="font-weight:600;font-size:11px;color:var(--ink-soft,#777)">' + esc(he) + '</span></button>'; }
     function lesson() {
@@ -8764,7 +8776,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var st = stats();
       return ORDER.map(function (id) {
         var m = META[id], r = st[id], pct = r && r.n ? Math.round(r.ok / r.n * 100) : 0;
-        return '<div class="nm-topic"><span class="e">' + m.e + '</span><div class="b"><b>' + m.t + '</b><span>' + m.d + '</span>' + (r && r.n ? '<div class="nm-sub" style="font-size:12px;margin-top:2px">הצלחה ' + pct + '% · שיא ' + r.best + '/8</div>' : '') + '<div class="nm-mini"><i style="width:' + pct + '%"></i></div></div><div class="btns"><button class="nm-ear" data-go="' + id + '">▶ התחל</button></div></div>';
+        return '<div class="nm-topic"><span class="e">' + m.e + '</span><div class="b"><b>' + m.t + '</b><span>' + m.d + '</span>' + (r && r.n ? '<div class="nm-sub" style="font-size:12px;margin-top:2px">הצלחה ' + pct + '% · שיא ' + r.best + '/8' + window.speedTxt(r) + '</div>' : '') + '<div class="nm-mini"><i style="width:' + pct + '%"></i></div></div><div class="btns"><button class="nm-ear" data-go="' + id + '">▶ התחל</button></div></div>';
       }).join('');
     }
     function render() {
@@ -8790,17 +8802,28 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function logGet() { try { return JSON.parse(localStorage.getItem(LOG) || '{}') || {}; } catch (e) { return {}; } }
     function logAdd(de, ok) { try { var o = logGet(), r = o[de] || { t: 0, h: '' }; r.t = Date.now(); r.h = (r.h + (ok ? '1' : '0')).slice(-8); o[de] = r; localStorage.setItem(LOG, JSON.stringify(o)); } catch (e) {} }
     window.wordLogAttempt = logAdd; // called from recordAttempt
+    // how long it took to answer (correct answers only): the speed of recall says how automatic a word already is
+    function logTime(de, ms, ok) { try { if (!ok || !(ms > 300)) return; var o = logGet(), r = o[de] || { t: Date.now(), h: '' }; r.m = (r.m || []).concat(Math.round(Math.min(ms, 30000))).slice(-6); o[de] = r; localStorage.setItem(LOG, JSON.stringify(o)); } catch (e) {} }
+    window.wordLogTime = logTime;
+    function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; }
+    function baseOf(lg) {
+      if (lg.__b !== undefined) return lg.__b;
+      var meds = []; Object.keys(lg).forEach(function (k) { var m = lg[k] && lg[k].m; if (m && m.length >= 2) meds.push(median(m)); });
+      var b = meds.length >= 5 ? median(meds) : null;
+      try { Object.defineProperty(lg, '__b', { value: b, enumerable: false }); } catch (e) {} return b;
+    }
     function heOf(v) { return typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; }
     function ago(t) { if (!t) return null; var d = Math.floor((Date.now() - t) / 86400000); return d <= 0 ? 'היום' : d === 1 ? 'אתמול' : 'לפני ' + d + ' ימים'; }
     function statusOf(de, lg) {
       var s = getStat(de), n = s.correct + s.wrong, rec = (lg || logGet())[de] || null, h = rec ? rec.h : '';
       var ratio = n ? s.correct / n : null, recent = h.length >= 3 ? (h.slice(-5).split('').filter(function (x) { return x === '1'; }).length / h.slice(-5).length) : ratio;
-      var k;
+      var k, med = rec && rec.m && rec.m.length >= 3 ? median(rec.m) : null, base = baseOf(lg || logGet()), slow = !!(med && base && med > Math.max(base * 1.6, base + 1500)), fast = !!(med && base && med < base * 0.8);
       if (!n) k = 'new'; else if (recent >= 0.8 && n >= 3) k = 'strong'; else if (recent < 0.5) k = 'weak'; else k = 'prog';
+      if (k === 'strong' && slow) k = 'prog';
       var days = rec && rec.t ? (Date.now() - rec.t) / 86400000 : (n ? 3 : null);
       var prio = k === 'new' ? 0.7 : (1 - (recent == null ? 0.5 : recent)) + Math.min(0.6, (days || 0) * 0.08);
-      var miss = false; try { miss = getMissedList().indexOf(de) >= 0; } catch (e) {} if (miss) prio += 0.3; if (k === 'strong') prio -= 0.2;
-      return { k: k, c: s.correct, w: s.wrong, n: n, h: h, t: rec ? rec.t : 0, prio: prio };
+      var miss = false; try { miss = getMissedList().indexOf(de) >= 0; } catch (e) {} if (miss) prio += 0.3; if (k === 'strong') prio -= 0.2; if (slow) prio += 0.25;
+      return { k: k, c: s.correct, w: s.wrong, n: n, h: h, t: rec ? rec.t : 0, prio: prio, med: med, slow: slow, fast: fast, base: base };
     }
     window.wordBadge = function (de) { try { return KIND[statusOf(de).k].e; } catch (e) { return ''; } };
     function dayWords() {
@@ -8846,7 +8869,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         var xs = d.ws.filter(function (x) { return flt === 'all' || x.s.k === flt; });
         if (!xs.length) return '';
         return '<div class="wh-day">' + dstr(d.k) + '</div><div class="wh-grid">' + xs.map(function (x) {
-          return '<button class="wh-t ' + x.s.k + '" data-de="' + esc(x.v.de) + '"><div class="e">' + KIND[x.s.k].e + '</div><div class="w">' + esc(x.v.de) + '</div><div class="d">' + (x.s.n ? x.s.c + '/' + x.s.n : '—') + '</div></button>';
+          return '<button class="wh-t ' + x.s.k + '" data-de="' + esc(x.v.de) + '"><div class="e">' + KIND[x.s.k].e + '</div><div class="w">' + esc(x.v.de) + '</div><div class="d">' + (x.s.n ? x.s.c + '/' + x.s.n : '—') + (x.s.slow ? ' ⏱️' : '') + '</div></button>';
         }).join('') + '</div>';
       }).join('') || '<div class="wh-sub">אין מילים בקטגוריה הזאת.</div>';
       ov.innerHTML = '<div class="wh-wrap"><div class="wh-top"><button class="wh-x" data-a="close" aria-label="סגור">✕</button><h2>🌳 הגן של המילים שלי</h2></div>' +
@@ -8863,8 +8886,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (sheet) sheet.remove(); sheet = document.createElement('div'); sheet.className = 'wh-sheet'; document.body.appendChild(sheet);
       var s = statusOf(de), note = ''; try { note = getVocabNotes()[de] || ''; } catch (e) {}
       var dots = s.h ? '<div class="wh-dots">' + s.h.split('').map(function (x) { return '<i style="background:' + (x === '1' ? '#58cc02' : '#ff4b6e') + '"></i>'; }).join('') + '</div><div class="wh-sub">הניסיונות האחרונים (מהישן לחדש)</div>' : '';
+      var spd = s.med ? '<div class="wh-sub" style="margin-top:6px">⏱️ זמן תגובה ממוצע: ' + (s.med / 1000).toFixed(1) + ' שנ׳' + (s.slow ? ' · איטי יחסית אליך: הצעד הבא הוא לענות מהר יותר' : s.fast ? ' · מהיר: המילה כבר אוטומטית' : '') + '</div>' : '';
       sheet.innerHTML = '<div class="ph">' + KIND[s.k].e + ' ' + esc((v.gender ? v.gender + ' ' : '') + v.de) + '</div><div class="he">' + esc(heOf(v)) + '</div>' +
-        '<div class="wh-sub">' + KIND[s.k].t + (s.n ? ' · ' + s.c + ' מתוך ' + s.n + ' נכון' : '') + (ago(s.t) ? ' · תורגלה ' + ago(s.t) : '') + '</div>' + dots +
+        '<div class="wh-sub">' + KIND[s.k].t + (s.n ? ' · ' + s.c + ' מתוך ' + s.n + ' נכון' : '') + (ago(s.t) ? ' · תורגלה ' + ago(s.t) : '') + '</div>' + dots + spd +
         (note ? '<div class="wh-note">💭 ' + esc(note) + '</div>' : '') + '<div class="row"><button id="whSay">🔊 השמע</button><button id="whOne">🎤 תרגל רק אותה</button><button id="whClose">סגור</button></div>';
       sheet.querySelector('#whSay').onclick = function () { try { speak((v.gender ? v.gender + ' ' : '') + v.de, null); } catch (e) {} };
       sheet.querySelector('#whOne').onclick = function () { closeSheet(); practice([v]); };
@@ -8886,7 +8910,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     }
     function close() { closeSheet(); if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
     function recommend(n) { var items = flat(all()); return items.filter(function (x) { return x.s.k !== 'strong' || x.s.prio > 0.35; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, n || 6).map(function (x) { return x.v; }); }
-    function summary() { var items = flat(all()), c = { new: 0, weak: 0, prog: 0, strong: 0 }; items.forEach(function (x) { c[x.s.k]++; }); return { total: items.length, c: c, weak: items.filter(function (x) { return x.s.k === 'weak'; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 6).map(function (x) { return x.v; }) }; }
+    function summary() { var items = flat(all()), c = { new: 0, weak: 0, prog: 0, strong: 0 }; items.forEach(function (x) { c[x.s.k]++; }); return { total: items.length, c: c, weak: items.filter(function (x) { return x.s.k === 'weak'; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 6).map(function (x) { return x.v; }), slow: items.filter(function (x) { return x.s.slow; }).sort(function (a, b) { return b.s.med - a.s.med; }).slice(0, 6).map(function (x) { return x.v; }), base: items.length ? (items[0].s.base || null) : null }; }
     function practiceCb(words, cb) {
       if (!window.SpeakPractice || !words.length) { if (cb) cb({ ok: 0, n: 0 }); return; }
       var ok = 0, n = 0;
@@ -8945,7 +8969,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     }
     function why(s) {
       var A = areaList(), ws = WordHealth.summary();
-      if (s.kind === 'words') return ws.c.weak + ' מילים צריכות חיזוק, ' + ws.c.new + ' עוד לא תורגלו';
+      if (s.kind === 'words') return ws.c.weak + ' מילים צריכות חיזוק, ' + ws.c.new + ' עוד לא תורגלו' + (ws.slow && ws.slow.length ? ', ' + ws.slow.length + ' איטיות' : '');
       if (s.kind === 'num' || s.kind === 'let') { var a = A.filter(function (x) { return x.id === s.topic; })[0]; return a && a.r && a.r.n ? 'הצלחה ' + Math.round(a.r.ok / a.r.n * 100) + '% אחרי ' + a.r.n + ' תשובות' : 'עוד לא נבדק: נבדוק איפה אתה'; }
       if (s.kind === 'nummix') return 'שתי שאלות מכל נושא, כדי לראות מה חזק';
       if (s.kind === 'letmix') return 'שבע שאלות מעורבות';
@@ -9006,16 +9030,43 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function report() {
       var ws = WordHealth.summary(), A = areaList(), dd = ddsAll(), h = '';
       var tot = ws.total || 1, W = { strong: '🌳', prog: '🌿', weak: '🥀', new: '🌱' };
-      h += '<div class="nm-card"><h3>🌳 מילים מהלוח</h3>' + (ws.total ? '<div class="nm-bar" style="height:14px;display:flex">' + ['strong', 'prog', 'weak', 'new'].map(function (k, i) { return '<i style="width:' + (ws.c[k] / tot * 100) + '%;background:' + ['#58cc02', '#f5a300', '#ff4b6e', '#9aa0a6'][i] + '"></i>'; }).join('') + '</div><div class="nm-sub">' + ['strong', 'prog', 'weak', 'new'].map(function (k) { return W[k] + ' ' + ws.c[k]; }).join(' · ') + '</div>' + (ws.weak.length ? '<div class="nm-sub" style="margin-top:8px">הכי צריכות חיזוק:</div><div>' + ws.weak.map(function (v) { return '<span class="pl-chip">' + esc(v.de) + '</span>'; }).join('') + '</div>' : '') : '<div class="nm-sub">עוד אין מילים בלוח.</div>') + '</div>';
-      h += '<div class="nm-card"><h3>🔢 מספרים ושעון</h3>' + A.filter(function (a) { return a.kind === 'num'; }).map(function (a) { return barRow(a.e, a.t, 'מילים בלוח ' + a.kn[0] + '/' + a.kn[1] + (a.r && a.r.n ? ' · ' + a.r.n + ' תשובות' : ''), a.r); }).join('') + '</div>';
-      h += '<div class="nm-card"><h3>🔤 אותיות</h3>' + A.filter(function (a) { return a.kind === 'let'; }).map(function (a) { return barRow(a.e, a.t, a.r && a.r.n ? a.r.n + ' תשובות' : 'עוד לא נבדק', a.r); }).join('') + '</div>';
+      h += '<div class="nm-card"><h3>🌳 מילים מהלוח</h3>' + (ws.total ? '<div class="nm-bar" style="height:14px;display:flex">' + ['strong', 'prog', 'weak', 'new'].map(function (k, i) { return '<i style="width:' + (ws.c[k] / tot * 100) + '%;background:' + ['#58cc02', '#f5a300', '#ff4b6e', '#9aa0a6'][i] + '"></i>'; }).join('') + '</div><div class="nm-sub">' + ['strong', 'prog', 'weak', 'new'].map(function (k) { return W[k] + ' ' + ws.c[k]; }).join(' · ') + '</div>' + (ws.weak.length ? '<div class="nm-sub" style="margin-top:8px">הכי צריכות חיזוק:</div><div>' + ws.weak.map(function (v) { return '<span class="pl-chip">' + esc(v.de) + '</span>'; }).join('') + '</div>' : '') + (ws.slow && ws.slow.length ? '<div class="nm-sub" style="margin-top:8px">⏱️ נכון, אבל לוקח לך זמן. המטרה כאן היא שזה יצא מהר:</div><div>' + ws.slow.map(function (v) { return '<span class="pl-chip" style="border-color:#f5a300;background:#fff8e6">' + esc(v.de) + '</span>'; }).join('') + '</div>' : '') : '<div class="nm-sub">עוד אין מילים בלוח.</div>') + '</div>';
+      h += '<div class="nm-card"><h3>🔢 מספרים ושעון</h3>' + A.filter(function (a) { return a.kind === 'num'; }).map(function (a) { return barRow(a.e, a.t, 'מילים בלוח ' + a.kn[0] + '/' + a.kn[1] + (a.r && a.r.n ? ' · ' + a.r.n + ' תשובות' + window.speedTxt(a.r) : ''), a.r); }).join('') + '</div>';
+      h += '<div class="nm-card"><h3>🔤 אותיות</h3>' + A.filter(function (a) { return a.kind === 'let'; }).map(function (a) { return barRow(a.e, a.t, a.r && a.r.n ? a.r.n + ' תשובות' + window.speedTxt(a.r) : 'עוד לא נבדק', a.r); }).join('') + '</div>';
       var ok = 0, bad = 0, wn = []; Object.keys(dd).forEach(function (k) { ok += dd[k].ok || 0; bad += dd[k].bad || 0; if ((dd[k].bad || 0) > (dd[k].ok || 0)) wn.push(k); });
       h += '<div class="nm-card"><h3>🎙️ דר דאס די</h3>' + (ok + bad ? '<div class="nm-sub">' + ok + ' נכון, ' + bad + ' טעויות</div>' + (wn.length ? '<div>' + wn.slice(0, 6).map(function (k) { return '<span class="pl-chip">' + esc(k) + '</span>'; }).join('') + '</div>' : '') : '<div class="nm-sub">עוד לא שיחקת.</div>') + '</div>';
       var ins = insights();
       h += '<div class="nm-card"><h3>🔍 מה אני מזהה אצלך</h3>' + (ins.length ? ins.map(function (x) { return '<div class="pl-ins"><span class="e">' + x.e + '</span><div><b>' + esc(x.t) + '</b><span>' + esc(x.d) + '</span></div></div>'; }).join('') : '<div class="nm-sub">עוד אין מספיק תשובות כדי לזהות דפוסים. אחרי כמה ימי תרגול אכתוב כאן מה מתבלבל אצלך.</div>') + '</div>';
       var next = A.slice().sort(function (a, b) { return b.need - a.need; }).slice(0, 3), unk = A.filter(function (a) { return !a.r || !a.r.n; });
-      h += '<div class="nm-card"><h3>🎯 מה נעשה מחר</h3>' + next.map(function (a) { return '<div class="pl-ins"><span class="e">' + a.e + '</span><div><b>' + esc(a.t) + '</b><span>' + (a.r && a.r.n ? 'הצלחה ' + Math.round(a.r.ok / a.r.n * 100) + '%' : 'עוד לא נבדק') + '</span></div></div>'; }).join('') + (unk.length ? '<div class="nm-sub" style="margin-top:6px">עוד לא נבדקו: ' + unk.map(function (a) { return a.t; }).join(', ') + '.</div>' : '') + '<button class="nm-btn" data-a="diag">🔍 אבחון קצר של הכול (5 דקות)</button></div>';
+      h += '<div class="nm-card"><h3>🎯 מה נעשה מחר</h3>' + next.map(function (a) { return '<div class="pl-ins"><span class="e">' + a.e + '</span><div><b>' + esc(a.t) + '</b><span>' + (a.r && a.r.n ? 'הצלחה ' + Math.round(a.r.ok / a.r.n * 100) + '%' : 'עוד לא נבדק') + '</span></div></div>'; }).join('') + (unk.length ? '<div class="nm-sub" style="margin-top:6px">עוד לא נבדקו: ' + unk.map(function (a) { return a.t; }).join(', ') + '.</div>' : '') + '<button class="nm-btn" data-a="diag">🔍 אבחון קצר של הכול (5 דקות)</button></div>' + exportBox();
       return h;
+    }
+    function summaryText() {
+      var ws = WordHealth.summary(), A = areaList(), T = tagsAll(), dd = ddsAll(), L = [];
+      var d = new Date(); L.push('סיכום התקדמות מאפליקציית הגרמנית, ' + d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear());
+      L.push('מילים בלוח: ' + ws.total + ' (חזקות ' + ws.c.strong + ', בדרך ' + ws.c.prog + ', חלשות ' + ws.c.weak + ', עוד לא תורגלו ' + ws.c.new + ')');
+      if (ws.weak.length) L.push('מילים חלשות: ' + ws.weak.map(function (v) { var s = WordHealth.statusOf(v.de); return v.de + ' (' + s.c + '/' + s.n + ')'; }).join(', '));
+      if (ws.slow && ws.slow.length) L.push('נכון אבל איטי: ' + ws.slow.map(function (v) { var s = WordHealth.statusOf(v.de); return v.de + ' (' + (s.med / 1000).toFixed(1) + ' שנ׳)'; }).join(', '));
+      try {
+        var dw = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}, ks = Object.keys(dw).sort().slice(-3);
+        var unp = []; ks.forEach(function (k) { (dw[k] || []).forEach(function (w) { if (!WordHealth.statusOf(w).n) unp.push(w); }); });
+        if (unp.length) L.push('עוד לא תורגלו (3 הימים האחרונים): ' + unp.slice(0, 15).join(', '));
+        L.push('ימים בלוח: ' + Object.keys(dw).length + ', האחרון: ' + ks[ks.length - 1]);
+      } catch (e) {}
+      A.forEach(function (a) { if (a.r && a.r.n) L.push(a.t + ': הצלחה ' + Math.round(a.r.ok / a.r.n * 100) + '% מתוך ' + a.r.n + (window.speedTxt ? window.speedTxt(a.r).replace(' · ⏱️', ', זמן ממוצע') : '')); else L.push(a.t + ': עוד לא נבדק'); });
+      var tg = Object.keys(T).filter(function (k) { return T[k].n >= 2; }).sort(function (a, b) { return T[b].n - T[a].n; }).slice(0, 6);
+      if (tg.length) L.push('דפוסי טעויות: ' + tg.map(function (k) { return k + ' ×' + T[k].n; }).join(', '));
+      var wn = Object.keys(dd).filter(function (k) { return (dd[k].bad || 0) > (dd[k].ok || 0); });
+      if (wn.length) L.push('דר/דאס/די, שמות עצם שמתבלבל בהם: ' + wn.slice(0, 8).join(', '));
+      L.push('בקשה: לפי זה, תכין לי מילים ותרגולים להמשך.');
+      return L.join('\n');
+    }
+    function copyText(t, done) {
+      var ok = function () { done(true); }, fail = function () { try { var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0'; document.body.appendChild(ta); ta.select(); var r = document.execCommand('copy'); ta.remove(); done(!!r); } catch (e) { done(false); } };
+      try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, fail); else fail(); } catch (e) { fail(); }
+    }
+    function exportBox() {
+      return '<div class="nm-card"><h3>📤 לשלוח לקלוד</h3><div class="nm-sub">הנתונים נשמרים רק בטלפון. כדי שאבנה לך מילים ותרגולים חדשים לפי מה שאתה באמת מתקשה בו, לחץ כאן, הדבק לי את הסיכום בצ\'אט, ואני אמשיך משם.</div><button class="nm-btn" data-a="copy">📋 העתק סיכום</button><div id="plCopied" class="nm-sub" style="margin-top:6px"></div><textarea id="plSum" readonly style="display:none;width:100%;height:150px;margin-top:8px;border-radius:12px;border:2px solid var(--line,#ddd);padding:8px;font:inherit;font-size:12px;direction:rtl;background:var(--surface,#fff);color:inherit"></textarea></div>';
     }
     function render() {
       if (!ov) return;
@@ -9040,12 +9091,13 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (a === 'close') { close(); return; }
       if (a === 'back') { view = 'plan'; render(); return; }
       if (a === 'diag') { current(true, true); view = 'plan'; render(); return; }
+      if (a === 'copy') { var t = summaryText(), ta = ov.querySelector('#plSum'), msg = ov.querySelector('#plCopied'); ta.value = t; ta.style.display = 'block'; copyText(t, function (okc) { msg.textContent = okc ? '✔ הועתק. עכשיו הדבק אותו לי בצ\'אט.' : 'לא הצלחתי להעתיק אוטומטית: סמן את הטקסט למטה והעתק ידנית.'; if (!okc) { ta.focus(); ta.select(); } }); return; }
       if (a === 'nums') openNumbers({ onClose: render });
       else if (a === 'lets') openLetters({ onClose: render });
       else if (a === 'garden') openWordHealth({ onClose: render });
     }
     function close() { if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
-    window.DailyPlan = { current: current, compose: compose, insights: insights, areaList: areaList };
+    window.DailyPlan = { summaryText: summaryText, current: current, compose: compose, insights: insights, areaList: areaList };
     window.openDailyPlan = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; view = (o && o.view) || 'plan'; ov = document.createElement('div'); ov.className = 'nm-ov'; ov.style.zIndex = 8950; document.body.appendChild(ov); render(); };
   })();
 
