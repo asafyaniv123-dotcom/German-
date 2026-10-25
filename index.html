@@ -6965,6 +6965,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { view: 'check', icon: '✍️', label: 'בדיקה עצמית', sub: 'כתבו את המשפט בגרמנית' },
       { view: 'convo', icon: '🌳', label: 'שיחות', sub: 'עץ שיחה עם המשכים' },
       { view: 'games', icon: '🎮', label: 'משחקים', sub: 'פאזל, זיכרון, מרתון ותשחץ' },
+      { view: 'dds', icon: '🎙️', label: 'דר דאס די', sub: 'אומרים בקול der, die או das', act: 'openDerDasDie()' },
     ] },
     { title: 'כל יום', items: [
       { view: 'written', icon: '✍️', label: 'תרגול בכתב', sub: '10 דקות עם מחברת ועט', act: 'openWrittenPractice()' },
@@ -8236,6 +8237,161 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function close() { if (ov) { ov.remove(); ov = null; } if (onClose) { try { onClose(); } catch (e) {} } }
     window.openLearnedTest = open;
   })();
+  // <<DERDASDIE>> voice game: a noun and its translation appear, you say der / die / das (or tap)
+  (function () {
+    var KEY = 'delearn_dds', SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var COLS = { der: '#1cb0f6', die: '#ff4b6e', das: '#58cc02' }, EM = { der: '🧔', die: '💅', das: '🎁' };
+    var MAP = { der: 'der', dair: 'der', dare: 'der', dar: 'der', die: 'die', di: 'die', dee: 'die', the: 'die', das: 'das', dass: 'das', dus: 'das' };
+    var ov = null, S = null, rec = null, timers = [];
+    function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
+    function save(o) { try { localStorage.setItem(KEY, JSON.stringify(o)); } catch (e) {} }
+    function cfg() { var c = load().cfg || {}; return { pool: c.pool === 'cal' ? 'cal' : 'all', n: c.n === 20 ? 20 : 10 }; }
+    function later(f, ms) { var t = setTimeout(f, ms); timers.push(t); return t; }
+    function clearTimers() { timers.forEach(clearTimeout); timers = []; }
+    function heOf(v) { return typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; }
+    function allNouns() {
+      var seen = {}, out = [];
+      VOCAB.forEach(function (v) { if (v.gender && COLS[v.gender] && v.de && !seen[v.de]) { seen[v.de] = 1; out.push(v); } });
+      return out;
+    }
+    function pool(kind) {
+      var all = allNouns();
+      if (kind === 'cal') { var set = getLearnedSet(); all = all.filter(function (v) { return set.has(v.de); }); }
+      return all;
+    }
+    function build() {
+      var c = cfg(), st = load().stats || {}, list = pool(c.pool);
+      var q = shuffleArray(list).map(function (v) { var s = st[v.de] || { ok: 0, bad: 0 }; return { v: v, k: (s.bad > s.ok ? 0 : (s.ok + s.bad === 0 ? 1 : 2)) + Math.random() * 1.4 }; })
+        .sort(function (a, b) { return a.k - b.k; }).slice(0, c.n).map(function (x) { return x.v; });
+      S = { q: q, total: q.length, first: {}, ok: 0, missed: [], fb: null, heard: '', msg: '', live: false, done: false, started: false, voice: false, n: c.n };
+    }
+    function articleOf(alts) {
+      for (var i = 0; i < alts.length; i++) {
+        var toks = String(alts[i] || '').toLowerCase().replace(/[^a-zäöüß ]/g, ' ').split(/\s+/);
+        for (var j = 0; j < toks.length; j++) if (MAP[toks[j]]) return MAP[toks[j]];
+      }
+      return null;
+    }
+    function stopRec() { try { if (rec) { rec.onresult = rec.onend = rec.onerror = null; rec.abort(); } } catch (e) {} rec = null; }
+    function startRec() {
+      if (!SR || !S || !S.live || S.fb || S.done || !ov) return;
+      stopRec();
+      var r; try { r = new SR(); } catch (e) { S.live = false; return; }
+      rec = r; r.lang = 'de-DE'; r.interimResults = true; r.maxAlternatives = 5; r.continuous = true;
+      r.onresult = function (e) {
+        if (rec !== r || !S || S.fb || S.done) return;
+        var res = e.results[e.results.length - 1], alts = [];
+        for (var k = 0; k < res.length; k++) alts.push(res[k].transcript);
+        var g = articleOf(alts);
+        S.heard = alts[0] || '';
+        if (g) { S.voice = true; stopRec(); answer(g); } else { var h = ov && ov.querySelector('.dd-heard'); if (h) h.textContent = S.heard ? 'שמעתי: ' + S.heard : ''; }
+      };
+      r.onerror = function (e) {
+        if (rec !== r || !S) return; var code = e && e.error;
+        if (code === 'aborted' || code === 'no-speech') return;
+        if (code === 'not-allowed' || code === 'service-not-allowed' || code === 'audio-capture') { S.live = false; S.msg = 'אין גישה למיקרופון. אפשר ללחוץ על הכפתורים.'; render(); }
+      };
+      r.onend = function () { if (rec !== r) return; rec = null; if (S && S.live && !S.fb && !S.done) later(startRec, 150); };
+      try { r.start(); } catch (e) { S.live = false; S.msg = 'לא הצלחתי להפעיל את המיקרופון. אפשר ללחוץ על הכפתורים.'; }
+    }
+    function answer(g) {
+      if (!S || S.fb || S.done) return;
+      var n = S.q[0], ok = g === n.gender, o = load(); o.stats = o.stats || {}; var st = o.stats[n.de] || { ok: 0, bad: 0 };
+      var firstTry = !S.first[n.de]; S.first[n.de] = 1;
+      if (ok) { st.ok++; if (firstTry) S.ok++; } else { st.bad++; if (S.missed.indexOf(n) < 0) S.missed.push(n); }
+      o.stats[n.de] = st; save(o);
+      S.fb = { ok: ok, g: g, n: n, byVoice: S.voice }; S.voice = false;
+      stopRec(); render();
+      try { speak(n.gender + ' ' + n.de, null); } catch (e) {}
+      if (ok) later(next, 1500);
+    }
+    function next() {
+      if (!S || !S.fb) return;
+      var f = S.fb, n = S.q.shift(); S.fb = null; S.heard = '';
+      if (!f.ok) S.q.splice(Math.min(3, S.q.length), 0, n);
+      if (!S.q.length) { S.done = true; stopRec(); var o = load(); o.best = Math.max(o.best || 0, S.ok); o.rounds = (o.rounds || 0) + 1; save(o); }
+      render();
+      if (!S.done) later(startRec, 450);
+    }
+    function overrideOk() { // the recogniser misheard: count it as right
+      if (!S || !S.fb || S.fb.ok) return;
+      var n = S.fb.n, o = load(); o.stats = o.stats || {}; var st = o.stats[n.de] || { ok: 0, bad: 0 };
+      st.bad = Math.max(0, st.bad - 1); st.ok++; o.stats[n.de] = st; save(o);
+      var i = S.missed.indexOf(n); if (i >= 0) S.missed.splice(i, 1);
+      if (S.first[n.de] === 1) S.ok++;
+      S.fb = { ok: true, g: n.gender, n: n }; render(); later(next, 700);
+    }
+    function btns() {
+      return '<div class="dd-btns">' + ['der', 'die', 'das'].map(function (g) { return '<button class="dd-b" data-g="' + g + '" style="--c:' + COLS[g] + '">' + g + '</button>'; }).join('') + '</div>';
+    }
+    function setupHtml() {
+      var c = cfg(), nCal = pool('cal').length, calOk = nCal >= 5;
+      var chip = function (a, on, label, dis) { return '<button class="dd-chip' + (on ? ' on' : '') + '"' + (dis ? ' disabled' : '') + ' data-a="' + a + '">' + label + '</button>'; };
+      return '<div class="dd-card"><div class="dd-big">🎙️</div><h2>דר · דאס · די</h2>' +
+        '<p>מופיעה מילה בגרמנית ובעברית. אתם אומרים בקול: <b>der</b>, <b>die</b> או <b>das</b>. אפשר גם ללחוץ.</p>' +
+        '<div class="dd-row">' + chip('pool:all', c.pool === 'all', 'כל שמות העצם · ' + pool('all').length) + chip('pool:cal', c.pool === 'cal', 'מה שלמדתי ב-15 ביום · ' + nCal, !calOk) + '</div>' +
+        '<div class="dd-row">' + chip('n:10', c.n === 10, '10 מילים') + chip('n:20', c.n === 20, '20 מילים') + '</div>' +
+        (SR ? '' : '<div class="dd-note">הדפדפן לא תומך בזיהוי דיבור, אז משחקים בלחיצה.</div>') +
+        '<button class="dd-go" data-a="start">' + (SR ? '🎤 מתחילים' : 'מתחילים') + '</button></div>';
+    }
+    function playHtml() {
+      var n = S.q[0], f = S.fb, pct = Math.round((S.total - Math.min(S.total, S.q.length)) / S.total * 100);
+      var top = '<div class="dd-top"><button class="dd-x" data-a="close" aria-label="סגור">✕</button><div class="dd-bar"><i style="width:' + pct + '%"></i></div><span class="dd-cnt">' + S.ok + '</span></div>';
+      var card;
+      if (!f) card = '<div class="dd-word" dir="ltr">' + escapeHtml(n.de) + '</div><div class="dd-he">' + escapeHtml(heOf(n)) + '</div>';
+      else {
+        var mn = ''; try { if (window.Genus && Genus.mnemonic) mn = Genus.mnemonic(n.de); } catch (e) {}
+        card = '<div class="dd-word" dir="ltr" style="color:' + COLS[n.gender] + '">' + escapeHtml(n.gender + ' ' + n.de) + '</div><div class="dd-he">' + escapeHtml(heOf(n)) + '</div>' +
+          '<div class="dd-fb ' + (f.ok ? 'ok' : 'bad') + '">' + (f.ok ? '✓ נכון!' : '✗ זה לא ' + f.g + '. התשובה: ' + n.gender) + '</div>' + (f.ok ? '' : mn);
+      }
+      var mic = SR && !f ? '<div class="dd-mic' + (S.live ? ' on' : '') + '">' + (S.live ? '🎤 מקשיב… תגידו der / die / das' : '<button class="dd-micbtn" data-a="mic">🎤 הפעל מיקרופון</button>') + '</div><div class="dd-heard">' + (S.heard ? 'שמעתי: ' + escapeHtml(S.heard) : '') + '</div>' : '';
+      var acts = f && !f.ok ? '<button class="dd-go" data-a="next">הבנתי, הלאה</button>' + (f.byVoice ? '<button class="dd-skip" data-a="override">הזיהוי טעה, אמרתי נכון</button>' : '') : '';
+      return top + '<div class="dd-card dd-play' + (f ? (f.ok ? ' ok' : ' bad') : '') + '">' + card + '</div>' + (S.msg ? '<div class="dd-note">' + S.msg + '</div>' : '') + mic + (f ? '' : btns()) + acts;
+    }
+    function endHtml() {
+      var m = S.missed;
+      return '<div class="dd-card" style="text-align:center"><div class="dd-big">' + (m.length === 0 ? '🏆' : '🎙️') + '</div><h2>' + (m.length === 0 ? 'מושלם!' : 'סיימתם סבב') + '</h2>' +
+        '<div class="dd-score">' + S.ok + '/' + S.total + '</div><div>נכון בניסיון הראשון</div></div>' +
+        (m.length ? '<div class="dd-card"><h3>לחזור עליהן</h3>' + m.map(function (n) { return '<div class="dd-miss" dir="ltr"><b style="color:' + COLS[n.gender] + '">' + escapeHtml(n.gender + ' ' + n.de) + '</b><span dir="rtl">' + escapeHtml(heOf(n)) + '</span></div>'; }).join('') + '</div>' : '') +
+        '<button class="dd-go" data-a="again">סבב נוסף</button><button class="dd-go alt" data-a="close">סיום</button>';
+    }
+    function render() {
+      if (!ov) return;
+      var body = !S.started ? setupHtml() : S.done ? endHtml() : playHtml();
+      ov.innerHTML = '<div class="dd-wrap">' + (!S.started ? '<div class="dd-top"><button class="dd-x" data-a="close" aria-label="סגור">✕</button><div style="flex:1"></div></div>' : '') + body + '</div>';
+      ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a); }; });
+      ov.querySelectorAll('[data-g]').forEach(function (b) { b.onclick = function () { S.voice = false; stopRec(); answer(b.dataset.g); }; });
+    }
+    function act(a) {
+      if (a === 'close') { close(); return; }
+      if (a.indexOf('pool:') === 0 || a.indexOf('n:') === 0) { var o = load(), c = cfg(); if (a.indexOf('pool:') === 0) c.pool = a.slice(5); else c.n = +a.slice(2); o.cfg = c; save(o); build(); render(); return; }
+      if (a === 'start' || a === 'again') { build(); if (!S.q.length) { S.msg = 'אין מילים לבחירה הזאת.'; render(); return; } S.started = true; S.live = !!SR; render(); startRec(); return; }
+      if (a === 'mic') { S.live = true; S.msg = ''; render(); startRec(); return; }
+      if (a === 'next') { next(); return; }
+      if (a === 'override') { overrideOk(); return; }
+    }
+    function css() {
+      if (document.getElementById('ddCss')) return;
+      var st = document.createElement('style'); st.id = 'ddCss';
+      st.textContent = '.dd-ov{position:fixed;inset:0;z-index:8960;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}' +
+        '.dd-wrap{max-width:520px;margin:0 auto}.dd-top{display:flex;align-items:center;gap:10px;margin-bottom:12px}.dd-x{border:0;background:none;font-size:24px;color:var(--ink-soft,#777);cursor:pointer;padding:4px 8px}' +
+        '.dd-bar{flex:1;height:10px;border-radius:6px;background:var(--line,#e5e5e5);overflow:hidden}.dd-bar i{display:block;height:100%;background:var(--fun-green,#58cc02);transition:width .3s}.dd-cnt{font-weight:900;min-width:24px;text-align:center}' +
+        '.dd-card{background:var(--surface,#fff);border:2px solid var(--line,#e5e5e5);border-radius:22px;box-shadow:0 4px 0 var(--line,#e5e5e5);padding:18px 14px;margin-bottom:14px;text-align:center;line-height:1.55}.dd-card h2{margin:4px 0 6px}.dd-card h3{margin:0 0 8px;text-align:right}' +
+        '.dd-big{font-size:48px}.dd-play{padding:30px 14px;min-height:150px;display:flex;flex-direction:column;justify-content:center}.dd-play.ok{border-color:#58cc02;background:#eefbe0}.dd-play.bad{border-color:#ff4b6e;background:#fff0f3}' +
+        '.dd-word{font-size:40px;font-weight:900;direction:ltr;word-break:break-word}.dd-he{font-size:21px;color:var(--ink-soft,#777);margin-top:6px}.dd-fb{margin-top:10px;font-weight:900;font-size:17px}.dd-fb.ok{color:#2b8a00}.dd-fb.bad{color:#d33a58}' +
+        '.dd-btns{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;direction:ltr}.dd-b{border:0;border-radius:18px;background:var(--c);color:#fff;font:inherit;font-weight:900;font-size:26px;padding:22px 0;box-shadow:0 5px 0 rgba(0,0,0,.22);cursor:pointer}.dd-b:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.22)}' +
+        '.dd-mic{text-align:center;margin:0 0 4px;font-weight:800;color:var(--ink-soft,#777)}.dd-mic.on{color:#d33a58;animation:ddP 1.4s infinite}@keyframes ddP{50%{opacity:.55}}.dd-heard{text-align:center;min-height:20px;font-size:13px;color:var(--ink-soft,#777);margin-bottom:10px;direction:ltr}' +
+        '.dd-micbtn{border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:14px;padding:8px 16px;font:inherit;font-weight:800;cursor:pointer}' +
+        '.dd-go{display:block;width:100%;border:0;border-radius:14px;background:var(--fun-green,#58cc02);color:#fff;font:inherit;font-weight:900;font-size:17px;padding:14px;box-shadow:0 4px 0 #46a302;cursor:pointer;margin-top:10px}.dd-go.alt{background:var(--surface,#fff);color:var(--fun-blue-dk,#1899d6);border:2px solid var(--fun-blue,#1cb0f6);box-shadow:0 4px 0 var(--fun-blue,#1cb0f6)}' +
+        '.dd-skip{display:block;margin:12px auto 0;border:0;background:none;color:var(--ink-soft,#777);font:inherit;font-size:13px;text-decoration:underline;cursor:pointer}' +
+        '.dd-row{display:flex;gap:8px;justify-content:center;margin:10px 0;flex-wrap:wrap}.dd-chip{border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:999px;padding:8px 14px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;color:inherit}.dd-chip.on{border-color:var(--fun-blue,#1cb0f6);background:var(--accent-soft,#ddf4ff)}.dd-chip:disabled{opacity:.45}' +
+        '.dd-note{background:#fff6d6;color:#6b5400;border-radius:12px;padding:8px 10px;font-size:13.5px;margin:8px 0}.dd-score{font-size:42px;font-weight:900}.dd-miss{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--line,#eee)}.dd-miss span{color:var(--ink-soft,#777)}';
+      document.head.appendChild(st);
+    }
+    function close() { clearTimers(); stopRec(); if (S) { S.live = false; S.done = true; } try { if (window.speechSynthesis) speechSynthesis.cancel(); } catch (e) {} if (ov) { ov.remove(); ov = null; } S = null; }
+    window.openDerDasDie = function () { css(); if (ov) close(); build(); ov = document.createElement('div'); ov.className = 'dd-ov'; document.body.appendChild(ov); render(); };
+  })();
+
   // <<WRITTEN>> daily 10-minute notebook session ("תרגול בכתב"): write on paper, reveal, self-check
   (function () {
     var KEY = 'delearn_written';
