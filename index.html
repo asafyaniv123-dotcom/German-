@@ -2647,7 +2647,7 @@
             try { sents = cfg.sentences(ids, sel, sentBump[sel] || 0) || []; } catch (e) { sents = []; }
             if (sents.length) h += '<div class="dl-sent"><h4>📝 ' + sents.length + ' משפטים מהמילים שלמדנו</h4><div class="sub2">הכול ממילים שכבר עברת בלוח. נסו להבין, ואז לחצו לתרגום.</div>' +
               sents.map((s, i) => '<div class="dl-sn" data-si="' + i + '"><div class="de"><span>' + esc(s.de) + '</span><button data-ss="' + i + '" aria-label="השמע">🔊</button></div><div class="tp">לחצו לתרגום</div><div class="he" hidden>' + esc(s.he) + '</div></div>').join('') +
-              '<div class="dl-btns" style="margin:6px 0 0"><button class="dl-btn sec" id="dlSentMore">🔄 משפטים אחרים</button></div></div>';
+              '<div class="dl-btns" style="margin:6px 0 0">' + (cfg.testSentences ? '<button class="dl-btn blue" id="dlSentTest">🎤 בחן אותי על המשפטים</button>' : '') + '<button class="dl-btn sec" id="dlSentMore">🔄 אחרים</button></div></div>';
           }
         }
         h += '</div></div>';
@@ -2665,6 +2665,7 @@
         el.querySelectorAll('[data-say]').forEach(b => { b.onclick = () => { const it = by.get(b.dataset.say); if (it && cfg.speak) cfg.speak(it.de); }; });
         el.querySelectorAll('.dl-sn').forEach(b => { b.onclick = e => { if (e.target.closest('[data-ss]')) return; const he = b.querySelector('.he'), tp = b.querySelector('.tp'); he.hidden = !he.hidden; if (tp) tp.hidden = !he.hidden; }; });
         el.querySelectorAll('[data-ss]').forEach(b => { b.onclick = () => { const s = sents[Number(b.dataset.ss)]; if (s && cfg.speak) cfg.speak(s.de); }; });
+        if ($('dlSentTest')) $('dlSentTest').onclick = () => cfg.testSentences(sents, draw);
         if ($('dlSentMore')) $('dlSentMore').onclick = () => { sentBump[sel] = (sentBump[sel] || 0) + 1; draw(); };
         el.querySelectorAll('[data-rm]').forEach(b => { b.onclick = () => { data[sel] = (data[sel] || []).filter(x => String(x) !== b.dataset.rm); save(); draw(); }; });
       };
@@ -8022,6 +8023,16 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     applyDaySeeds();
     const toSpeak = it => ({ ref: it.ref, prompt: it.he, answer: it.de, display: (it.ref.gender ? it.ref.gender + ' ' : '') + it.de, hint: it.pos });
     const byIds = ids => { const m = new Map(dailyDeItems().map(i => [i.id, i])); return ids.map(id => m.get(id)).filter(Boolean); };
+    const runDailySentences = (sents, redraw) => {
+      if (!window.SpeakPractice || !sents || !sents.length) return;
+      SpeakPractice.open({
+        title: 'אמרו את המשפט בגרמנית', storeKey: 'delearn_sp_daily_sent', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
+        matcher: SpeakPractice.matchSentence,
+        items: sents.map(s => ({ ref: { de: s.de }, prompt: s.he, answer: s.de, display: s.de, sub: s.he })),
+        onResult: () => {}, getGroups: () => [], getItems: () => [],
+        onClose: redraw
+      });
+    };
     _dailyDe = Daily.create({
       key: 'delearn_daywords', title: '15 מילים ביום',
       items: dailyDeItems, getKnown: dailyDeKnown,
@@ -8054,15 +8065,10 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           onClose: redraw
         });
       },
+      testSentences: (sents, redraw) => runDailySentences(sents, redraw),
       test: (ids, redraw, key, sents) => {
         if (!window.SpeakPractice) return;
-        const sentRound = () => SpeakPractice.open({
-          title: 'אמרו את המשפט בגרמנית', storeKey: 'delearn_sp_daily_sent', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
-          matcher: SpeakPractice.matchSentence,
-          items: sents.map(s => ({ ref: { de: s.de }, prompt: s.he, answer: s.de, display: s.de, sub: s.he })),
-          onResult: () => {}, getGroups: () => [], getItems: () => [],
-          onClose: redraw
-        });
+        const sentRound = () => runDailySentences(sents, redraw);
         SpeakPractice.open({
           title: 'מבחן · המילים של היום', storeKey: 'delearn_sp_daily', autostart: true,
           items: byIds(ids).map(toSpeak),
