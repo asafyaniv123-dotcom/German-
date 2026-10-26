@@ -1273,6 +1273,7 @@
   @keyframes spPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.14); } }
   .sp-mic:disabled { background: #cfcac1; box-shadow: 0 5px 0 #b3aea5; cursor: default; }
   .sp-redo { width: 56px; height: 56px; border-radius: 16px; border: 2px solid var(--line, #e6e1d8); background: var(--surface, #fff); box-shadow: 0 4px 0 var(--line, #e6e1d8); font-size: 22px; color: #1ea7f2; cursor: pointer; }
+  .sp-mk { background: #fff1a8; color: inherit; border-radius: 6px; padding: 0 3px; box-shadow: 0 2px 0 #f5c400; } .sp-focus { margin-top: 10px; font-size: 14px; font-weight: 700; line-height: 1.7; direction: rtl; } .sp-focus b { direction: ltr; unicode-bidi: isolate; }
   .sp-next { flex: 1; max-width: 260px; border: 0; border-radius: 18px; padding: 17px 10px 15px; font: inherit; font-size: 18px; font-weight: 700; color: #fff; background: #58b02f; box-shadow: 0 5px 0 #438a22; cursor: pointer; }
   .sp-type { display: flex; gap: 8px; align-items: stretch; width: 100%; max-width: 330px; margin: 0 auto; }
   .sp-type input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 13px 14px; border-radius: 14px; border: 2px solid var(--line, #e6e1d8); background: var(--surface, #fff); color: inherit; direction: ltr; text-align: left; }
@@ -1576,7 +1577,7 @@
     Object.assign(S, {
       phase: 'play', idx: 0, state: 'ask', attempts: 0, combo: 0, best: 0, firstTry: 0, results: [], done: false, msg: '', heard: '', wrong: false,
       listening: false, live: false, typing: !!typing || !SR, focusInput: false, base: 0, lastLen: 0, muteUntil: 0, heardAny: false,
-      queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr }))
+      queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr, focus: it.focus, focusInfo: it.focusInfo }))
     });
     S.askAt = Date.now();
     restarts = [];
@@ -1602,7 +1603,7 @@
     } else if (toHe) {
       cardInner = '<div class="sp-answer">' + esc(c.prompt) + '</div><div class="sp-sub" style="direction:ltr">' + esc(c.display || c.answer) + '</div>' + (window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
     } else {
-      cardInner = '<div class="sp-answer">' + esc(c.display || c.answer) + '</div><div class="sp-sub"' + (c.ltr ? ' style="direction:ltr"' : '') + '>' + esc(c.sub || c.prompt) + '</div>' + (window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
+      cardInner = '<div class="sp-answer">' + hiliteFocus(c.display || c.answer, c.focus) + '</div><div class="sp-sub"' + (c.ltr ? ' style="direction:ltr"' : '') + '>' + esc(c.sub || c.prompt) + '</div>' + (c.focusInfo ? '<div class="sp-focus">' + c.focusInfo + '</div>' : '') + (!c.focus && window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
     }
     const layers = (total - S.idx > 2 ? '<div class="sp-layer l2"></div>' : '') + (total - S.idx > 1 ? '<div class="sp-layer l1"></div>' : '');
     let banner = '';
@@ -1761,12 +1762,30 @@
     try { if (S.opts.onResult) S.opts.onResult(c.ref, ok, ms); } catch (e) {}
     try { if (c.ref && typeof c.ref.de === 'string' && window.wordLogTime) window.wordLogTime(c.ref.de, ms, ok); } catch (e) {}
   }
+  // the words being learned are marked inside the sentence after it was said
+  function hiliteFocus(text, focus) {
+    let h = esc(text);
+    (focus || []).forEach(w => {
+      const e = esc(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      try {
+        const mk = (pat) => { const re = new RegExp('(^|[^A-Za-zÄÖÜäöüß])(' + pat + ')(?![A-Za-zÄÖÜäöüß])', 'i'); if (!re.test(h)) return false; h = h.replace(re, '$1<mark class="sp-mk">$2</mark>'); return true; };
+        if (!mk(e) && /^[a-zäöüß]{5,}en$/i.test(w)) mk(esc(w.slice(0, -2)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '[a-zäöüß]{0,3}'); // inflected verb: brauchen → brauche
+      } catch (x) {}
+    });
+    return h;
+  }
   function onCorrect() {
     const first = !cur().failed;
     if (first) record(true);
     consumeNow();
     S.state = 'ok'; S.msg = ''; S.wrong = false; S.wrongHeard = ''; S.heard = '';
     const w = cur().display || cur().answer, say = !!(S.cfg && S.cfg.say);
+    if (S.opts.holdOk) { // sentence practice: stay on the card (the sentence with its new word marked) until the person taps "continue"
+      S.muteUntil = Date.now() + 1500;
+      render(); sfx('ok');
+      later(() => { if (S && S.state === 'ok') speakWord(w, true); }, 450);
+      return;
+    }
     S.muteUntil = Date.now() + (say ? wordMs(w) + 800 : 1500);
     render();
     sfx('ok');
@@ -1797,7 +1816,7 @@
     sfx('bad');
     later(() => { if (S && S.state === 'bad') speakWord(c.display || c.answer, true); }, 500); // after a miss the word is always played, so the person hears how it should sound
     // practise it once more at the end of the round
-    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, requeued: true });
+    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, focus: c.focus, focusInfo: c.focusInfo, requeued: true });
   }
   function advance() {
     clearTimers();
@@ -2677,7 +2696,7 @@
         if ($('dlPlan')) $('dlPlan').onclick = () => cfg.plan(draw);
         if ($('dlGame')) $('dlGame').onclick = () => cfg.game(ids, draw);
         if ($('dlGameAll')) $('dlGameAll').onclick = () => cfg.gameAll(draw);
-        if ($('dlSentTest')) $('dlSentTest').onclick = () => cfg.testSentences(sents, draw);
+        if ($('dlSentTest')) $('dlSentTest').onclick = () => cfg.testSentences(sents, draw, ids, sel);
         if ($('dlSentMore')) $('dlSentMore').onclick = () => { sentBump[sel] = (sentBump[sel] || 0) + 1; draw(); };
         el.querySelectorAll('[data-rm]').forEach(b => { b.onclick = () => { data[sel] = (data[sel] || []).filter(x => String(x) !== b.dataset.rm); save(); draw(); }; });
       };
@@ -7098,7 +7117,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '905a4e8c21';
+  const APP_BUILD = '0cca4bd3c3';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8198,13 +8217,16 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     applyDaySeeds();
     const toSpeak = it => ({ ref: it.ref, prompt: it.he, answer: it.de, display: (it.ref.gender ? it.ref.gender + ' ' : '') + it.de, hint: it.pos });
     const byIds = ids => { const m = new Map(dailyDeItems().map(i => [i.id, i])); return ids.map(id => m.get(id)).filter(Boolean); };
-    const runDailySentences = (sents, redraw) => {
+    const runDailySentences = (sents, redraw, ids, key) => {
+      // each round draws fresh sentences (the ones practised least so far), not the same 3 that are on the screen
+      try { if (ids && key && window.testSentences) { const t = window.testSentences(ids, key, 5); if (t && t.length) sents = t; } } catch (e) {}
       if (!window.SpeakPractice || !sents || !sents.length) return;
       SpeakPractice.open({
         title: 'אמרו את המשפט בגרמנית', storeKey: 'delearn_sp_daily_sent', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
         matcher: SpeakPractice.matchSentence,
-        items: sents.map(s => ({ ref: { de: s.de }, prompt: s.he, answer: s.de, display: s.de, sub: s.he })),
-        onResult: () => {}, getGroups: () => [], getItems: () => [],
+        holdOk: true,
+        items: sents.map(s => ({ ref: { de: s.de }, prompt: s.he, answer: s.de, display: s.de, sub: s.he, focus: s.focus, focusInfo: s.focusInfo })),
+        onResult: (ref, ok) => { try { window.sentSeen && window.sentSeen(ref.de, ok); } catch (e) {} }, getGroups: () => [], getItems: () => [],
         onClose: redraw
       });
     };
@@ -8240,7 +8262,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           onClose: redraw
         });
       },
-      testSentences: (sents, redraw) => runDailySentences(sents, redraw),
+      testSentences: (sents, redraw, ids, key) => runDailySentences(sents, redraw, ids, key),
       plan: redraw => { if (window.openDailyPlan) window.openDailyPlan({ onClose: redraw }); },
       numbers: redraw => { if (window.openNumbers) window.openNumbers({ onClose: redraw }); },
       health: redraw => { if (window.openWordHealth) window.openWordHealth({ onClose: redraw }); },
@@ -8250,7 +8272,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       gameAll: redraw => { if (window.openDerDasDie) window.openDerDasDie({ pool: 'cal', onClose: redraw }); },
       test: (ids, redraw, key, sents) => {
         if (!window.SpeakPractice) return;
-        const sentRound = () => runDailySentences(sents, redraw);
+        const sentRound = () => runDailySentences(sents, redraw, ids, key);
         SpeakPractice.open({
           title: 'מבחן · המילים של היום', storeKey: 'delearn_sp_daily', autostart: true,
           items: byIds(ids).map(toSpeak),
@@ -10763,13 +10785,33 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       function rnd() { seed = (seed * 48271) % 2147483647; return seed / 2147483647; }
       var cand = WSENT.filter(function (s) { return s.need.every(function (w) { return known[w]; }); }).map(function (s) {
         var m = s.need.filter(function (w) { return mine[w]; }).length, old = s.need.length - m;
-        return { s: { de: s.de, he: s.he }, k: (m ? 0 : 2) + (m && old ? -0.6 : 0) + rnd() * 1.6 };
+        return { s: { de: s.de, he: s.he, need: s.need }, k: (m ? 0 : 2) + (m && old ? -0.6 : 0) + rnd() * 1.6 };
       }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.s; });
       var out = cand.slice(0, n);
       if (out.length < n) {
         var seen = {}; out.forEach(function (s) { seen[s.de] = 1; });
         VOCAB.forEach(function (v) { if (out.length < n && mine[v.de] && v.ex && v.ex[0] && v.ex[1] && !seen[v.ex[0]]) { seen[v.ex[0]] = 1; out.push({ de: v.ex[0], he: v.ex[1] }); } });
       }
+      return out;
+    };
+
+    // sentences for the speaking test of a day: only words learned up to that day; the least-practised sentences come first, so every round differs
+    var SEEN = 'delearn_sent_seen';
+    function seenGet() { try { return JSON.parse(localStorage.getItem(SEEN) || '{}') || {}; } catch (e) { return {}; } }
+    window.sentSeen = function (de, ok) { try { var o = seenGet(); o[de] = (o[de] || 0) + 1; localStorage.setItem(SEEN, JSON.stringify(o)); } catch (e) {} };
+    window.testSentences = function (dayDe, key, n) {
+      var data = {}; try { data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}; } catch (e) {}
+      var esc = function (x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+      var known = {}, mine = {}, seen = seenGet(), heHe = {};
+      Object.keys(data).forEach(function (k) { if (k <= key) (data[k] || []).forEach(function (w) { known[w] = 1; }); });
+      (dayDe || []).forEach(function (w) { mine[w] = 1; });
+      VOCAB.forEach(function (v) { if (!heHe[v.de]) heHe[v.de] = typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; });
+      var cand = WSENT.filter(function (s) { return s.need.every(function (w) { return known[w]; }); }).map(function (s) {
+        var m = s.need.filter(function (w) { return mine[w]; });
+        var foc = m.length ? m : s.need;
+        return { s: { de: s.de, he: s.he, focus: foc, focusInfo: '<div style="opacity:.7;font-size:12px">🎯 המילים ללמוד במשפט</div>' + foc.map(function (w) { return '<div><b>' + esc(w) + '</b> &nbsp;=&nbsp; ' + esc(heHe[w] || '') + '</div>'; }).join('') }, k: (seen[s.de] || 0) * 2 + (m.length ? 0 : 1.2) + Math.random() * 1.5 };
+      }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.s; });
+      var out = cand.slice(0, n);
       return out;
     };
 
