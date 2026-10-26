@@ -1641,7 +1641,7 @@
       '<div class="sp-combo"><span>' + (S.combo >= 2 ? 'רצף ×' + S.combo : '') + '</span>' + pill + '</div>' +
       '<div class="sp-title">' + esc(toHe ? 'מה זה אומר? אמרו בעברית' : (S.opts.title || 'אמרו את המילה בגרמנית')) + '</div>' +
       '<div class="sp-stage">' + layers + (S.ghost ? '<div class="sp-card bad ghost">' + S.ghost + '</div>' : '') + '<div class="' + cardCls + '" id="spCard">' + cardInner + '</div></div>' +
-      banner + heard + noteBox + actions + '<div class="sp-links">' + links + '</div>' + (S.debug ? '<pre id="spDbg" style="font-size:11px;direction:ltr;text-align:left;margin:6px 0 0;max-height:120px;overflow:auto;color:var(--ink-soft,#8a867f);white-space:pre-wrap">' + esc((S.log || []).join('\n')) + '</pre>' : '');
+      banner + heard + (S.opts.holdOk && S.state === 'ok' ? '<div class="sp-sub" style="text-align:center;font-size:13px;opacity:.75;margin-top:6px">' + (S.paused ? '⏸ עצרתם · לחצו "המשך" כשמוכנים' : 'ממשיך לבד · געו בכרטיס כדי לעצור ולהסתכל') + '</div>' : '') + noteBox + actions + '<div class="sp-links">' + links + '</div>' + (S.debug ? '<pre id="spDbg" style="font-size:11px;direction:ltr;text-align:left;margin:6px 0 0;max-height:120px;overflow:auto;color:var(--ink-soft,#8a867f);white-space:pre-wrap">' + esc((S.log || []).join('\n')) + '</pre>' : '');
     S.shake = false; S.enter = false; S.ghost = null;
     bind();
     if (S.typing && S.state === 'ask') { const i = document.getElementById('spInput'); if (i && S.focusInput) { i.focus(); } }
@@ -1654,6 +1654,7 @@
     if ($('spLiveStop')) $('spLiveStop').onclick = () => { stopLive(); render(); };
     if ($('spRedo')) $('spRedo').onclick = () => { const c = cur(); speakWord(c.display || c.answer, true); };
     if ($('spNext')) $('spNext').onclick = advance;
+    if ($('spCard') && S.opts.holdOk) $('spCard').onclick = () => { if (S.state === 'ok' && !S.paused) { S.paused = true; clearTimeout(S.advT); try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {} render(); } };
     if ($('spNoteEdit')) $('spNoteEdit').onclick = () => { S.noteEdit = true; render(); const t = document.getElementById('spNoteTx'); if (t) t.focus(); };
     if ($('spNoteCancel')) $('spNoteCancel').onclick = () => { S.noteEdit = false; render(); };
     if ($('spAssocKeep')) $('spAssocKeep').onclick = () => { const NS = S.opts.setNote || (window.SPEAK_NOTES && window.SPEAK_NOTES.set), a = window.assocCur(cur().answer); try { if (NS && a) NS(cur(), a.text); } catch (e) {} render(); };
@@ -1780,10 +1781,12 @@
     consumeNow();
     S.state = 'ok'; S.msg = ''; S.wrong = false; S.wrongHeard = ''; S.heard = '';
     const w = cur().display || cur().answer, say = !!(S.cfg && S.cfg.say);
-    if (S.opts.holdOk) { // sentence practice: stay on the card (the sentence with its new word marked) until the person taps "continue"
-      S.muteUntil = Date.now() + 1500;
+    if (S.opts.holdOk) { // sentence practice: the card stays long enough to hear the whole sentence and see the new word marked, then moves on by itself (hands-free); a touch on the card freezes it
+      const ms = wordMs(w) + 450 + 2200;
+      S.muteUntil = Date.now() + ms; S.paused = false; S.sentHint = true;
       render(); sfx('ok');
       later(() => { if (S && S.state === 'ok') speakWord(w, true); }, 450);
+      S.advT = later(() => { if (S && S.state === 'ok' && !S.paused) advance(); }, ms);
       return;
     }
     S.muteUntil = Date.now() + (say ? wordMs(w) + 800 : 1500);
@@ -1839,6 +1842,7 @@
       '<div class="sp-top"><button class="sp-x" id="spClose" aria-label="סגירה">✕</button><div class="sp-bar"><div class="sp-fill" style="width:100%"></div></div></div>' +
       '<div class="sp-end"><h2>' + (miss.length === 0 ? 'מושלם! 🎉' : 'סיימתם סיבוב') + '</h2>' +
       '<div class="sp-score">' + S.firstTry + '/' + n + '</div><div>נכון בניסיון הראשון' + (S.best >= 2 ? ' · רצף שיא ×' + S.best : '') + '</div>' +
+      (S.opts.holdOk ? '<div class="sp-miss" style="margin-bottom:10px"><div style="display:block"><b>המשפטים של הסיבוב</b></div>' + S.results.filter(r => !r.item.requeued).map(r => '<div style="display:block;direction:ltr;text-align:left">' + (r.ok ? '✓ ' : '✗ ') + hiliteFocus(r.item.display || r.item.answer, r.item.focus) + '<div style="direction:rtl;text-align:right;font-size:13px;opacity:.7">' + esc(r.item.sub || r.item.prompt) + '</div></div>').join('') + '</div>' : '') +
       (miss.length ? '<div class="sp-miss">' + miss.map(r => '<div><span>' + esc(r.item.prompt) + '</span><b>' + esc(r.item.display || r.item.answer) + '</b></div>').join('') + '</div>' : '') +
       '<div class="sp-btns"><button class="sp-next" id="spAgain">סיבוב נוסף</button></div>' +
       '<div class="sp-btns"><button class="sp-redo" id="spSettings" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">שינוי הגדרות</button><button class="sp-redo" id="spDone" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">סגירה</button></div></div>';
@@ -7117,7 +7121,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '0cca4bd3c3';
+  const APP_BUILD = '0f2657d0f2';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
