@@ -1273,7 +1273,8 @@
   @keyframes spPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.14); } }
   .sp-mic:disabled { background: #cfcac1; box-shadow: 0 5px 0 #b3aea5; cursor: default; }
   .sp-redo { width: 56px; height: 56px; border-radius: 16px; border: 2px solid var(--line, #e6e1d8); background: var(--surface, #fff); box-shadow: 0 4px 0 var(--line, #e6e1d8); font-size: 22px; color: #1ea7f2; cursor: pointer; }
-  .sp-mk { background: #fff1a8; color: inherit; border-radius: 6px; padding: 0 3px; box-shadow: 0 2px 0 #f5c400; } .sp-focus { margin-top: 10px; font-size: 14px; font-weight: 700; line-height: 1.7; direction: rtl; } .sp-focus b { direction: ltr; unicode-bidi: isolate; }
+  .sp-mk { background: #fff1a8; color: inherit; border-radius: 6px; padding: 0 3px; box-shadow: 0 2px 0 #f5c400; } .sp-focus { margin-top: 10px; font-size: 14px; font-weight: 700; line-height: 1.7; direction: rtl; } .sp-gramw { margin-top: 12px; padding: 9px 11px; border-radius: 14px; background: rgba(28,176,246,.12); text-align: right; direction: rtl; font-size: 13.5px; line-height: 1.55; color: var(--ink, #3c3c3c); font-weight: 600; } .sp-gramh { font-weight: 900; font-size: 12px; opacity: .75; margin-bottom: 3px; } .sp-gram + .sp-gram { margin-top: 6px; } .sp-gram b { direction: ltr; unicode-bidi: isolate; color: #1479b8; }
+  .sp-focus b { direction: ltr; unicode-bidi: isolate; }
   .sp-next { flex: 1; max-width: 260px; border: 0; border-radius: 18px; padding: 17px 10px 15px; font: inherit; font-size: 18px; font-weight: 700; color: #fff; background: #58b02f; box-shadow: 0 5px 0 #438a22; cursor: pointer; }
   .sp-type { display: flex; gap: 8px; align-items: stretch; width: 100%; max-width: 330px; margin: 0 auto; }
   .sp-type input { flex: 1; min-width: 0; font: inherit; font-size: 18px; padding: 13px 14px; border-radius: 14px; border: 2px solid var(--line, #e6e1d8); background: var(--surface, #fff); color: inherit; direction: ltr; text-align: left; }
@@ -1577,7 +1578,7 @@
     Object.assign(S, {
       phase: 'play', idx: 0, state: 'ask', attempts: 0, combo: 0, best: 0, firstTry: 0, results: [], done: false, msg: '', heard: '', wrong: false,
       listening: false, live: false, typing: !!typing || !SR, focusInput: false, base: 0, lastLen: 0, muteUntil: 0, heardAny: false,
-      queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr, focus: it.focus, focusInfo: it.focusInfo }))
+      queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr, focus: it.focus, focusInfo: it.focusInfo, gram: it.gram, extraMs: it.extraMs }))
     });
     S.askAt = Date.now();
     restarts = [];
@@ -1603,7 +1604,7 @@
     } else if (toHe) {
       cardInner = '<div class="sp-answer">' + esc(c.prompt) + '</div><div class="sp-sub" style="direction:ltr">' + esc(c.display || c.answer) + '</div>' + (window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
     } else {
-      cardInner = '<div class="sp-answer">' + hiliteFocus(c.display || c.answer, c.focus) + '</div><div class="sp-sub"' + (c.ltr ? ' style="direction:ltr"' : '') + '>' + esc(c.sub || c.prompt) + '</div>' + (c.focusInfo ? '<div class="sp-focus">' + c.focusInfo + '</div>' : '') + (!c.focus && window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
+      cardInner = '<div class="sp-answer">' + hiliteFocus(c.display || c.answer, c.focus) + '</div><div class="sp-sub"' + (c.ltr ? ' style="direction:ltr"' : '') + '>' + esc(c.sub || c.prompt) + '</div>' + (c.focusInfo ? '<div class="sp-focus">' + c.focusInfo + '</div>' : '') + (c.gram ? '<div class="sp-gramw">' + c.gram + '</div>' : '') + (!c.focus && window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
     }
     const layers = (total - S.idx > 2 ? '<div class="sp-layer l2"></div>' : '') + (total - S.idx > 1 ? '<div class="sp-layer l1"></div>' : '');
     let banner = '';
@@ -1782,7 +1783,7 @@
     S.state = 'ok'; S.msg = ''; S.wrong = false; S.wrongHeard = ''; S.heard = '';
     const w = cur().display || cur().answer, say = !!(S.cfg && S.cfg.say);
     if (S.opts.holdOk) { // sentence practice: the card stays long enough to hear the whole sentence and see the new word marked, then moves on by itself (hands-free); a touch on the card freezes it
-      const ms = wordMs(w) + 450 + 2200;
+      const ms = wordMs(w) + 450 + 2200 + (cur().extraMs || 0);
       S.muteUntil = Date.now() + ms; S.paused = false; S.sentHint = true;
       render(); sfx('ok');
       later(() => { if (S && S.state === 'ok') speakWord(w, true); }, 450);
@@ -1819,7 +1820,7 @@
     sfx('bad');
     later(() => { if (S && S.state === 'bad') speakWord(c.display || c.answer, true); }, 500); // after a miss the word is always played, so the person hears how it should sound
     // practise it once more at the end of the round
-    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, focus: c.focus, focusInfo: c.focusInfo, requeued: true });
+    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, focus: c.focus, focusInfo: c.focusInfo, gram: c.gram, extraMs: c.extraMs, requeued: true });
   }
   function advance() {
     clearTimers();
@@ -1842,7 +1843,7 @@
       '<div class="sp-top"><button class="sp-x" id="spClose" aria-label="סגירה">✕</button><div class="sp-bar"><div class="sp-fill" style="width:100%"></div></div></div>' +
       '<div class="sp-end"><h2>' + (miss.length === 0 ? 'מושלם! 🎉' : 'סיימתם סיבוב') + '</h2>' +
       '<div class="sp-score">' + S.firstTry + '/' + n + '</div><div>נכון בניסיון הראשון' + (S.best >= 2 ? ' · רצף שיא ×' + S.best : '') + '</div>' +
-      (S.opts.holdOk ? '<div class="sp-miss" style="margin-bottom:10px"><div style="display:block"><b>המשפטים של הסיבוב</b></div>' + S.results.filter(r => !r.item.requeued).map(r => '<div style="display:block;direction:ltr;text-align:left">' + (r.ok ? '✓ ' : '✗ ') + hiliteFocus(r.item.display || r.item.answer, r.item.focus) + '<div style="direction:rtl;text-align:right;font-size:13px;opacity:.7">' + esc(r.item.sub || r.item.prompt) + '</div></div>').join('') + '</div>' : '') +
+      (S.opts.holdOk ? '<div class="sp-miss" style="margin-bottom:10px"><div style="display:block"><b>המשפטים של הסיבוב</b></div>' + S.results.filter(r => !r.item.requeued).map(r => '<div style="display:block;direction:ltr;text-align:left">' + (r.ok ? '✓ ' : '✗ ') + hiliteFocus(r.item.display || r.item.answer, r.item.focus) + '<div style="direction:rtl;text-align:right;font-size:13px;opacity:.7">' + esc(r.item.sub || r.item.prompt) + '</div>' + (r.item.gram ? '<div class="sp-gramw" style="margin-top:6px">' + r.item.gram + '</div>' : '') + '</div>').join('') + '</div>' : '') +
       (miss.length ? '<div class="sp-miss">' + miss.map(r => '<div><span>' + esc(r.item.prompt) + '</span><b>' + esc(r.item.display || r.item.answer) + '</b></div>').join('') + '</div>' : '') +
       '<div class="sp-btns"><button class="sp-next" id="spAgain">סיבוב נוסף</button></div>' +
       '<div class="sp-btns"><button class="sp-redo" id="spSettings" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">שינוי הגדרות</button><button class="sp-redo" id="spDone" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">סגירה</button></div></div>';
@@ -7121,7 +7122,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'f69108d633';
+  const APP_BUILD = '852eb79163';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8229,8 +8230,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         title: 'אמרו את המשפט בגרמנית', storeKey: 'delearn_sp_daily_sent', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
         matcher: SpeakPractice.matchSentence,
         holdOk: true,
-        items: sents.map(s => ({ ref: { de: s.de }, prompt: s.he, answer: s.de, display: s.de, sub: s.he, focus: s.focus, focusInfo: s.focusInfo })),
-        onResult: (ref, ok) => { try { window.sentSeen && window.sentSeen(ref.de, ok); } catch (e) {} }, getGroups: () => [], getItems: () => [],
+        items: sents.map(s => ({ ref: { de: s.de, gramIds: s.gramIds }, prompt: s.he, answer: s.de, display: s.de, sub: s.he, focus: s.focus, focusInfo: s.focusInfo, gram: s.gram, extraMs: s.gram ? 3800 : 0 })),
+        onResult: (ref, ok) => { try { window.sentSeen && window.sentSeen(ref.de, ok, ref.gramIds); } catch (e) {} }, getGroups: () => [], getItems: () => [],
         onClose: redraw
       });
     };
@@ -10801,9 +10802,57 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     };
 
     // sentences for the speaking test of a day: only words learned up to that day; the least-practised sentences come first, so every round differs
+
+    // short grammar notes for the little words inside the test sentences (they are not in the 15-a-day list, but they come up in every sentence)
+    var GRAM = [
+      { id: 'in_der', re: /\bin der\b/i, t: '<b>in der</b> = "ב־" + נקבה. כששואלים "איפה?" המילה <b>die</b> הופכת ל־<b>der</b>: die Halle → <b>in der</b> Halle. (זכר/ניטרלי: <b>im</b> = in dem)' },
+      { id: 'im', re: /\bim\b/i, t: '<b>im</b> = in + dem, "ב־" לזכר או ניטרלי: im Haus, im Auto.' },
+      { id: 'am', re: /\bam\b/i, t: '<b>am</b> = an + dem: <b>am</b> Montag (ביום שני), <b>am</b> Wochenende (בסוף השבוע). משמש לימים ולחלקי היום.' },
+      { id: 'um', re: /\bum\b/i, t: '<b>um</b> + שעה = "בשעה": <b>um</b> zehn Uhr = בעשר. (Uhr = שעון, "אוּר")' },
+      { id: 'an_ver', re: /\b(fangen|fängt)\b.*\ban\b/i, t: '<b>anfangen</b> = להתחיל, פועל שנפרד לשניים: wir fangen um zehn <b>an</b>. הקידומת <b>an</b> קופצת לסוף המשפט.' },
+      { id: 'an', re: /\ban\b/i, t: '<b>an</b> = ליד / ב־ (צמוד למשהו): <b>an</b> der Kasse = ליד הקופה.' },
+      { id: 'auf', re: /\bauf\b/i, t: '<b>auf</b> = על / ב־: <b>auf</b> der Bühne = על הבמה, <b>auf</b> Deutsch = בגרמנית.' },
+      { id: 'zum', re: /\bzum\b/i, t: '<b>zum</b> = zu + dem, "ל־": <b>zum</b> Mitnehmen = לקחת איתי.' },
+      { id: 'fuer', re: /\bfür\b/i, t: '<b>für</b> = בשביל / עבור: <b>für</b> mich = בשבילי.' },
+      { id: 'mit', re: /\bmit\b/i, t: '<b>mit</b> = עם, ואחריו תמיד דאטיב: <b>mit</b> dem Zug = ברכבת.' },
+      { id: 'bis', re: /\bbis\b/i, t: '<b>bis</b> = עד: <b>bis</b> Montag, bis später (להתראות).' },
+      { id: 'sind', re: /\bsind\b/i, t: '<b>sind</b> = "הם/הן/אנחנו נמצאים", הרבים של <b>ist</b>. יחיד: Die Halle <b>ist</b>…, רבים: Die Rollschuhe <b>sind</b>…' },
+      { id: 'ist', re: /\bist\b/i, t: '<b>ist</b> = "הוא/היא/זה הוא" (להיות, יחיד). Wo <b>ist</b> …? = איפה … ? ברבים משתמשים ב־<b>sind</b>.' },
+      { id: 'bin', re: /\bbin\b/i, t: '<b>bin</b> = "אני" של להיות: ich <b>bin</b>, du bist, er <b>ist</b>, wir/sie <b>sind</b>.' },
+      { id: 'war', re: /\bwar\b/i, t: '<b>war</b> = היה (עבר של להיות): es <b>war</b> = זה היה.' },
+      { id: 'haben', re: /\b(habe|hat|haben)\b/i, t: '<b>haben</b> = יש ל־: ich <b>habe</b>, du hast, er <b>hat</b>, wir/sie <b>haben</b>.' },
+      { id: 'haette', re: /\bhätte\b/i, t: '<b>Ich hätte gern</b> = "הייתי רוצה", הדרך המנומסת להזמין. <b>hätte</b> = צורת תנאי של haben.' },
+      { id: 'moechte', re: /\bmöchte\b/i, t: '<b>ich möchte</b> = "הייתי רוצה" (מנומס). אחרי הפועל השני בצורת מקור: ich möchte <b>bestellen</b>.' },
+      { id: 'kann', re: /\bkann\b/i, t: '<b>kann</b> = יכול. הפועל השני נשאר בצורת מקור ובסוף המשפט: ich kann <b>helfen</b>.' },
+      { id: 'ich_e', re: /\bich (brauche|finde|warte|verstehe|bekomme|nehme|bestelle|hole|zeige|erkläre|schreibe)\b/i, t: 'אחרי "אני" (<b>ich</b>) הפועל מסתיים ב־e: <b>ich brauche</b>, <b>ich finde</b>, <b>ich warte</b>. ברשימת המילים הוא מופיע עם en: brauchen.' },
+      { id: 'wir', re: /\bwir\b/i, t: 'אחרי "אנחנו" (<b>wir</b>) הפועל נשאר בצורת המקור, כמו ברשימה: <b>wir fangen</b>, <b>wir haben</b>.' },
+      { id: 'sie', re: /\bSie\b/, t: '<b>Sie</b> באות גדולה = "אתה/את" בנימוס. עם <b>sie</b> קטנה זה "היא" או "הם".' },
+      { id: 'einen', re: /\beinen\b/i, t: '<b>einen</b> = "א/אחד" לזכר כשהוא המושא: ich brauche <b>einen</b> Termin. רק בזכר ein הופך ל־einen.' },
+      { id: 'eine', re: /\beine\b/i, t: '<b>eine</b> = "א/אחת" לנקבה: <b>eine</b> Tüte, eine Rechnung.' },
+      { id: 'mein', re: /\b(mein|meine)\b/i, t: '<b>mein</b> = שלי (זכר/ניטרלי), <b>meine</b> = שלי (נקבה או רבים).' },
+      { id: 'den', re: /\bden\b/i, t: '<b>den</b> = ה־ לזכר כשהוא המושא (Akkusativ): ich nehme <b>den</b> Zug.' },
+      { id: 'wo', re: /\bwo\b/i, t: '<b>Wo</b> = איפה. <b>Wo ist</b> + יחיד, <b>Wo sind</b> + רבים.' },
+      { id: 'wie', re: /\bwie\b/i, t: '<b>Wie</b> = איך / כמה. <b>Wie bitte?</b> = "סליחה, מה?"' },
+      { id: 'wann', re: /\bwann\b/i, t: '<b>Wann</b> = מתי.' },
+      { id: 'nicht', re: /\bnicht\b/i, t: '<b>nicht</b> = לא (שולל פועל או תיאור): ich verstehe <b>nicht</b>.' },
+      { id: 'gern', re: /\bgern\b/i, t: '<b>gern</b> = "בשמחה / אני אוהב": ich esse <b>gern</b>. ובקשה: Ich hätte <b>gern</b> … = הייתי רוצה …' },
+      { id: 'es', re: /\bes\b/i, t: '<b>es</b> = "זה": es ist spät = זה מאוחר, es macht nichts = לא נורא.' },
+      { id: 'oder', re: /\boder\b/i, t: '<b>oder</b> = או.' }
+    ];
+    var GSEEN = 'delearn_gram_seen';
+    function gramPick(de, k) {
+      var seen = {}; try { seen = JSON.parse(localStorage.getItem(GSEEN) || '{}') || {}; } catch (e) {}
+      var hit = GRAM.filter(function (g) { return g.re.test(de); });
+      // an "an"-note makes the plain "an" note redundant
+      if (hit.some(function (g) { return g.id === 'an_ver'; })) hit = hit.filter(function (g) { return g.id !== 'an'; });
+      hit = hit.map(function (g, i) { return { g: g, k: (seen[g.id] || 0) * 10 + i + Math.random() * 0.5 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, k || 2).map(function (x) { return x.g; });
+      return hit;
+    }
+    function gramHtml(arr) { return arr.length ? '<div class="sp-gramh">📘 דקדוק קטן</div>' + arr.map(function (g) { return '<div class="sp-gram">' + g.t + '</div>'; }).join('') : ''; }
+    function gramMark(ids) { try { var o = JSON.parse(localStorage.getItem(GSEEN) || '{}') || {}; (ids || []).forEach(function (i) { o[i] = (o[i] || 0) + 1; }); localStorage.setItem(GSEEN, JSON.stringify(o)); } catch (e) {} }
     var SEEN = 'delearn_sent_seen';
     function seenGet() { try { return JSON.parse(localStorage.getItem(SEEN) || '{}') || {}; } catch (e) { return {}; } }
-    window.sentSeen = function (de, ok) { try { var o = seenGet(); o[de] = (o[de] || 0) + 1; localStorage.setItem(SEEN, JSON.stringify(o)); } catch (e) {} };
+    window.sentSeen = function (de, ok, gram) { gramMark(gram); try { var o = seenGet(); o[de] = (o[de] || 0) + 1; localStorage.setItem(SEEN, JSON.stringify(o)); } catch (e) {} };
     window.testSentences = function (dayDe, key, n) {
       var data = {}; try { data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}; } catch (e) {}
       var esc = function (x) { return String(x == null ? '' : x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -10812,9 +10861,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       (dayDe || []).forEach(function (w) { mine[w] = 1; });
       VOCAB.forEach(function (v) { if (!heHe[v.de]) heHe[v.de] = typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; });
       var cand = WSENT.filter(function (s) { return s.need.every(function (w) { return known[w]; }); }).map(function (s) {
-        var m = s.need.filter(function (w) { return mine[w]; });
+        var gp = gramPick(s.de, 2), m = s.need.filter(function (w) { return mine[w]; });
         var foc = m.length ? m : s.need;
-        return { s: { de: s.de, he: s.he, focus: foc, focusInfo: '<div style="opacity:.7;font-size:12px">🎯 המילים ללמוד במשפט</div>' + foc.map(function (w) { return '<div><b>' + esc(w) + '</b> &nbsp;=&nbsp; ' + esc(heHe[w] || '') + '</div>'; }).join('') }, k: (seen[s.de] || 0) * 2 + (m.length ? 0 : 1.2) + Math.random() * 1.5 };
+        return { s: { de: s.de, he: s.he, focus: foc, gram: gramHtml(gp), gramIds: gp.map(function (g) { return g.id; }), focusInfo: '<div style="opacity:.7;font-size:12px">🎯 המילים ללמוד במשפט</div>' + foc.map(function (w) { return '<div><b>' + esc(w) + '</b> &nbsp;=&nbsp; ' + esc(heHe[w] || '') + '</div>'; }).join('') }, k: (seen[s.de] || 0) * 2 + (m.length ? 0 : 1.2) + Math.random() * 1.5 };
       }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.s; });
       var out = cand.slice(0, n);
       return out;
