@@ -1476,7 +1476,22 @@
   // ----- direction: Hebrew -> German (say the German word) or German -> Hebrew (hear/see the German word, say what it means in Hebrew) -----
   const HE_NIQQUD = /[\u0591-\u05C7]/g;
   function nh(s) { return String(s == null ? '' : s).replace(HE_NIQQUD, '').replace(/[\u05F3\u05F4'"`\u2019\u201C\u201D]/g, '').replace(/[^\u05D0-\u05EA0-9a-z ]/gi, ' ').replace(/\s+/g, ' ').trim().toLowerCase(); }
-  function nearHe(a, b) { if (a === b) return true; const sa = a.replace(/[\u05D5\u05D9]/g, ''), sb = b.replace(/[\u05D5\u05D9]/g, ''); if (sa.length >= 2 && sa === sb) return true; /* spelling with or without vav / yod */ if (Math.min(a.length, b.length) < 4) return false; return lev(a, b) <= (Math.max(a.length, b.length) >= 8 ? 2 : 1); }
+  // the Hebrew recogniser writes numbers as digits ("11" for אחת עשרה), and cannot tell א/ע, ט/ת, ק/כ apart (האשם → השם)
+  const HEN = { 'אפס': 0, 'אחד': 1, 'אחת': 1, 'שניים': 2, 'שתיים': 2, 'שנים': 2, 'שתים': 2, 'שני': 2, 'שתי': 2, 'שלושה': 3, 'שלוש': 3, 'ארבעה': 4, 'ארבע': 4, 'חמישה': 5, 'חמש': 5, 'שישה': 6, 'שש': 6, 'שבעה': 7, 'שבע': 7, 'שמונה': 8, 'תשעה': 9, 'תשע': 9, 'עשרה': 10, 'עשר': 10, 'עשרים': 20, 'שלושים': 30, 'ארבעים': 40, 'חמישים': 50, 'שישים': 60, 'שבעים': 70, 'שמונים': 80, 'תשעים': 90, 'מאה': 100, 'מאתיים': 200, 'מאות': -100 };
+  function heNumVal(str) {
+    const toks = String(str || '').split(' ').filter(Boolean).map(t => (t.charAt(0) === '\u05D5' && !HEN.hasOwnProperty(t) ? t.slice(1) : t)); if (!toks.length || toks.length > 6) return null;
+    let total = 0, cur = 0, any = false;
+    for (let i = 0; i < toks.length; i++) {
+      const t = toks[i]; if (!HEN.hasOwnProperty(t)) return null; const v = HEN[t]; any = true;
+      if (v === -100) { total += (cur || 1) * 100; cur = 0; }
+      else if ((t === '\u05E2\u05E9\u05E8\u05D4' || t === '\u05E2\u05E9\u05E8') && cur >= 1 && cur <= 9) { cur += 10; }
+      else if (v >= 100) { total += v; }
+      else cur += v;
+    }
+    return any ? total + cur : null;
+  }
+  const foldHe = x => String(x).replace(/[\u05D0\u05E2]/g, '').replace(/\u05D8/g, '\u05EA').replace(/\u05E7/g, '\u05DB');
+  function nearHe(a, b) { if (a === b) return true; const fa = foldHe(a), fb = foldHe(b); if (fa.length >= 2 && fa === fb) return true; const sa = a.replace(/[\u05D5\u05D9]/g, ''), sb = b.replace(/[\u05D5\u05D9]/g, ''); if (sa.length >= 2 && sa === sb) return true; /* spelling with or without vav / yod */ if (Math.min(a.length, b.length) < 4) return false; return lev(a, b) <= (Math.max(a.length, b.length) >= 8 ? 2 : 1); }
   function heTargets(expected) {
     const base = String(expected == null ? '' : expected).replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
     const out = [];
@@ -1495,6 +1510,9 @@
       const toks = full.split(' ');
       for (const tg of targets) {
         if (nearHe(full, tg)) return true;
+        const tn = heNumVal(tg);
+        if (tn !== null && /^[0-9]/.test(full) && toks.some(k => k === String(tn))) return true;
+        if (tn !== null && heNumVal(full) === tn) return true;
         const tt = tg.split(' ');
         if (tt.length === 1) { if (toks.some(k => nearHe(k, tg))) return true; }
         else { for (let i = 0; i + tt.length <= toks.length; i++) { if (nearHe(toks.slice(i, i + tt.length).join(' '), tg)) return true; } }
@@ -7164,7 +7182,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '1a7ba6b24e';
+  const APP_BUILD = 'bb3dfc049f';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
