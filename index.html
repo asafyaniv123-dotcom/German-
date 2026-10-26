@@ -7162,7 +7162,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '347aeb651e';
+  const APP_BUILD = '4a1a960be9';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -10888,6 +10888,19 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       hit = hit.map(function (g, i) { return { g: g, k: (seen[g.id] || 0) * 10 + i + Math.random() * 0.5 }; }).sort(function (a, b) { return a.k - b.k; }).slice(0, k || 2).map(function (x) { return x.g; });
       return hit;
     }
+    // how a verb of the list looks inside the sentence (hören → hört), including the separable ones whose prefix jumps to the end (aufhören → hört … auf)
+    var SEP = ['zurück', 'zusammen', 'fest', 'fern', 'weg', 'mit', 'vor', 'nach', 'ab', 'an', 'auf', 'aus', 'ein', 'zu', 'bei', 'los', 'her', 'hin'];
+    function verbForm(de, w) {
+      var lw = w.toLowerCase(), pre = '', base = lw;
+      if (!/en$/.test(lw)) return null;
+      for (var i = 0; i < SEP.length; i++) { var p0 = SEP[i]; if (lw.indexOf(p0) === 0 && lw.length - p0.length >= 4) { pre = p0; base = lw.slice(p0.length); break; } }
+      var stem = base.slice(0, -2), um = stem.replace(/a([^a]*)$/, 'ä$1').replace(/o([^o]*)$/, 'ö$1').replace(/u([^u]*)$/, 'ü$1');
+      var toks = de.replace(/[.,!?;:"„“–]/g, ' ').split(/\s+/).filter(Boolean), found = null;
+      for (var k = 0; k < toks.length && !found; k++) { var t = toks[k], lt = t.toLowerCase(); if (lt !== lw && lt.length <= stem.length + 3 && (lt.indexOf(stem) === 0 || lt.indexOf(um) === 0)) found = t; }
+      if (!found) return null;
+      if (pre && toks.some(function (t) { return t.toLowerCase() === pre; })) return { form: found + ' … ' + pre, sep: pre, base: lw };
+      return { form: found, sep: '', base: lw };
+    }
     function gramHtml(arr) { return arr.length ? '<div class="sp-gramh">📘 דקדוק קטן</div>' + arr.map(function (g) { return '<div class="sp-gram">' + g.t + '</div>'; }).join('') : ''; }
     function gramMark(ids) { try { var o = JSON.parse(localStorage.getItem(GSEEN) || '{}') || {}; (ids || []).forEach(function (i) { o[i] = (o[i] || 0) + 1; }); localStorage.setItem(GSEEN, JSON.stringify(o)); } catch (e) {} }
     var SEEN = 'delearn_sent_seen';
@@ -10901,9 +10914,11 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       (dayDe || []).forEach(function (w) { mine[w] = 1; });
       VOCAB.forEach(function (v) { if (!heHe[v.de]) heHe[v.de] = typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he; });
       var cand = WSENT.filter(function (s) { return s.need.every(function (w) { return known[w]; }); }).map(function (s) {
-        var gp = gramPick(s.de, 2), m = s.need.filter(function (w) { return mine[w]; });
+        var gp = gramPick(s.de, 2), m = s.need.filter(function (w) { return mine[w]; }), vfs = {};
+        s.need.forEach(function (w) { var f = verbForm(s.de, w); if (f) { vfs[w] = f; if (f.sep) gp.unshift({ id: 'sep_' + f.sep, t: '<b>' + esc(w) + '</b> הוא <b>פועל נפרד</b>: הקידומת <b>' + esc(f.sep) + '</b> קופצת לסוף המשפט, ואילו הפועל עצמו מתהפך לפי מי עושה: <b>' + esc(f.form) + '</b>. בצורת המקור (כמו ברשימה) הכול צמוד.' }); } });
+        gp = gp.slice(0, 2);
         var foc = m.length ? m : s.need;
-        return { s: { de: s.de, he: s.he, focus: foc, gram: gramHtml(gp), gramIds: gp.map(function (g) { return g.id; }), focusInfo: '<div style="opacity:.7;font-size:12px">🎯 המילים ללמוד במשפט</div>' + foc.map(function (w) { return '<div><b>' + esc(w) + '</b> &nbsp;=&nbsp; ' + esc(heHe[w] || '') + '</div>'; }).join('') }, k: (seen[s.de] || 0) * 2 + (m.length ? 0 : 1.2) + Math.random() * 1.5 };
+        return { s: { de: s.de, he: s.he, focus: foc, gram: gramHtml(gp), gramIds: gp.map(function (g) { return g.id; }), focusInfo: '<div style="opacity:.7;font-size:12px">🎯 המילים ללמוד במשפט</div>' + foc.map(function (w) { return '<div><b>' + esc(w) + '</b> &nbsp;=&nbsp; ' + esc(heHe[w] || '') + (vfs[w] ? '<div style="font-weight:600;font-size:13px;opacity:.85">במשפט הוא נראה כך: <b>' + esc(vfs[w].form) + '</b></div>' : '') + '</div>'; }).join('') }, k: (seen[s.de] || 0) * 2 + (m.length ? 0 : 1.2) + Math.random() * 1.5 };
       }).sort(function (a, b) { return a.k - b.k; }).map(function (x) { return x.s; });
       var out = cand.slice(0, n);
       return out;
