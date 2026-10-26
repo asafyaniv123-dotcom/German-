@@ -1624,7 +1624,8 @@
     }
     let actions;
     if (S.state !== 'ask') {
-      actions = '<div class="sp-actions"><button class="sp-redo" id="spRedo" title="השמעה">🔊</button><button class="sp-next" id="spNext">' + (S.state === 'ok' ? 'המשך' : 'הבנתי, הלאה') + '</button></div>';
+      actions = '<div class="sp-actions"><button class="sp-redo" id="spRedo" title="השמעה">🔊</button><button class="sp-next" id="spNext">' + (S.state === 'ok' ? 'המשך' : 'הבנתי, הלאה') + '</button></div>' +
+        (S.opts.patient && S.state === 'bad' && !cur().requeued ? '<div class="sp-actions" style="margin-top:8px"><button class="sp-redo" id="spOverride" style="width:auto;flex:1;padding:0 14px;height:44px;font-size:14px;color:inherit">הזיהוי טעה, אמרתי נכון ✓</button></div>' : '');
     } else if (S.typing || !SR) {
       actions = '<div class="sp-type"><input id="spInput" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="' + (toHe ? 'הקלידו בעברית' : 'הקלידו בגרמנית') + '"' + (toHe ? ' dir="rtl"' : '') + '><button id="spCheck">בדיקה</button></div>';
     } else {
@@ -1656,6 +1657,13 @@
     if ($('spLiveStop')) $('spLiveStop').onclick = () => { stopLive(); render(); };
     if ($('spRedo')) $('spRedo').onclick = () => { const c = cur(); speakWord(c.display || c.answer, true); };
     if ($('spNext')) $('spNext').onclick = advance;
+    if ($('spOverride')) $('spOverride').onclick = () => { // the recogniser misheard: count it as right (and do not repeat the sentence at the end)
+      const c = cur(); if (!c) return;
+      for (let i = S.results.length - 1; i >= 0; i--) if (S.results[i].item === c && !S.results[i].ok) { S.results[i].ok = true; S.firstTry++; break; }
+      for (let i = S.queue.length - 1; i > S.idx; i--) if (S.queue[i].requeued && S.queue[i].answer === c.answer) { S.queue.splice(i, 1); break; }
+      try { if (S.opts.onResult) S.opts.onResult(c.ref, true, 0); } catch (e) {}
+      advance();
+    };
     if ($('spCard') && S.opts.holdOk) $('spCard').onclick = () => { if (S.state === 'ok' && !S.paused) { S.paused = true; clearTimeout(S.advT); try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {} render(); } };
     if ($('spNoteEdit')) $('spNoteEdit').onclick = () => { S.noteEdit = true; render(); const t = document.getElementById('spNoteTx'); if (t) t.focus(); };
     if ($('spNoteCancel')) $('spNoteCancel').onclick = () => { S.noteEdit = false; render(); };
@@ -1745,7 +1753,10 @@
     if (S.opts.patient) { // sentences: take time to think and to say it in pieces; judge only after a long silence, and put the pieces together
       S.acc = S.acc || [];
       const joined = S.acc.concat([use[0]]).join(' ').replace(/\s+/g, ' ').trim();
-      if (matchCard(cur(), [joined].concat(use))) { S.acc = []; consumeNow(); onCorrect(); return; }
+      // the whole thing, or only its last pieces (a person who stumbled and started the sentence again), or just the newest phrase
+      const cands = [joined].concat(use);
+      for (let q = 1; q < S.acc.length; q++) cands.push(S.acc.slice(q).concat([use[0]]).join(' ').replace(/\s+/g, ' ').trim());
+      if (matchCard(cur(), cands)) { S.acc = []; consumeNow(); onCorrect(); return; }
       const nw = t => String(t).split(/\s+/).filter(Boolean).length;
       if (res.isFinal) { consumeNow(); if (!(nw(use[0]) < 2 && nw(cur().answer) > 3 && !S.acc.length)) S.acc.push(use[0]); }
       S.heard = S.acc.length && res.isFinal ? S.acc.join(' ') : joined;
@@ -1782,7 +1793,7 @@
   // sentence practice: one dash per word of the answer (as long as the word), filled in as the words are heard
   const normTok = t => String(t || '').toLowerCase().replace(/[^a-zäöüß0-9]/g, '');
   function blanksInner(answer, heardText) {
-    const toks = String(answer || '').split(/\s+/).filter(Boolean), heard = String(heardText || '').split(/\s+/).map(normTok).filter(Boolean);
+    const toks = String(answer || '').split(/\s+/).filter(t => normTok(t)), heard = String(heardText || '').split(/\s+/).map(normTok).filter(Boolean);
     let ptr = 0;
     return toks.map(t => {
       const n = normTok(t); let at = -1;
@@ -7151,7 +7162,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'c03fe47dd7';
+  const APP_BUILD = '347aeb651e';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
