@@ -1741,6 +1741,19 @@
       if (!use.length) return;
     }
     S.heard = use[0];
+    if (S.opts.patient) { // sentences: take time to think and to say it in pieces; judge only after a long silence, and put the pieces together
+      S.acc = S.acc || [];
+      const joined = S.acc.concat([use[0]]).join(' ').replace(/\s+/g, ' ').trim();
+      if (matchCard(cur(), [joined].concat(use))) { S.acc = []; consumeNow(); onCorrect(); return; }
+      const nw = t => String(t).split(/\s+/).filter(Boolean).length;
+      if (res.isFinal) { consumeNow(); if (!(nw(use[0]) < 2 && nw(cur().answer) > 3 && !S.acc.length)) S.acc.push(use[0]); }
+      S.heard = S.acc.length && res.isFinal ? S.acc.join(' ') : joined;
+      const h2 = overlay && overlay.querySelector('.sp-heard'); if (h2) { h2.textContent = S.heard; h2.className = 'sp-heard'; }
+      clearTimeout(S.stable);
+      const snap2 = S.heard, idx2 = S.idx;
+      if (S.acc.length || !res.isFinal) S.stable = later(() => { if (S && S.state === 'ask' && S.idx === idx2 && S.live && S.heard === snap2) { S.acc = []; consumeNow(); onWrong(snap2); } }, 6000);
+      return;
+    }
     if (matchCard(cur(), use)) { consumeNow(); onCorrect(); return; }
     if (res.isFinal) { consumeNow(); onWrong(use[0]); return; }
     const h = overlay && overlay.querySelector('.sp-heard'); if (h) { h.textContent = use[0]; h.className = 'sp-heard'; }
@@ -1777,6 +1790,7 @@
     return h;
   }
   function onCorrect() {
+    S.acc = []; clearTimeout(S.stable);
     const first = !cur().failed;
     if (first) record(true);
     consumeNow();
@@ -1797,6 +1811,7 @@
     later(() => { if (S && S.state === 'ok') advance(); }, say ? wordMs(w) + 500 : 1700);
   }
   function onWrong(heard) {
+    S.acc = [];
     S.attempts++;
     S.combo = 0;
     S.heard = '';
@@ -1828,7 +1843,7 @@
     if (S.state === 'bad') { const pc = cur(); S.ghost = '<div class="sp-answer">' + esc(pc.display || pc.answer) + '</div><div class="sp-sub">' + esc(pc.prompt) + '</div>'; } // a missed card slides back behind the stack
     S.enter = true;
     S.noteEdit = false;
-    S.idx++; S.attempts = 0; S.state = 'ask'; S.msg = ''; S.heard = ''; S.wrong = false; S.wrongHeard = '';
+    S.acc = []; S.idx++; S.attempts = 0; S.state = 'ask'; S.msg = ''; S.heard = ''; S.wrong = false; S.wrongHeard = '';
     S.muteUntil = Date.now() + 350; consumeNow(); S.askAt = Date.now();
     if (S.idx >= S.queue.length) { S.done = true; S.idx = S.queue.length; stopLive(); }
     else ensureDir(cur());
@@ -7122,7 +7137,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '852eb79163';
+  const APP_BUILD = '42c90f305a';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8229,7 +8244,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       SpeakPractice.open({
         title: 'אמרו את המשפט בגרמנית', storeKey: 'delearn_sp_daily_sent', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true,
         matcher: SpeakPractice.matchSentence,
-        holdOk: true,
+        holdOk: true, patient: true,
         items: sents.map(s => ({ ref: { de: s.de, gramIds: s.gramIds }, prompt: s.he, answer: s.de, display: s.de, sub: s.he, focus: s.focus, focusInfo: s.focusInfo, gram: s.gram, extraMs: s.gram ? 3800 : 0 })),
         onResult: (ref, ok) => { try { window.sentSeen && window.sentSeen(ref.de, ok, ref.gramIds); } catch (e) {} }, getGroups: () => [], getItems: () => [],
         onClose: redraw
