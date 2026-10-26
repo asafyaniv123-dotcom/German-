@@ -1883,7 +1883,7 @@
       '<div class="sp-top"><button class="sp-x" id="spClose" aria-label="סגירה">✕</button><div class="sp-bar"><div class="sp-fill" style="width:100%"></div></div></div>' +
       '<div class="sp-end"><h2>' + (miss.length === 0 ? 'מושלם! 🎉' : 'סיימתם סיבוב') + '</h2>' +
       '<div class="sp-score">' + S.firstTry + '/' + n + '</div><div>נכון בניסיון הראשון' + (S.best >= 2 ? ' · רצף שיא ×' + S.best : '') + '</div>' +
-      (S.opts.holdOk ? '<div class="sp-miss" style="margin-bottom:10px"><div style="display:block"><b>המשפטים של הסיבוב</b></div>' + S.results.filter(r => !r.item.requeued).map(r => '<div style="display:block;direction:ltr;text-align:left">' + (r.ok ? '✓ ' : '✗ ') + hiliteFocus(r.item.display || r.item.answer, r.item.focus) + '<div style="direction:rtl;text-align:right;font-size:13px;opacity:.7">' + esc(r.item.sub || r.item.prompt) + '</div>' + (r.item.gram ? '<div class="sp-gramw" style="margin-top:6px">' + r.item.gram + '</div>' : '') + '</div>').join('') + '</div>' : '') +
+      (S.opts.holdOk ? '<div class="sp-miss" style="margin-bottom:10px"><div style="display:block"><b>' + esc(S.opts.reviewTitle || 'המשפטים של הסיבוב') + '</b></div>' + S.results.filter(r => !r.item.requeued).map(r => '<div style="display:block;direction:ltr;text-align:left">' + (r.ok ? '✓ ' : '✗ ') + hiliteFocus(r.item.display || r.item.answer, r.item.focus) + '<div style="direction:rtl;text-align:right;font-size:13px;opacity:.7">' + esc(r.item.sub || r.item.prompt) + '</div>' + (r.item.gram ? '<div class="sp-gramw" style="margin-top:6px">' + r.item.gram + '</div>' : '') + '</div>').join('') + '</div>' : '') +
       (miss.length ? '<div class="sp-miss">' + miss.map(r => '<div><span>' + esc(r.item.prompt) + '</span><b>' + esc(r.item.display || r.item.answer) + '</b></div>').join('') + '</div>' : '') +
       '<div class="sp-btns"><button class="sp-next" id="spAgain">סיבוב נוסף</button></div>' +
       '<div class="sp-btns"><button class="sp-redo" id="spSettings" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">שינוי הגדרות</button><button class="sp-redo" id="spDone" style="width:auto;flex:1;padding:0 14px;height:48px;font-size:15px;color:inherit">סגירה</button></div></div>';
@@ -2704,7 +2704,7 @@
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
           '<div class="dl-streak">' + (window.DailyPlan ? '<button class="dl-stat" id="dlCopy" style="cursor:pointer;font:inherit;color:inherit;flex:0 0 74px"><b>📋</b><span>העתק נתונים</span></button>' : '') + '<div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
-          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">🗓️ האימון של היום</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
+          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">🗓️ האימון של היום</button>' : '') + (cfg.verbs && cfg.verbCount && cfg.verbCount() >= 3 ? '<button class="dl-btn" id="dlVerbs">🔧 נטיית פעלים</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות (לפי התרגול והקערה): ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
         if (!isFuture) {
@@ -2739,6 +2739,7 @@
         if ($('dlHealth')) $('dlHealth').onclick = () => cfg.health(draw);
         if ($('dlNumbers')) $('dlNumbers').onclick = () => cfg.numbers(draw);
         if ($('dlPlan')) $('dlPlan').onclick = () => cfg.plan(draw);
+        if ($('dlVerbs')) $('dlVerbs').onclick = () => cfg.verbs(draw);
         if ($('dlGame')) $('dlGame').onclick = () => cfg.game(ids, draw);
         if ($('dlGameAll')) $('dlGameAll').onclick = () => cfg.gameAll(draw);
         if ($('dlSentTest')) $('dlSentTest').onclick = () => cfg.testSentences(sents, draw, ids, sel);
@@ -7140,6 +7141,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   const HOME_GROUPS = [
     { title: 'היום', items: [
       { view: 'plan', icon: '🗓️', label: 'האימון של היום', sub: 'תוכנית קצרה לפי מה שצריך חיזוק', act: 'openDailyPlan()' },
+      { view: 'verbs', icon: '🔧', label: 'נטיית פעלים', sub: 'אני / אתה / הוא / אנחנו + הפועל', act: 'openVerbDrill()' },
     ] },
     { title: 'ללמוד', items: [
       { view: 'sentences', icon: '📝', label: 'משפטים', sub: 'משפטי יום-יום עם שמע' },
@@ -7162,7 +7164,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '4a1a960be9';
+  const APP_BUILD = '1a7ba6b24e';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8309,6 +8311,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       },
       testSentences: (sents, redraw, ids, key) => runDailySentences(sents, redraw, ids, key),
       plan: redraw => { if (window.openDailyPlan) window.openDailyPlan({ onClose: redraw }); },
+      verbs: redraw => { if (window.openVerbDrill) window.openVerbDrill({ onClose: redraw }); },
+      verbCount: () => (window.VerbTools ? window.VerbTools.count() : 0),
       numbers: redraw => { if (window.openNumbers) window.openNumbers({ onClose: redraw }); },
       health: redraw => { if (window.openWordHealth) window.openWordHealth({ onClose: redraw }); },
       badge: de => (window.wordBadge ? window.wordBadge(de) : ''),
@@ -9083,6 +9087,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         steps.push({ id: 'let1', kind: 'let', topic: ls[0].id, n: 5, t: 'אותיות: ' + ls[0].t, e: '🔤' });
       }
       if (calNouns() >= 5) steps.push({ id: 'dds', kind: 'dds', t: 'דר דאס די', e: '🎙️' });
+      if (window.VerbTools && VerbTools.count() >= 3) steps.push({ id: 'verbs', kind: 'verbs', t: 'נטיית פעלים', e: '🔧' });
       steps.push({ id: 'report', kind: 'report', t: 'מה למדתי עליך', e: '🧾' });
       return steps;
     }
@@ -9098,6 +9103,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (s.kind === 'nummix') return 'שתי שאלות מכל נושא, כדי לראות מה חזק';
       if (s.kind === 'letmix') return 'שבע שאלות מעורבות';
       if (s.kind === 'dds') return 'לשמור על ה-der / die / das חד';
+      if (s.kind === 'verbs') return 'אני / אתה / הוא / אנחנו: איך הפועל משתנה במשפט';
       if (s.kind === 'report') return 'מה חזק, מה מתבלבל ומה נעשה מחר';
       return '';
     }
@@ -9112,6 +9118,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (s.kind === 'nummix') { NumberTools.mix(['n20', 'n99', 'clock', 'price', 'date'], 2, cb); return; }
       if (s.kind === 'let') { LetterTools.run(s.topic, s.n, cb); return; }
       if (s.kind === 'letmix') { LetterTools.mix(cb); return; }
+      if (s.kind === 'verbs') { if (window.openVerbDrill) window.openVerbDrill({ n: 8, cb: cb, onClose: function () { if (!p.done[s.id]) mark(p, s, { aborted: true }); } }); return; }
       if (s.kind === 'dds') { if (window.openDerDasDie) window.openDerDasDie({ pool: 'cal', onClose: function () { mark(p, s, { ok: 0, n: 0 }); } }); return; }
     }
     function css() {
@@ -9559,6 +9566,86 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (opts.pool === 'cal') { var o = load(), c0 = cfg(); c0.pool = 'cal'; o.cfg = c0; save(o); }
       build(); ov = document.createElement('div'); ov.className = 'dd-ov'; document.body.appendChild(ov);
       if (FIX && S.q.length) { S.started = true; S.live = !!SR; render(); startRec(); } else render();
+    };
+  })();
+
+  // <<VERBS>> conjugation drill: a pronoun + a verb from the 15-a-day list, you say the form (ich warte, er holt ab, wir fangen an)
+  (function () {
+    var KEY = 'delearn_vb_stat';
+    var P = [{ k: 'ich', he: 'אני' }, { k: 'du', he: 'אתה / את' }, { k: 'er', he: 'הוא' }, { k: 'wir', he: 'אנחנו' }];
+    var SEP = ['zurück', 'zusammen', 'fest', 'fern', 'weg', 'mit', 'vor', 'nach', 'ab', 'an', 'auf', 'aus', 'ein', 'zu', 'bei', 'los', 'her', 'hin'];
+    var NOSEP = { antworten: 1, anbieten: 0 };
+    var IRR = { nehmen: ['nimmst', 'nimmt'], sprechen: ['sprichst', 'spricht'], geben: ['gibst', 'gibt'], essen: ['isst', 'isst'], helfen: ['hilfst', 'hilft'], sehen: ['siehst', 'sieht'], fahren: ['fährst', 'fährt'], schlafen: ['schläfst', 'schläft'], halten: ['hältst', 'hält'], fangen: ['fängst', 'fängt'], lesen: ['liest', 'liest'], laufen: ['läufst', 'läuft'], tragen: ['trägst', 'trägt'], waschen: ['wäschst', 'wäscht'], treffen: ['triffst', 'trifft'], vergessen: ['vergisst', 'vergisst'], bekommen: null };
+    var SPECIAL = { sein: ['bin', 'bist', 'ist', 'sind'], haben: ['habe', 'hast', 'hat', 'haben'], können: ['kann', 'kannst', 'kann', 'können'], müssen: ['muss', 'musst', 'muss', 'müssen'], wollen: ['will', 'willst', 'will', 'wollen'], dürfen: ['darf', 'darfst', 'darf', 'dürfen'], sollen: ['soll', 'sollst', 'soll', 'sollen'], möchten: ['möchte', 'möchtest', 'möchte', 'möchten'], wissen: ['weiß', 'weißt', 'weiß', 'wissen'] };
+    var ov = null, onClose = null;
+    function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+    function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { return {}; } }
+    // the four forms of an infinitive: { f: [ich, du, er, wir], sep: prefix or '' }
+    function conj(inf) {
+      var w = inf.toLowerCase();
+      if (SPECIAL[w]) return { f: SPECIAL[w].slice(), sep: '' };
+      var pre = '', base = w;
+      if (!NOSEP[w]) for (var i = 0; i < SEP.length; i++) { var p0 = SEP[i]; if (w.indexOf(p0) === 0 && w.length - p0.length >= 4) { pre = p0; base = w.slice(p0.length); break; } }
+      if (SPECIAL[base]) { var sp = SPECIAL[base].slice(); return { f: sp, sep: pre }; }
+      if (!/en$/.test(base)) return null;
+      var stem = base.slice(0, -2), du, er, ich = stem + 'e', wir = base;
+      var irr = IRR[base];
+      if (irr) { du = irr[0]; er = irr[1]; ich = (base === 'nehmen') ? 'nehme' : stem + 'e'; }
+      else {
+        var t = /(d|t|[^aeiouäöülrh]n|[^aeiouäöülrh]m)$/.test(stem);
+        if (/[sßzx]$/.test(stem)) du = stem + 't'; else du = stem + (t ? 'est' : 'st');
+        er = stem + (t ? 'et' : 't');
+      }
+      return { f: [ich, du, er, wir], sep: pre };
+    }
+    function say(c, i) { return P[i].k + ' ' + c.f[i] + (c.sep ? ' ' + c.sep : ''); }
+    function verbs() {
+      var set = getLearnedSet(), out = [], seen = {};
+      VOCAB.forEach(function (v) {
+        if (seen[v.de] || !set.has(v.de) || /\s/.test(v.de)) return;
+        if (!(/פועל/.test(v.pos || '') && !/תואר/.test(v.pos || ''))) return;
+        var c = conj(v.de); if (!c) return; seen[v.de] = 1;
+        out.push({ de: v.de, he: typeof spCleanHe === 'function' ? spCleanHe(v.he) : v.he, c: c });
+      });
+      return out;
+    }
+    function ends(c, i) { // the form with its ending in blue
+      var f = c.f[i], stem = f, e = '';
+      var base = /en$/.test(c.f[3]) ? c.f[3].slice(0, -2) : c.f[3]; var sl = 0; while (sl < f.length && sl < base.length && f[sl] === base[sl]) sl++;
+      if (sl >= 2 && sl < f.length) { stem = f.slice(0, sl); e = f.slice(sl); }
+      return '<span dir="ltr" style="display:inline-block;margin:2px 6px;white-space:nowrap"><span style="opacity:.7">' + P[i].k + '</span> ' + esc(stem) + (e ? '<i style="font-style:normal;color:#1479b8;font-weight:900">' + esc(e) + '</i>' : '') + (c.sep ? ' ' + esc(c.sep) : '') + '</span>';
+    }
+    window.VerbTools = { count: function () { try { return verbs().length; } catch (e) { return 0; } }, conj: conj, say: say };
+    function build(n) {
+      var st = load(), vs = verbs();
+      var pool = [];
+      vs.forEach(function (v) { var s = st[v.de] || { ok: 0, n: 0 }; var w = (s.n ? (1 - s.ok / s.n) : 0.6) + Math.random() * 0.8; for (var i = 0; i < 4; i++) pool.push({ v: v, i: i, k: w + Math.random() * 0.6 }); });
+      pool.sort(function (a, b) { return b.k - a.k; });
+      var out = [], usedV = {};
+      pool.forEach(function (x) { if (out.length < n && !(usedV[x.v.de] >= 2)) { usedV[x.v.de] = (usedV[x.v.de] || 0) + 1; out.push(x); } });
+      return shuffleArray(out);
+    }
+    function sepNote(v) { return v.c.sep ? '<div class="sp-gramh">📘 פועל נפרד</div><div class="sp-gram"><b>' + esc(v.de) + '</b>: הקידומת <b>' + esc(v.c.sep) + '</b> קופצת לסוף המשפט, והפועל נשאר באמצע. בצורת המקור הכול צמוד.</div>' : ''; }
+    window.openVerbDrill = function (o) {
+      o = o || {};
+      if (!window.SpeakPractice) return;
+      var items = build(o.n || 10);
+      if (!items.length) return;
+      onClose = o.onClose || null;
+      var correct = 0, total = 0;
+      SpeakPractice.open({
+        title: 'נטיית פעלים · אמרו את הצורה', storeKey: 'delearn_sp_verbs', autostart: true, preset: { dir: 'he2de' }, fixedDir: true, noNotes: true, holdOk: true, reviewTitle: 'הצורות של הסיבוב',
+        matcher: SpeakPractice.matchSentence,
+        items: items.map(function (x) {
+          var v = x.v, ans = say(v.c, x.i);
+          return { ref: { de: v.de + '|' + P[x.i].k, verb: v.de }, prompt: P[x.i].he + ' · ' + v.he, answer: ans, display: ans, sub: v.de + ' = ' + v.he, hint: 'צורת המקור: ' + v.de,
+            focus: [v.c.f[x.i]], focusInfo: '<div dir="ltr" style="font-weight:600;text-align:center">' + [0, 1, 2, 3].map(function (i) { return ends(v.c, i); }).join('') + '</div>', gram: sepNote(v), extraMs: 1800 };
+        }),
+        onResult: function (ref, ok) { try { var s = load(), r = s[ref.verb] || { ok: 0, n: 0 }; r.n++; if (ok) r.ok++; s[ref.verb] = r; localStorage.setItem(KEY, JSON.stringify(s)); total++; if (ok) correct++; } catch (e) {} },
+        onFinish: function (info) { try { if (o.cb) o.cb({ ok: info.firstTry, n: info.total }); } catch (e) {} },
+        getGroups: function () { return []; }, getItems: function () { return []; },
+        onClose: function () { if (onClose) onClose(); }
+      });
     };
   })();
 
