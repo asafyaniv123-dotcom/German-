@@ -1273,6 +1273,7 @@
   @keyframes spPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.14); } }
   .sp-mic:disabled { background: #cfcac1; box-shadow: 0 5px 0 #b3aea5; cursor: default; }
   .sp-redo { width: 56px; height: 56px; border-radius: 16px; border: 2px solid var(--line, #e6e1d8); background: var(--surface, #fff); box-shadow: 0 4px 0 var(--line, #e6e1d8); font-size: 22px; color: #1ea7f2; cursor: pointer; }
+  .sp-blanks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 8px; margin-top: 18px; direction: ltr; } .sp-bl { display: inline-block; height: 0; border-bottom: 4px solid var(--line, #cfcfcf); border-radius: 3px; margin-top: 18px; } .sp-bl.on { height: auto; border-bottom-color: #58cc02; color: #3d9a00; font-weight: 800; font-size: 19px; margin-top: 0; padding: 0 3px; }
   .sp-mk { background: #fff1a8; color: inherit; border-radius: 6px; padding: 0 3px; box-shadow: 0 2px 0 #f5c400; } .sp-focus { margin-top: 10px; font-size: 14px; font-weight: 700; line-height: 1.7; direction: rtl; } .sp-gramw { margin-top: 12px; padding: 9px 11px; border-radius: 14px; background: rgba(28,176,246,.12); text-align: right; direction: rtl; font-size: 13.5px; line-height: 1.55; color: var(--ink, #3c3c3c); font-weight: 600; } .sp-gramh { font-weight: 900; font-size: 12px; opacity: .75; margin-bottom: 3px; } .sp-gram + .sp-gram { margin-top: 6px; } .sp-gram b { direction: ltr; unicode-bidi: isolate; color: #1479b8; }
   .sp-focus b { direction: ltr; unicode-bidi: isolate; }
   .sp-next { flex: 1; max-width: 260px; border: 0; border-radius: 18px; padding: 17px 10px 15px; font: inherit; font-size: 18px; font-weight: 700; color: #fff; background: #58b02f; box-shadow: 0 5px 0 #438a22; cursor: pointer; }
@@ -1600,7 +1601,7 @@
     if (S.state === 'ask') {
       cardInner = toHe
         ? '<div class="sp-pos">🇩🇪→🇮🇱 אמרו בעברית מה זה אומר</div><div class="sp-prompt" style="direction:ltr">' + esc(c.display || c.answer) + '</div>' + (c.hint ? '<div class="sp-pos">' + esc(c.hint) + '</div>' : '')
-        : '<div class="sp-prompt"' + (c.ltr ? ' style="direction:ltr;font-size:23px"' : '') + '>' + esc(c.prompt) + '</div>' + (c.hint ? '<div class="sp-pos">' + esc(c.hint) + '</div>' : '');
+        : '<div class="sp-prompt"' + (c.ltr ? ' style="direction:ltr;font-size:23px"' : '') + '>' + esc(c.prompt) + '</div>' + (S.opts.patient ? '<div class="sp-blanks" dir="ltr">' + blanksInner(c.answer, S.heard) + '</div>' : '') + (c.hint ? '<div class="sp-pos">' + esc(c.hint) + '</div>' : '');
     } else if (toHe) {
       cardInner = '<div class="sp-answer">' + esc(c.prompt) + '</div><div class="sp-sub" style="direction:ltr">' + esc(c.display || c.answer) + '</div>' + (window.vocabExampleHtml && c.ref && c.ref.de ? window.vocabExampleHtml(c.ref.de) : '');
     } else {
@@ -1749,6 +1750,7 @@
       if (res.isFinal) { consumeNow(); if (!(nw(use[0]) < 2 && nw(cur().answer) > 3 && !S.acc.length)) S.acc.push(use[0]); }
       S.heard = S.acc.length && res.isFinal ? S.acc.join(' ') : joined;
       const h2 = overlay && overlay.querySelector('.sp-heard'); if (h2) { h2.textContent = S.heard; h2.className = 'sp-heard'; }
+      const bl = overlay && overlay.querySelector('.sp-blanks'); if (bl) bl.innerHTML = blanksInner(cur().answer, S.heard);
       clearTimeout(S.stable);
       const snap2 = S.heard, idx2 = S.idx;
       if (S.acc.length || !res.isFinal) S.stable = later(() => { if (S && S.state === 'ask' && S.idx === idx2 && S.live && S.heard === snap2) { S.acc = []; consumeNow(); onWrong(snap2); } }, 6000);
@@ -1776,6 +1778,18 @@
     const ms = S.askAt ? Date.now() - S.askAt : 0;
     try { if (S.opts.onResult) S.opts.onResult(c.ref, ok, ms); } catch (e) {}
     try { if (c.ref && typeof c.ref.de === 'string' && window.wordLogTime) window.wordLogTime(c.ref.de, ms, ok); } catch (e) {}
+  }
+  // sentence practice: one dash per word of the answer (as long as the word), filled in as the words are heard
+  const normTok = t => String(t || '').toLowerCase().replace(/[^a-zäöüß0-9]/g, '');
+  function blanksInner(answer, heardText) {
+    const toks = String(answer || '').split(/\s+/).filter(Boolean), heard = String(heardText || '').split(/\s+/).map(normTok).filter(Boolean);
+    let ptr = 0;
+    return toks.map(t => {
+      const n = normTok(t); let at = -1;
+      for (let j = ptr; j < heard.length; j++) if (heard[j] === n) { at = j; break; }
+      if (at >= 0) { ptr = at + 1; return '<span class="sp-bl on" dir="ltr">' + esc(t.replace(/[.,!?;:]+$/, '')) + '</span>'; }
+      return '<span class="sp-bl" style="width:' + Math.max(18, Math.min(120, n.length * 11)) + 'px"></span>';
+    }).join('');
   }
   // the words being learned are marked inside the sentence after it was said
   function hiliteFocus(text, focus) {
@@ -7137,7 +7151,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '42c90f305a';
+  const APP_BUILD = 'c03fe47dd7';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
