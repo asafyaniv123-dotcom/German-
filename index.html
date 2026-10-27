@@ -1274,6 +1274,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
   @keyframes spPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.14); } }
   .sp-mic:disabled { background: #cfcac1; box-shadow: 0 5px 0 #b3aea5; cursor: default; }
   .sp-redo { width: 56px; height: 56px; border-radius: 16px; border: 2px solid var(--line, #e6e1d8); background: var(--surface, #fff); box-shadow: 0 4px 0 var(--line, #e6e1d8); font-size: 22px; color: #1ea7f2; cursor: pointer; }
+  .sp-adv { width: min(300px, 80%); height: 5px; border-radius: 3px; background: var(--line, #e5e5e5); overflow: hidden; margin: 10px auto 0; max-width: 300px; } .sp-adv i { display: block; height: 100%; width: 100%; background: #1cb0f6; animation: spAdv linear forwards; } @keyframes spAdv { from { width: 100%; } to { width: 0; } }
   .sp-blanks { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px 8px; margin-top: 18px; direction: ltr; } .sp-bl { display: inline-block; height: 0; border-bottom: 4px solid var(--line, #cfcfcf); border-radius: 3px; margin-top: 18px; } .sp-bl.on { height: auto; border-bottom-color: #58cc02; color: #3d9a00; font-weight: 800; font-size: 19px; margin-top: 0; padding: 0 3px; }
   .sp-mk { background: #fff1a8; color: inherit; border-radius: 6px; padding: 0 3px; box-shadow: 0 2px 0 #f5c400; } .sp-focus { margin-top: 10px; font-size: 14px; font-weight: 700; line-height: 1.7; direction: rtl; } .sp-gramw { margin-top: 12px; padding: 9px 11px; border-radius: 14px; background: rgba(28,176,246,.12); text-align: right; direction: rtl; font-size: 13.5px; line-height: 1.55; color: var(--ink, #3c3c3c); font-weight: 600; } .sp-gramh { font-weight: 900; font-size: 12px; opacity: .75; margin-bottom: 3px; } .sp-gram + .sp-gram { margin-top: 6px; } .sp-gram b { direction: ltr; unicode-bidi: isolate; color: #1479b8; }
   .sp-focus b { direction: ltr; unicode-bidi: isolate; }
@@ -1596,7 +1597,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     if (!items.length) { S.msg = 'אין מילים לתרגול בבחירה הזו.'; renderSetup(); return; }
     clearTimers(); stopRec();
     Object.assign(S, {
-      phase: 'play', idx: 0, state: 'ask', attempts: 0, combo: 0, best: 0, firstTry: 0, results: [], done: false, msg: '', heard: '', wrong: false,
+      phase: 'play', fill: {}, idx: 0, state: 'ask', attempts: 0, combo: 0, best: 0, firstTry: 0, results: [], done: false, msg: '', heard: '', wrong: false,
       listening: false, live: false, typing: !!typing || !SR, focusInput: false, base: 0, lastLen: 0, muteUntil: 0, heardAny: false,
       queue: items.map(it => ({ ref: it.ref, prompt: it.prompt, answer: it.answer, display: it.display, hint: it.hint, sub: it.sub, ltr: it.ltr, focus: it.focus, focusInfo: it.focusInfo, gram: it.gram, extraMs: it.extraMs }))
     });
@@ -1663,7 +1664,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
       '<div class="sp-combo"><span>' + (S.combo >= 2 ? 'רצף ×' + S.combo : '') + '</span>' + pill + '</div>' +
       '<div class="sp-title">' + esc(toHe ? 'מה זה אומר? אמרו בעברית' : (S.opts.title || 'אמרו את המילה בגרמנית')) + '</div>' +
       '<div class="sp-stage">' + layers + (S.ghost ? '<div class="sp-card bad ghost">' + S.ghost + '</div>' : '') + '<div class="' + cardCls + '" id="spCard">' + cardInner + '</div></div>' +
-      banner + heard + (S.opts.holdOk && S.state === 'ok' ? '<div class="sp-sub" style="text-align:center;font-size:13px;opacity:.75;margin-top:6px">' + (S.paused ? '⏸ עצרתם · לחצו "המשך" כשמוכנים' : 'ממשיך לבד · געו בכרטיס כדי לעצור ולהסתכל') + '</div>' : '') + noteBox + actions + '<div class="sp-links">' + links + '</div>' + (S.debug ? '<pre id="spDbg" style="font-size:11px;direction:ltr;text-align:left;margin:6px 0 0;max-height:120px;overflow:auto;color:var(--ink-soft,#8a867f);white-space:pre-wrap">' + esc((S.log || []).join('\n')) + '</pre>' : '');
+      banner + heard + (S.opts.holdOk && S.state === 'ok' ? (!S.paused && S.advMs ? '<div class="sp-adv"><i style="animation-duration:' + Math.round(S.advMs) + 'ms"></i></div>' : '') + '<div class="sp-sub" style="text-align:center;font-size:13px;opacity:.8;margin-top:6px">' + (S.paused ? '⏸ ' + (S.advMode === 'manual' ? 'מעבר ידני' : 'עצרתם') + ' · לחצו "המשך" כשמוכנים' : 'ממשיך לבד · געו בכרטיס כדי לעצור ולקרוא') + ' <button class="sp-link" id="spAdvMode" style="font-size:13px;margin-inline-start:6px">⏱ ' + ({ auto: 'מהירות: רגילה', slow: 'מהירות: איטית', manual: 'מהירות: ידני' }[S.advMode || 'auto']) + '</button></div>' : '') + noteBox + actions + '<div class="sp-links">' + links + '</div>' + (S.debug ? '<pre id="spDbg" style="font-size:11px;direction:ltr;text-align:left;margin:6px 0 0;max-height:120px;overflow:auto;color:var(--ink-soft,#8a867f);white-space:pre-wrap">' + esc((S.log || []).join('\n')) + '</pre>' : '');
     S.shake = false; S.enter = false; S.ghost = null;
     bind();
     if (S.typing && S.state === 'ask') { const i = document.getElementById('spInput'); if (i && S.focusInput) { i.focus(); } }
@@ -1683,6 +1684,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
       try { if (S.opts.onResult) S.opts.onResult(c.ref, true, 0); } catch (e) {}
       advance();
     };
+    if ($('spAdvMode')) $('spAdvMode').onclick = e => { e.stopPropagation(); const order = ['auto', 'slow', 'manual'], cur0 = S.advMode || 'auto', nx = order[(order.indexOf(cur0) + 1) % 3]; try { localStorage.setItem('delearn_sp_hold', nx); } catch (x) {} S.advMode = nx; if (nx === 'manual') { S.paused = true; clearTimeout(S.advT); try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (x) {} } render(); };
     if ($('spCard') && S.opts.holdOk) $('spCard').onclick = () => { if (S.state === 'ok' && !S.paused) { S.paused = true; clearTimeout(S.advT); try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {} render(); } };
     if ($('spNoteEdit')) $('spNoteEdit').onclick = () => { S.noteEdit = true; render(); const t = document.getElementById('spNoteTx'); if (t) t.focus(); };
     if ($('spNoteCancel')) $('spNoteCancel').onclick = () => { S.noteEdit = false; render(); };
@@ -1779,7 +1781,8 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
       const nw = t => String(t).split(/\s+/).filter(Boolean).length;
       if (res.isFinal) { consumeNow(); if (!(nw(use[0]) < 2 && nw(cur().answer) > 3 && !S.acc.length)) S.acc.push(use[0]); }
       S.heard = S.acc.length && res.isFinal ? S.acc.join(' ') : joined;
-      const h2 = overlay && overlay.querySelector('.sp-heard'); if (h2) { h2.textContent = S.heard; h2.className = 'sp-heard'; }
+      updateFill(cur().answer, S.heard);
+      const h2 = overlay && overlay.querySelector('.sp-heard'); if (h2) { h2.textContent = S.heard.split(' ').slice(-9).join(' '); h2.className = 'sp-heard'; }
       const bl = overlay && overlay.querySelector('.sp-blanks'); if (bl) bl.innerHTML = blanksInner(cur().answer, S.heard);
       clearTimeout(S.stable);
       const snap2 = S.heard, idx2 = S.idx;
@@ -1811,14 +1814,18 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
   }
   // sentence practice: one dash per word of the answer (as long as the word), filled in as the words are heard
   const normTok = t => String(t || '').toLowerCase().replace(/[^a-zäöüß0-9]/g, '');
+  // a word that was heard stays filled for the whole card (the recogniser keeps rewriting its guess, the dashes must not flicker back)
+  function updateFill(answer, heardText) {
+    S.fill = S.fill || {};
+    const toks = String(answer || '').split(/\s+/).filter(t => normTok(t)), hs = String(heardText || '').split(/\s+/).map(normTok).filter(Boolean);
+    toks.forEach((t, i) => { if (S.fill[i]) return; const n = normTok(t); if (hs.some(h => h === n || (n.length >= 4 && h.length >= 4 && near(h, n)))) S.fill[i] = 1; });
+  }
   function blanksInner(answer, heardText) {
-    const toks = String(answer || '').split(/\s+/).filter(t => normTok(t)), heard = String(heardText || '').split(/\s+/).map(normTok).filter(Boolean);
-    let ptr = 0;
-    return toks.map(t => {
-      const n = normTok(t); let at = -1;
-      for (let j = ptr; j < heard.length; j++) if (heard[j] === n) { at = j; break; }
-      if (at >= 0) { ptr = at + 1; return '<span class="sp-bl on" dir="ltr">' + esc(t.replace(/[.,!?;:]+$/, '')) + '</span>'; }
-      return '<span class="sp-bl" style="width:' + Math.max(18, Math.min(120, n.length * 11)) + 'px"></span>';
+    updateFill(answer, heardText);
+    const toks = String(answer || '').split(/\s+/).filter(t => normTok(t));
+    return toks.map((t, i) => {
+      if (S.fill[i]) return '<span class="sp-bl on" dir="ltr">' + esc(t.replace(/[.,!?;:]+$/, '')) + '</span>';
+      return '<span class="sp-bl" style="width:' + Math.max(18, Math.min(120, normTok(t).length * 11)) + 'px"></span>';
     }).join('');
   }
   // the words being learned are marked inside the sentence after it was said
@@ -1841,11 +1848,13 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     S.state = 'ok'; S.msg = ''; S.wrong = false; S.wrongHeard = ''; S.heard = '';
     const w = cur().display || cur().answer, say = !!(S.cfg && S.cfg.say);
     if (S.opts.holdOk) { // sentence practice: the card stays long enough to hear the whole sentence and see the new word marked, then moves on by itself (hands-free); a touch on the card freezes it
-      const ms = wordMs(w) + 450 + 2200 + (cur().extraMs || 0);
-      S.muteUntil = Date.now() + ms; S.paused = false; S.sentHint = true;
+      const c0 = cur(), plain = ((c0.gram || '') + ' ' + (c0.focusInfo || '')).replace(/<[^>]*>/g, ' ').trim(), nWords = plain ? plain.split(/\s+/).length : 0;
+      let mode = 'auto'; try { mode = localStorage.getItem('delearn_sp_hold') || 'auto'; } catch (e) {}
+      const ms = Math.min(45000, (wordMs(w) + 1800 + nWords * 340) * (mode === 'slow' ? 1.8 : 1));
+      S.muteUntil = Date.now() + 1500; S.paused = mode === 'manual'; S.sentHint = true; S.advMs = ms; S.advMode = mode;
       render(); sfx('ok');
       later(() => { if (S && S.state === 'ok') speakWord(w, true); }, 450);
-      S.advT = later(() => { if (S && S.state === 'ok' && !S.paused) advance(); }, ms);
+      if (mode !== 'manual') S.advT = later(() => { if (S && S.state === 'ok' && !S.paused) advance(); }, ms);
       return;
     }
     S.muteUntil = Date.now() + (say ? wordMs(w) + 800 : 1500);
@@ -1887,7 +1896,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     if (S.state === 'bad') { const pc = cur(); S.ghost = '<div class="sp-answer">' + esc(pc.display || pc.answer) + '</div><div class="sp-sub">' + esc(pc.prompt) + '</div>'; } // a missed card slides back behind the stack
     S.enter = true;
     S.noteEdit = false;
-    S.acc = []; S.idx++; S.attempts = 0; S.state = 'ask'; S.msg = ''; S.heard = ''; S.wrong = false; S.wrongHeard = '';
+    S.acc = []; S.fill = {}; S.idx++; S.attempts = 0; S.state = 'ask'; S.msg = ''; S.heard = ''; S.wrong = false; S.wrongHeard = '';
     S.muteUntil = Date.now() + 350; consumeNow(); S.askAt = Date.now();
     if (S.idx >= S.queue.length) { S.done = true; S.idx = S.queue.length; stopLive(); }
     else ensureDir(cur());
@@ -7204,7 +7213,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '7c13b91708';
+  const APP_BUILD = 'd5df6e1d78';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
