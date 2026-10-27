@@ -2732,7 +2732,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
           '<div class="dl-streak">' + (window.DailyPlan ? '<button class="dl-stat" id="dlCopy" style="cursor:pointer;font:inherit;color:inherit;flex:0 0 74px"><b>📋</b><span>העתק נתונים</span></button>' : '') + '<div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
-          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">🗓️ האימון של היום</button>' : '') + (cfg.verbs && cfg.verbCount && cfg.verbCount() >= 3 ? '<button class="dl-btn" id="dlVerbs">🔧 נטיית פעלים</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
+          (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">' + (window.DailyPlan && window.DailyPlan.isRevDay && window.DailyPlan.isRevDay() ? '🔁 יום חזרה' : '🗓️ האימון של היום') + '</button>' : '') + (cfg.verbs && cfg.verbCount && cfg.verbCount() >= 3 ? '<button class="dl-btn" id="dlVerbs">🔧 נטיית פעלים</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות (לפי התרגול והקערה): ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
         if (!isFuture) {
@@ -7213,7 +7213,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'd5df6e1d78';
+  const APP_BUILD = '8956bee714';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8985,7 +8985,18 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     var KIND = { new: { e: '🌱', t: 'עוד לא תורגלה', c: '#9aa0a6' }, weak: { e: '🥀', t: 'צריכה תשומת לב', c: '#ff4b6e' }, prog: { e: '🌿', t: 'בדרך', c: '#f5a300' }, strong: { e: '🌳', t: 'חזקה', c: '#58cc02' } };
     function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
     function logGet() { try { return JSON.parse(localStorage.getItem(LOG) || '{}') || {}; } catch (e) { return {}; } }
-    function logAdd(de, ok) { try { var o = logGet(), r = o[de] || { t: 0, h: '' }; r.t = Date.now(); r.h = (r.h + (ok ? '1' : '0')).slice(-8); o[de] = r; localStorage.setItem(LOG, JSON.stringify(o)); } catch (e) {} }
+    // spaced review ladder: after a success the word comes back after 1, 2, 4, 7, 14 and 30 days (research: retrieval after a gap builds long-term memory; dropping a word after one success loses most of it)
+    var DAY = 86400000, INT = [0, 1, 2, 4, 7, 14, 30], TOL = 4 * 3600000, LVL_T = ['עכשיו', 'מחר', '2 ימים', '4 ימים', 'שבוע', 'שבועיים', 'חודש'];
+    function lvlInit(r) { var h = r.h || '', st = 0; for (var i = h.length - 1; i >= 0 && h.charAt(i) === '1'; i--) st++; var l = Math.min(3, st); return { s: l, u: r.t ? r.t + INT[l] * DAY : 0 }; }
+    function logAdd(de, ok) {
+      try {
+        var o = logGet(), r = o[de] || { t: 0, h: '' }, now = Date.now();
+        if (r.s == null) { var li = lvlInit(r); r.s = li.s; r.u = li.u; }
+        if (ok) { if (now >= r.u - TOL) { r.s = Math.min(6, r.s + 1); r.u = now + INT[r.s] * DAY; } } // an early repeat on the same day does not climb the ladder
+        else { r.s = Math.max(0, r.s - 3); r.u = now; }
+        r.t = now; r.h = (r.h + (ok ? '1' : '0')).slice(-8); o[de] = r; localStorage.setItem(LOG, JSON.stringify(o));
+      } catch (e) {}
+    }
     window.wordLogAttempt = logAdd; // called from recordAttempt
     // how long it took to answer (correct answers only): the speed of recall says how automatic a word already is
     function logTime(de, ms, ok) { try { if (!ok || !(ms > 300)) return; var o = logGet(), r = o[de] || { t: Date.now(), h: '' }; r.m = (r.m || []).concat(Math.round(Math.min(ms, 30000))).slice(-6); o[de] = r; localStorage.setItem(LOG, JSON.stringify(o)); } catch (e) {} }
@@ -9007,9 +9018,20 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (k === 'strong' && slow) k = 'prog';
       var days = rec && rec.t ? (Date.now() - rec.t) / 86400000 : (n ? 3 : null);
       var prio = k === 'new' ? 0.7 : (1 - (recent == null ? 0.5 : recent)) + Math.min(0.6, (days || 0) * 0.08);
-      var miss = false; try { miss = getMissedList().indexOf(de) >= 0; } catch (e) {} if (miss) prio += 0.3; if (k === 'strong') prio -= 0.2; if (slow) prio += 0.25;
-      return { k: k, c: s.correct, w: s.wrong, n: n, h: h, t: rec ? rec.t : 0, prio: prio, med: med, slow: slow, fast: fast, base: base };
+      var miss = false; try { miss = getMissedList().indexOf(de) >= 0; } catch (e) {} if (miss) prio += 0.3; if (slow) prio += 0.25;
+      var now = Date.now(), lv = 0, u = 0;
+      if (rec) { if (rec.s != null) { lv = rec.s; u = rec.u || 0; } else { var li = lvlInit(rec); lv = li.s; u = li.u; } }
+      var due = n > 0 && now >= u - TOL, over = due ? Math.max(0, (now - u) / DAY) / Math.max(1, INT[lv]) : 0;
+      if (k !== 'new') { if (due) prio += 0.35 + Math.min(0.5, over * 0.15); else prio -= 0.3; }
+      return { k: k, c: s.correct, w: s.wrong, n: n, h: h, t: rec ? rec.t : 0, prio: prio, med: med, slow: slow, fast: fast, base: base, lv: lv, u: u, due: due };
     }
+    function whenText(s) {
+      if (!s.n) return 'עוד לא תורגלה';
+      if (s.due) return 'הגיע הזמן לחזור עליה';
+      var h = (s.u - Date.now()) / 3600000; if (h < 20) return 'חוזרת היום בערב או מחר'; var d = Math.round(h / 24);
+      return d <= 1 ? 'חוזרת מחר' : 'חוזרת בעוד ' + d + ' ימים';
+    }
+    function needsReview(x) { return x.s.k === 'new' || x.s.k === 'weak' || x.s.due; }
     window.wordBadge = function (de) { try { return KIND[statusOf(de).k].e; } catch (e) { return ''; } };
     function dayWords() {
       var data = {}; try { data = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {}; } catch (e) {}
@@ -9031,7 +9053,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         '.wh-rev{display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid var(--line,#eee);cursor:pointer}.wh-rev:first-of-type{border-top:0}.wh-rev .e{font-size:22px}.wh-rev b{direction:ltr;display:block}.wh-rev span{font-size:12.5px;color:var(--ink-soft,#777)}' +
         '.wh-sheet{position:fixed;left:0;right:0;bottom:0;z-index:8975;background:var(--surface,#fff);border-top:3px solid var(--fun-blue,#1cb0f6);border-radius:22px 22px 0 0;box-shadow:0 -8px 24px rgba(0,0,0,.18);padding:14px 16px calc(16px + env(safe-area-inset-bottom));direction:rtl;max-height:60vh;overflow-y:auto}' +
         '.wh-sheet .ph{font-size:24px;font-weight:900;direction:ltr;text-align:left}.wh-sheet .he{font-size:18px;margin:4px 0}.wh-dots{display:flex;gap:5px;direction:ltr;margin:8px 0}.wh-dots i{width:14px;height:14px;border-radius:50%}.wh-sheet .row{display:flex;gap:8px;margin-top:8px}.wh-sheet .row button{flex:1;border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:12px;padding:8px;font:inherit;font-weight:800;cursor:pointer;color:inherit}' +
-        '.wh-note{margin-top:8px;padding:8px 10px;border-radius:12px;background:#efe7ff;color:#4b2a8a;font-size:14px}';
+        '.wh-note{margin-top:8px;padding:8px 10px;border-radius:12px;background:#efe7ff;color:#4b2a8a;font-size:14px}' +
+        '.wh-lad{display:flex;gap:4px;direction:rtl;margin-top:10px;align-items:flex-end}.wh-lad .c{flex:1;min-width:0;text-align:center}.wh-lad .n{font-size:12px;font-weight:900;height:16px}.wh-lad .bar{height:64px;background:var(--line,#eee);border-radius:8px;display:flex;align-items:flex-end;overflow:hidden}.wh-lad .bar i{display:block;width:100%;border-radius:8px 8px 0 0}.wh-lad .l{font-size:10px;color:var(--ink-soft,#777);margin-top:3px;line-height:1.2}';
       document.head.appendChild(st);
     }
     function all() { var lg = logGet(); return dayWords().map(function (d) { return { k: d.k, ws: d.ws.map(function (v) { return { v: v, s: statusOf(v.de, lg) }; }) }; }); }
@@ -9044,9 +9067,14 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var tot = items.length || 1;
       var seg = ['strong', 'prog', 'weak', 'new'].map(function (k) { return '<i style="width:' + (cnt[k] / tot * 100) + '%;background:' + KIND[k].c + '"></i>'; }).join('');
       var leg = ['strong', 'prog', 'weak', 'new'].map(function (k) { return '<span>' + KIND[k].e + ' ' + KIND[k].t + ' · ' + cnt[k] + '</span>'; }).join('');
-      var rev = items.filter(function (x) { return x.s.k !== 'strong' || x.s.prio > 0.35; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 10);
+      var rev = items.filter(needsReview).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 10);
+      var lvC = [0, 0, 0, 0, 0, 0, 0], dueN = 0; items.forEach(function (x) { if (x.s.n) { lvC[x.s.lv]++; if (x.s.due) dueN++; } });
+      var lvMax = Math.max.apply(null, lvC.concat([1]));
+      var ladder = '<div class="wh-card"><h3>📅 סולם החזרות</h3><div class="wh-sub">אחרי כל הצלחה המילה עולה מדרגה וחוזרת מאוחר יותר: מחר, אחרי יומיים, 4 ימים, שבוע, שבועיים, חודש. טעות מורידה אותה למטה. מילה ירוקה לא נעלמת: היא פשוט חוזרת פחות.</div>' +
+        '<div class="wh-lad">' + lvC.map(function (c, i) { return '<div class="c"><div class="n">' + (c || '') + '</div><div class="bar"><i style="height:' + Math.round(c / lvMax * 100) + '%;background:' + (i === 0 ? '#ff4b6e' : i < 3 ? '#f5a300' : '#58cc02') + '"></i></div><div class="l">' + LVL_T[i] + '</div></div>'; }).join('') + '</div>' +
+        '<div class="wh-sub" style="margin-top:6px">' + (dueN ? '⏰ ' + dueN + ' מילים הגיע זמנן לחזרה' : '✅ אין מילים שממתינות לחזרה') + '</div></div>';
       var revHtml = rev.length ? rev.map(function (x) {
-        var why = x.s.k === 'new' ? 'עוד לא תורגלה' : (x.s.c + ' מתוך ' + x.s.n + ' נכון' + (ago(x.s.t) ? ' · ' + ago(x.s.t) : ''));
+        var why = x.s.k === 'new' ? 'עוד לא תורגלה' : (x.s.c + ' מתוך ' + x.s.n + ' נכון' + (ago(x.s.t) ? ' · ' + ago(x.s.t) : '') + (x.s.due ? ' · הגיע זמנה' : ''));
         return '<div class="wh-rev" data-de="' + esc(x.v.de) + '"><span class="e">' + KIND[x.s.k].e + '</span><div style="flex:1;min-width:0"><b>' + esc((x.v.gender ? x.v.gender + ' ' : '') + x.v.de) + '</b><span>' + esc(heOf(x.v)) + ' · ' + why + '</span></div></div>';
       }).join('') + '<button class="wh-btn" data-a="practice">🎤 תרגל את ה-' + rev.length + ' האלה</button>' : '<div class="wh-sub">אין מה לחזור עליו כרגע. כל הכבוד!</div>';
       var chip = function (f, label) { return '<button class="wh-chip' + (flt === f ? ' on' : '') + '" data-f="' + f + '">' + label + '</button>'; };
@@ -9060,7 +9088,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       ov.innerHTML = '<div class="wh-wrap"><div class="wh-top"><button class="wh-x" data-a="close" aria-label="סגור">✕</button><h2>🌳 הגן של המילים שלי</h2></div>' +
         '<div class="wh-card"><h3>' + items.length + ' מילים בלוח</h3><div class="wh-bar">' + seg + '</div><div class="wh-leg">' + leg + '</div>' +
         '<div class="wh-sub" style="margin-top:8px">כל מילה היא צמח: 🌱 עוד לא תורגלה, 🥀 צריכה תשומת לב, 🌿 בדרך, 🌳 חזקה. התיעוד של הפעמים האחרונות מתחיל מהיום, לכן מילים ישנות יתעדכנו עם התרגול.</div></div>' +
-        '<div class="wh-card"><h3>🎯 מה לחזור עליו היום</h3><div class="wh-sub" style="margin-bottom:4px">לפי טעויות, כמה זמן עבר מהתרגול האחרון, ומילים שעוד לא תרגלת.</div>' + revHtml + '</div>' +
+        ladder + '<div class="wh-card"><h3>🎯 מה לחזור עליו היום</h3><div class="wh-sub" style="margin-bottom:4px">מילים שהגיע זמנן לפי הסולם, מילים שטעית בהן, ומילים שעוד לא תרגלת.</div>' + revHtml + '</div>' +
         '<div class="wh-chips">' + chip('all', 'הכול') + chip('weak', '🥀 חלשות · ' + cnt.weak) + chip('prog', '🌿 בדרך · ' + cnt.prog) + chip('strong', '🌳 חזקות · ' + cnt.strong) + chip('new', '🌱 חדשות · ' + cnt.new) + '</div>' + grid + '</div>';
       ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a, rev); }; });
       ov.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { flt = b.dataset.f; render(); }; });
@@ -9073,7 +9101,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var dots = s.h ? '<div class="wh-dots">' + s.h.split('').map(function (x) { return '<i style="background:' + (x === '1' ? '#58cc02' : '#ff4b6e') + '"></i>'; }).join('') + '</div><div class="wh-sub">הניסיונות האחרונים (מהישן לחדש)</div>' : '';
       var spd = s.med ? '<div class="wh-sub" style="margin-top:6px">⏱️ זמן תגובה ממוצע: ' + (s.med / 1000).toFixed(1) + ' שנ׳' + (s.slow ? ' · איטי יחסית אליך: הצעד הבא הוא לענות מהר יותר' : s.fast ? ' · מהיר: המילה כבר אוטומטית' : '') + '</div>' : '';
       sheet.innerHTML = '<div class="ph">' + KIND[s.k].e + ' ' + esc((v.gender ? v.gender + ' ' : '') + v.de) + '</div><div class="he">' + esc(heOf(v)) + '</div>' +
-        '<div class="wh-sub">' + KIND[s.k].t + (s.n ? ' · ' + s.c + ' מתוך ' + s.n + ' נכון' : '') + (ago(s.t) ? ' · תורגלה ' + ago(s.t) : '') + '</div>' + dots + spd +
+        '<div class="wh-sub">' + KIND[s.k].t + (s.n ? ' · ' + s.c + ' מתוך ' + s.n + ' נכון' : '') + (ago(s.t) ? ' · תורגלה ' + ago(s.t) : '') + '</div><div class="wh-sub">📅 ' + whenText(s) + (s.n ? ' · מדרגה ' + (s.lv + 1) + ' מתוך 7' : '') + '</div>' + dots + spd +
         (note ? '<div class="wh-note">💭 ' + esc(note) + '</div>' : '') + '<div class="row"><button id="whSay">🔊 השמע</button><button id="whOne">🎤 תרגל רק אותה</button><button id="whClose">סגור</button></div>';
       sheet.querySelector('#whSay').onclick = function () { try { speak((v.gender ? v.gender + ' ' : '') + v.de, null); } catch (e) {} };
       sheet.querySelector('#whOne').onclick = function () { closeSheet(); practice([v]); };
@@ -9094,8 +9122,17 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (a === 'practice') practice(rev.map(function (x) { return x.v; }));
     }
     function close() { closeSheet(); if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
-    function recommend(n) { var items = flat(all()); return items.filter(function (x) { return x.s.k !== 'strong' || x.s.prio > 0.35; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, n || 6).map(function (x) { return x.v; }); }
-    function summary() { var items = flat(all()), c = { new: 0, weak: 0, prog: 0, strong: 0 }; items.forEach(function (x) { c[x.s.k]++; }); return { total: items.length, c: c, weak: items.filter(function (x) { return x.s.k === 'weak'; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 6).map(function (x) { return x.v; }), slow: items.filter(function (x) { return x.s.slow; }).sort(function (a, b) { return b.s.med - a.s.med; }).slice(0, 6).map(function (x) { return x.v; }), base: items.length ? (items[0].s.base || null) : null }; }
+    // opts.pad: when fewer words are due than asked for, fill up with the words practised longest ago (review day); opts.shuffle: mix days together
+    function recommend(n, opts) {
+      opts = opts || {}; var items = flat(all()), want = n || 6, pick = items.filter(needsReview).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, want);
+      if (opts.pad && pick.length < want) {
+        var have = {}; pick.forEach(function (x) { have[x.v.de] = 1; });
+        pick = pick.concat(items.filter(function (x) { return !have[x.v.de]; }).sort(function (a, b) { return (a.s.t || 0) - (b.s.t || 0); }).slice(0, want - pick.length));
+      }
+      if (opts.shuffle) pick = pick.map(function (x) { return { x: x, r: Math.random() }; }).sort(function (a, b) { return a.r - b.r; }).map(function (o) { return o.x; });
+      return pick.map(function (x) { return x.v; });
+    }
+    function summary() { var items = flat(all()), c = { new: 0, weak: 0, prog: 0, strong: 0 }; items.forEach(function (x) { c[x.s.k]++; }); var due = items.filter(function (x) { return x.s.n && x.s.due; }).length; return { total: items.length, due: due, c: c, weak: items.filter(function (x) { return x.s.k === 'weak'; }).sort(function (a, b) { return b.s.prio - a.s.prio; }).slice(0, 6).map(function (x) { return x.v; }), slow: items.filter(function (x) { return x.s.slow; }).sort(function (a, b) { return b.s.med - a.s.med; }).slice(0, 6).map(function (x) { return x.v; }), base: items.length ? (items[0].s.base || null) : null }; }
     function practiceCb(words, cb) {
       if (!window.SpeakPractice || !words.length) { if (cb) cb({ ok: 0, n: 0 }); return; }
       var ok = 0, n = 0;
@@ -9132,9 +9169,21 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       LetterTools.order.forEach(function (id) { var m = LetterTools.meta[id]; out.push({ id: id, kind: 'let', t: m.t, e: m.e, r: ls[id], frac: 1, need: need(ls[id], 1) }); });
       return out;
     }
-    function compose(diag) {
+    // weekly review day: no new material, one big retrieval round over words from every day (research: spaced retrieval beats re-study; sleep consolidates)
+    var DAYN = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    function revDay() { try { var v = localStorage.getItem('delearn_revday'); return v == null ? 6 : Number(v); } catch (e) { return 6; } }
+    function isRevDay() { return revDay() >= 0 && new Date().getDay() === revDay(); }
+    function compose(diag, rev) {
       var steps = [], ws = WordHealth.summary(), A = areaList();
-      if (ws.total) steps.push({ id: 'words', kind: 'words', n: diag ? 8 : 6, t: 'חיזוק מילים', e: '🌳' });
+      if (rev) {
+        if (ws.total) steps.push({ id: 'words', kind: 'words', n: 20, rev: true, t: 'חזרה גדולה על מילים מכל הימים', e: '🔁' });
+        steps.push({ id: 'nums', kind: 'nummix', t: 'מספרים ושעון: סקירה', e: '🔢' }); steps.push({ id: 'lets', kind: 'letmix', t: 'אותיות: סקירה', e: '🔤' });
+        if (calNouns() >= 5) steps.push({ id: 'dds', kind: 'dds', t: 'דר דאס די', e: '🎙️' });
+        if (window.VerbTools && VerbTools.count() >= 3) steps.push({ id: 'verbs', kind: 'verbs', t: 'נטיית פעלים', e: '🔧' });
+        steps.push({ id: 'report', kind: 'report', t: 'מה למדתי עליך', e: '🧾' });
+        return steps;
+      }
+      if (ws.total) steps.push({ id: 'words', kind: 'words', n: diag ? 8 : Math.min(10, Math.max(6, ws.due || 0)), t: 'חזרה על מילים לפי הסולם', e: '🌳' });
       if (diag) { steps.push({ id: 'nums', kind: 'nummix', t: 'מספרים ושעון: סקירה', e: '🔢' }); steps.push({ id: 'lets', kind: 'letmix', t: 'אותיות: סקירה', e: '🔤' }); }
       else {
         var ns = A.filter(function (a) { return a.kind === 'num'; }).sort(function (a, b) { return b.need - a.need; });
@@ -9151,11 +9200,13 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function current(force, diag) {
       var p = load();
       if (!force && p && p.date === today() && p.steps) return p;
-      p = { date: today(), diag: !!diag, steps: compose(diag), done: {} }; save(p); return p;
+      var rev = !diag && isRevDay();
+      p = { date: today(), diag: !!diag, rev: rev, steps: compose(diag, rev), done: {} }; save(p); return p;
     }
     function why(s) {
       var A = areaList(), ws = WordHealth.summary();
-      if (s.kind === 'words') return ws.c.weak + ' מילים צריכות חיזוק, ' + ws.c.new + ' עוד לא תורגלו' + (ws.slow && ws.slow.length ? ', ' + ws.slow.length + ' איטיות' : '');
+      if (s.kind === 'words' && s.rev) return 'מילים מכל הימים בלי רמז: קודם מהמשמעות, ואתה מוציא את המילה מהראש';
+      if (s.kind === 'words') return (ws.due ? ws.due + ' מילים הגיע זמנן לחזרה, ' : '') + ws.c.weak + ' צריכות חיזוק, ' + ws.c.new + ' עוד לא תורגלו' + (ws.slow && ws.slow.length ? ', ' + ws.slow.length + ' איטיות' : '');
       if (s.kind === 'num' || s.kind === 'let') { var a = A.filter(function (x) { return x.id === s.topic; })[0]; return a && a.r && a.r.n ? 'הצלחה ' + Math.round(a.r.ok / a.r.n * 100) + '% אחרי ' + a.r.n + ' תשובות' : 'עוד לא נבדק: נבדוק איפה אתה'; }
       if (s.kind === 'nummix') return 'שתי שאלות מכל נושא, כדי לראות מה חזק';
       if (s.kind === 'letmix') return 'שבע שאלות מעורבות';
@@ -9170,7 +9221,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var p = current();
       var cb = function (r) { mark(p, s, r); };
       if (s.kind === 'report') { view = 'report'; render(); return; }
-      if (s.kind === 'words') { var rec = WordHealth.recommend(s.n); if (!rec.length) { mark(p, s, { ok: 0, n: 0 }); return; } WordHealth.practice(rec, cb); return; }
+      if (s.kind === 'words') { var rec = WordHealth.recommend(s.n, s.rev ? { pad: true, shuffle: true } : {}); if (!rec.length) { mark(p, s, { ok: 0, n: 0 }); return; } WordHealth.practice(rec, cb); return; }
       if (s.kind === 'num') { NumberTools.listen(s.topic, { n: s.n, cb: cb }); return; }
       if (s.kind === 'nummix') { NumberTools.mix(['n20', 'n99', 'clock', 'price', 'date'], 2, cb); return; }
       if (s.kind === 'let') { LetterTools.run(s.topic, s.n, cb); return; }
@@ -9232,7 +9283,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function summaryText() {
       var ws = WordHealth.summary(), A = areaList(), T = tagsAll(), dd = ddsAll(), L = [];
       var d = new Date(); L.push('סיכום התקדמות מאפליקציית הגרמנית, ' + d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear());
-      L.push('מילים בלוח: ' + ws.total + ' (חזקות ' + ws.c.strong + ', בדרך ' + ws.c.prog + ', חלשות ' + ws.c.weak + ', עוד לא תורגלו ' + ws.c.new + ')');
+      L.push('מילים בלוח: ' + ws.total + ' (חזקות ' + ws.c.strong + ', בדרך ' + ws.c.prog + ', חלשות ' + ws.c.weak + ', עוד לא תורגלו ' + ws.c.new + ')' + (ws.due ? ', מחכות לחזרה לפי הסולם: ' + ws.due : ''));
       if (ws.weak.length) L.push('מילים חלשות: ' + ws.weak.map(function (v) { var s = WordHealth.statusOf(v.de); return v.de + ' (' + s.c + '/' + s.n + ')'; }).join(', '));
       if (ws.slow && ws.slow.length) L.push('נכון אבל איטי: ' + ws.slow.map(function (v) { var s = WordHealth.statusOf(v.de); return v.de + ' (' + (s.med / 1000).toFixed(1) + ' שנ׳)'; }).join(', '));
       try {
@@ -9260,32 +9311,44 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (!ov) return;
       var p = current(), nd = p.steps.filter(function (s) { return s.kind !== 'report' && done(p, s); }).length, tot = p.steps.filter(function (s) { return s.kind !== 'report'; }).length;
       var nextS = p.steps.filter(function (s) { return !done(p, s) && s.kind !== 'report'; })[0];
-      var h = '<div class="nm-wrap"><div class="nm-top"><button class="nm-x" data-a="close" aria-label="סגור">✕</button><h2>' + (view === 'report' ? '🧾 מה למדתי עליך' : p.diag ? '🔍 אבחון' : '🗓️ האימון של היום') + '</h2></div>';
+      var h = '<div class="nm-wrap"><div class="nm-top"><button class="nm-x" data-a="close" aria-label="סגור">✕</button><h2>' + (view === 'report' ? '🧾 מה למדתי עליך' : p.diag ? '🔍 אבחון' : p.rev ? '🔁 יום חזרה' : '🗓️ האימון של היום') + '</h2></div>';
       if (view === 'report') h += '<button class="nm-btn alt" data-a="back" style="margin:0 0 12px">◀ חזרה לאימון</button>' + report();
       else {
+        var wsum = WordHealth.summary();
+        if (p.rev && !p.diag) h += '<div class="nm-card" style="border-color:#58cc02;background:#eefbe0"><h3 style="margin:0 0 4px">🔁 יום חזרה: בלי חומר חדש</h3><div class="nm-sub">המוח מחזק מילים דווקא כשמוציאים אותן מהראש שוב, ושינה אחרי זה מקבעת. היום מתרגלים מילים מכל הימים, והמילים החדשות של היום בלוח יכולות לחכות למחר.</div></div>';
+        else if (wsum.due > 25 && !p.diag) h += '<div class="nm-card" style="border-color:#f5a300;background:#fff8e6"><div class="nm-sub">⏰ ' + wsum.due + ' מילים מחכות לחזרה. היום כדאי לתת עדיפות לחזרה לפני מילים חדשות.</div></div>';
         h += '<div class="nm-card"><div class="nm-sub">' + (nd >= tot ? '🎉 סיימת את האימון להיום! למטה אפשר להעתיק לי את הסיכום.' : 'כ-' + (tot * 2 + 1) + ' דקות. האימון מתחלף כל יום לפי מה שפחות סגור אצלך.') + '</div><div class="nm-bar"><i style="width:' + (tot ? nd / tot * 100 : 0) + '%"></i></div><div class="nm-sub">' + nd + ' מתוך ' + tot + ' שלבים</div></div>';
         h += p.steps.map(function (s) {
           var d = done(p, s), r = p.done[s.id], isNext = nextS && nextS.id === s.id;
           return '<div class="pl-step' + (d ? ' ok' : isNext ? ' on' : '') + '"><span class="e">' + s.e + '</span><div class="b"><b>' + esc(s.t) + '</b><span>' + (d && r && r.n ? r.ok + ' מתוך ' + r.n + ' נכון' : esc(why(s))) + '</span></div>' + (d ? '<span class="pl-chk">✅</span>' : '<button class="pl-go" data-step="' + s.id + '">' + (s.kind === 'report' ? 'הצג' : 'התחל') + '</button>') + '</div>';
         }).join('');
         h += (nextS ? '<button class="nm-btn" data-step="' + nextS.id + '">▶ המשך: ' + esc(nextS.t) + '</button>' : '<button class="nm-btn" data-step="report">🧾 מה למדתי עליך</button>') +
-          '<div class="nm-sub" style="margin:14px 0 6px">עוד:</div><div class="nm-grid g2"><button class="nm-t big" data-a="nums"><b style="font-size:22px">🔢</b><span style="font-family:inherit;direction:rtl">מספרים ושעון</span></button><button class="nm-t big" data-a="lets"><b style="font-size:22px">🔤</b><span style="font-family:inherit;direction:rtl">אותיות ואיות</span></button><button class="nm-t big" data-a="garden"><b style="font-size:22px">🌳</b><span style="font-family:inherit;direction:rtl">הגן של המילים</span></button><button class="nm-t big" data-a="diag"><b style="font-size:22px">🔍</b><span style="font-family:inherit;direction:rtl">אבחון מלא</span></button></div>' + exportBox();
+          '<button class="nm-btn alt" data-a="night" style="margin-top:10px">🌙 חזרה קצרה לפני שינה (5 מילים)</button><div class="nm-sub" style="margin:4px 0 0">שינה אחרי חזרה מקבעת את הזיכרון, ולכן ערב הוא זמן טוב לחזרה קצרה.</div>' +
+          '<div class="nm-sub" style="margin:14px 0 6px">עוד:</div><div class="nm-grid g2"><button class="nm-t big" data-a="nums"><b style="font-size:22px">🔢</b><span style="font-family:inherit;direction:rtl">מספרים ושעון</span></button><button class="nm-t big" data-a="lets"><b style="font-size:22px">🔤</b><span style="font-family:inherit;direction:rtl">אותיות ואיות</span></button><button class="nm-t big" data-a="garden"><b style="font-size:22px">🌳</b><span style="font-family:inherit;direction:rtl">הגן של המילים</span></button><button class="nm-t big" data-a="diag"><b style="font-size:22px">🔍</b><span style="font-family:inherit;direction:rtl">אבחון מלא</span></button></div>' +
+          '<div class="nm-card" style="margin-top:12px"><div class="nm-sub" style="margin-bottom:6px">📅 יום החזרה השבועי שלי (בלי חומר חדש):</div><select id="plRev" style="width:100%;font:inherit;padding:8px;border-radius:12px;border:2px solid var(--line,#ddd);background:var(--surface,#fff);color:inherit">' + DAYN.map(function (d, i) { return '<option value="' + i + '"' + (revDay() === i ? ' selected' : '') + '>יום ' + d + '</option>'; }).join('') + '<option value="-1"' + (revDay() < 0 ? ' selected' : '') + '>בלי יום חזרה קבוע</option></select></div>' + exportBox();
       }
       ov.innerHTML = h + '</div>';
       ov.querySelectorAll('[data-a]').forEach(function (b) { b.onclick = function () { act(b.dataset.a); }; });
       ov.querySelectorAll('[data-step]').forEach(function (b) { b.onclick = function () { var s = p.steps.filter(function (x) { return x.id === b.dataset.step; })[0]; if (s) runStep(s); }; });
+      var sel = ov.querySelector('#plRev');
+      if (sel) sel.onchange = function () {
+        try { localStorage.setItem('delearn_revday', sel.value); } catch (e) {}
+        var q = load(); if (q && q.date === today() && !q.diag && !Object.keys(q.done || {}).length) current(true, false); // nothing done yet today: rebuild with the new day
+        render();
+      };
     }
     function act(a) {
       if (a === 'close') { close(); return; }
       if (a === 'back') { view = 'plan'; render(); return; }
       if (a === 'diag') { current(true, true); view = 'plan'; render(); return; }
+      if (a === 'night') { var rc = WordHealth.recommend(5, { pad: true }); if (rc.length) WordHealth.practice(rc, function () { render(); }); return; }
       if (a === 'copy') { var t = summaryText(), ta = ov.querySelector('#plSum'), msg = ov.querySelector('#plCopied'); ta.value = t; ta.style.display = 'block'; copyText(t, function (okc) { msg.textContent = okc ? '✔ הועתק. עכשיו הדבק אותו לי בצ\'אט.' : 'לא הצלחתי להעתיק אוטומטית: סמן את הטקסט למטה והעתק ידנית.'; if (!okc) { ta.focus(); ta.select(); } }); return; }
       if (a === 'nums') openNumbers({ onClose: render });
       else if (a === 'lets') openLetters({ onClose: render });
       else if (a === 'garden') openWordHealth({ onClose: render });
     }
     function close() { if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) { try { cb(); } catch (e) {} } }
-    window.DailyPlan = { copy: function (cb) { var t = summaryText(); copyText(t, function (ok) { if (!ok) { try { window.prompt('העתק את הטקסט:', t); } catch (e) {} } cb(ok); }); }, summaryText: summaryText, current: current, compose: compose, insights: insights, areaList: areaList };
+    window.DailyPlan = { isRevDay: isRevDay, copy: function (cb) { var t = summaryText(); copyText(t, function (ok) { if (!ok) { try { window.prompt('העתק את הטקסט:', t); } catch (e) {} } cb(ok); }); }, summaryText: summaryText, current: current, compose: compose, insights: insights, areaList: areaList };
     window.openDailyPlan = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; view = (o && o.view) || 'plan'; ov = document.createElement('div'); ov.className = 'nm-ov'; ov.style.zIndex = 8950; document.body.appendChild(ov); render(); };
   })();
 
