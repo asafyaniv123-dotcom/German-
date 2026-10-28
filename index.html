@@ -4862,6 +4862,11 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   { de: 'etwas', ex: ["Ich möchte etwas trinken.", "אני רוצה לשתות משהו."], he: 'משהו', pos: 'כינוי לא מוגדר', category: 'כינויי גוף' },
   { de: 'dürfen', ex: ["Darf ich hier sitzen?", "אפשר לשבת כאן?"], he: 'מותר / רשאי (מודלי; dürfen + nicht = אסור)', pos: 'פועל מודלי', category: 'פעלים' },
   { de: 'sollen', ex: ["Ich soll den Arzt anrufen.", "אני אמור להתקשר לרופא."], he: 'אמור / צריך (מודלי; מישהו אחר ביקש)', pos: 'פועל מודלי', category: 'פעלים' },
+  { de: 'dürft', ex: ["Ihr dürft hier nicht rauchen.", "אתם לא רשאים לעשן כאן."], he: 'אתם רשאים / מותר לכם (ihr dürft, מהפועל dürfen)', hint: 'זו הצורה של "ihr" (אתם): ich darf, du darfst, er darf, wir dürfen, ihr dürft, sie dürfen', pos: 'פועל מודלי', category: 'פעלים' },
+  { de: 'scheinen', ex: ["Es scheint, dass er müde ist.", "נראה שהוא עייף."], he: 'נראה / נדמה ש- (וגם: השמש זורחת)', hint: 'בטקסט: er / es scheint = נראה. Die Sonne scheint = השמש זורחת', pos: 'פועל', category: 'פעלים' },
+  { de: 'sorgen', ex: ["Ich sorge dafür, dass alles klappt.", "אני אדאג שהכול יסתדר."], he: 'לדאוג ל- / לדאוג שיהיה (ich sorge dafür, dass…)', hint: 'sorgen für = לדאוג ל / לטפל ב. הצורה ich sorge היא "אני דואג". קשור: die Sorge = דאגה, Keine Sorge! = אל תדאג', pos: 'פועל', category: 'פעלים' },
+  { de: 'zufällig', ex: ["Ich habe ihn zufällig getroffen.", "פגשתי אותו במקרה."], he: 'במקרה / מקרי', hint: 'der Zufall = המקרה. zufällig = במקרה, בלי תכנון', pos: 'תואר הפועל', category: 'תארים ותוארי פועל' },
+  { de: 'Umstände', ex: ["Unter diesen Umständen bleibe ich hier.", "בנסיבות האלה אני נשאר כאן."], he: 'נסיבות / מצב הדברים', hint: 'רבים של der Umstand. unter diesen Umständen = בנסיבות האלה. Keine Umstände! = בלי טרחה', pos: 'שם עצם', gender: 'die', category: 'שמות עצם' },
   { de: 'schwimmen', ex: ["Ich kann schwimmen.", "אני יכול לשחות."], he: 'לשחות', pos: 'פועל', category: 'פעלים', heForms: ['שחה', 'שחתה', 'שחו'] },
   { de: 'lernen', ex: ["Ich lerne Deutsch.", "אני לומד גרמנית."], he: 'ללמוד', pos: 'פועל', category: 'פעלים', heForms: ['למד', 'למדה', 'למדו'] },
   { de: 'essen', ex: ["Wir essen zusammen.", "אנחנו אוכלים ביחד."], he: 'לאכול', pos: 'פועל', category: 'פעלים', heForms: ['אכל', 'אכלה', 'אכלו'] },
@@ -7213,7 +7218,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '8956bee714';
+  const APP_BUILD = '19fbac5815';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8246,12 +8251,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { id: 'seed-2026-10-26-skate', date: '2026-10-26', words: ['Achtung', 'Von vorne', 'Pause', 'Probe', 'Halle', 'Bühne', 'Rollschuhe', 'Trainer', 'langsam', 'anfangen', 'aufhören', 'verstehen', 'heißen', 'Freut mich', 'Toi, toi, toi'] },
       { id: 'seed-2026-10-27-arrival', date: '2026-10-27', words: ['Zahl', 'Nummer', 'Flughafen', 'Koffer', 'Gepäck', 'Bahnhof', 'Zug', 'Schlüssel', 'Wohnung', 'Zimmer', 'Vermieter', 'Mitbewohner', 'Unterkunft', 'wohnen', 'ankommen'] },
       { id: 'seed-2026-10-28-housing', date: '2026-10-28', words: ['Euro', 'Cent', 'Miete', 'Kaution', 'Küche', 'Bad', 'Strom', 'Heizung', 'Waschmaschine', 'Treppe', 'Aufzug', 'Klingel', 'Müll', 'Hilfe', 'mieten'] },
-      { id: 'seed-2026-10-29-clock', date: '2026-10-29', words: ['Uhr', 'Stunde', 'Minute', 'Sekunde', 'halb', 'Viertel', 'nach', 'Uhrzeit', 'Zeit', 'pünktlich', 'früh', 'spät', 'jetzt', 'gleich', 'bald'] },
-      { id: 'seed-2026-10-30-days', date: '2026-10-30', words: ['heute', 'morgen', 'gestern', 'übermorgen', 'Tag', 'Woche', 'Monat', 'Jahr', 'Wochenende', 'Vormittag', 'Nachmittag', 'Abend', 'Nacht', 'Datum', 'vor'] },
-      { id: 'seed-2026-10-31-weekdays', date: '2026-10-31', words: ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag', 'Wochentag', 'täglich', 'wöchentlich', 'jeden Tag', 'nächste Woche', 'letzte Woche', 'Geburtstag', 'Feiertag'] },
-      { id: 'seed-2026-11-01-months1', date: '2026-11-01', words: ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Frühling', 'Sommer', 'Herbst', 'Winter', 'Jahreszeit', 'erste', 'zweite', 'dritte', 'vierte'] },
-      { id: 'seed-2026-11-02-months2', date: '2026-11-02', words: ['Juli', 'August', 'September', 'Oktober', 'November', 'Dezember', 'Kalender', 'Preis', 'teuer', 'billig', 'Kleingeld', 'Quittung', 'zahlen', 'bar', 'Karte'] },
-      { id: 'seed-2026-11-03-letters', date: '2026-11-03', words: ['Buchstabe', 'buchstabieren', 'schreiben', 'Name', 'Vorname', 'Nachname', 'Adresse', 'Straße', 'Hausnummer', 'Postleitzahl', 'Telefonnummer', 'E-Mail', 'Formular', 'unterschreiben', 'Unterschrift'] },
+      // from 28.10 on: each day = 5 words from his texts + 10 general words I pick (pool left for later picks: Zeit, jetzt, nach, Sekunde, Uhrzeit, heute, morgen, gestern, Tag, Woche, Monat, Jahr, Wochenende, Montag..Sonntag, Januar..Dezember, Preis, teuer, billig, bar, Karte, Name, Adresse, Straße, schreiben, unterschreiben)
+      { id: 'seed-2026-10-28-mine', date: '2026-10-28', words: ['Umstände', 'zufällig', 'scheinen', 'dürft', 'sorgen', 'Uhr', 'Stunde', 'Minute', 'halb', 'Viertel', 'pünktlich', 'früh', 'spät', 'gleich', 'bald'] },
     ];
       const now = new Date(), today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
       const have = new Set(VOCAB.map(v => v.de));
