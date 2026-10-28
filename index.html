@@ -7218,7 +7218,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '19fbac5815';
+  const APP_BUILD = '7e580c1619';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8251,8 +8251,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { id: 'seed-2026-10-26-skate', date: '2026-10-26', words: ['Achtung', 'Von vorne', 'Pause', 'Probe', 'Halle', 'Bühne', 'Rollschuhe', 'Trainer', 'langsam', 'anfangen', 'aufhören', 'verstehen', 'heißen', 'Freut mich', 'Toi, toi, toi'] },
       { id: 'seed-2026-10-27-arrival', date: '2026-10-27', words: ['Zahl', 'Nummer', 'Flughafen', 'Koffer', 'Gepäck', 'Bahnhof', 'Zug', 'Schlüssel', 'Wohnung', 'Zimmer', 'Vermieter', 'Mitbewohner', 'Unterkunft', 'wohnen', 'ankommen'] },
       { id: 'seed-2026-10-28-housing', date: '2026-10-28', words: ['Euro', 'Cent', 'Miete', 'Kaution', 'Küche', 'Bad', 'Strom', 'Heizung', 'Waschmaschine', 'Treppe', 'Aufzug', 'Klingel', 'Müll', 'Hilfe', 'mieten'] },
-      // from 28.10 on: each day = 5 words from his texts + 10 general words I pick (pool left for later picks: Zeit, jetzt, nach, Sekunde, Uhrzeit, heute, morgen, gestern, Tag, Woche, Monat, Jahr, Wochenende, Montag..Sonntag, Januar..Dezember, Preis, teuer, billig, bar, Karte, Name, Adresse, Straße, schreiben, unterschreiben)
-      { id: 'seed-2026-10-28-mine', date: '2026-10-28', words: ['Umstände', 'zufällig', 'scheinen', 'dürft', 'sorgen', 'Uhr', 'Stunde', 'Minute', 'halb', 'Viertel', 'pünktlich', 'früh', 'spät', 'gleich', 'bald'] },
+      // from 29.10 on: each day = 5 words from his texts + 10 general words I pick (pool left for later picks: Zeit, jetzt, nach, Sekunde, Uhrzeit, heute, morgen, gestern, Tag, Woche, Monat, Jahr, Wochenende, Montag..Sonntag, Januar..Dezember, Preis, teuer, billig, bar, Karte, Name, Adresse, Straße, schreiben, unterschreiben)
+      { id: 'seed-2026-10-28-mine', date: '2026-10-29', words: ['Umstände', 'zufällig', 'scheinen', 'dürft', 'sorgen', 'Uhr', 'Stunde', 'Minute', 'halb', 'Viertel', 'pünktlich', 'früh', 'spät', 'gleich', 'bald'] },
     ];
       const now = new Date(), today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
       const have = new Set(VOCAB.map(v => v.de));
@@ -8298,6 +8298,22 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           Object.keys(dd2).forEach(k => { dd2[k] = (dd2[k] || []).filter(w => (window.NUMWORDS || []).indexOf(w) < 0); });
           localStorage.setItem('delearn_daywords', JSON.stringify(dd2));
           localStorage.setItem('delearn_seed-nonumbers-1', '1');
+        }
+      } catch (e) {}
+      try { // 28.10 had 30 words: the 5 text words + 10 general words move to 29.10 (so each day stays at 15)
+        if (!localStorage.getItem('delearn_seed-move-1')) {
+          const MV = ['Umstände', 'zufällig', 'scheinen', 'dürft', 'sorgen', 'Uhr', 'Stunde', 'Minute', 'halb', 'Viertel', 'pünktlich', 'früh', 'spät', 'gleich', 'bald'];
+          if (localStorage.getItem('delearn_seed-2026-10-28-mine')) {
+            const dd3 = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {};
+            if (dd3['2026-10-28']) {
+              const moved = MV.filter(w => dd3['2026-10-28'].indexOf(w) >= 0);
+              dd3['2026-10-28'] = dd3['2026-10-28'].filter(w => MV.indexOf(w) < 0);
+              const nx = dd3['2026-10-29'] || []; moved.forEach(w => { if (nx.indexOf(w) < 0) nx.push(w); });
+              dd3['2026-10-29'] = nx;
+              localStorage.setItem('delearn_daywords', JSON.stringify(dd3));
+            }
+          }
+          localStorage.setItem('delearn_seed-move-1', '1');
         }
       } catch (e) {}
       DAY_SEEDS.forEach(s => {
