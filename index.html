@@ -5068,6 +5068,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   { de: 'welche', ex: ["Welche Probe meinst du?", "לאיזו חזרה אתה מתכוון?"], he: 'איזה / אילו', hint: 'welcher (der), welche (die ורבים), welches (das). Welche Farbe? = איזה צבע? Welche Schuhe? = אילו נעליים?', pos: 'מילת שאלה', category: 'מילות שאלה' },
   { de: 'erwarten', ex: ["Ich erwarte einen Anruf.", "אני מצפה לשיחה."], he: 'לצפות ל- / לחכות שיקרה (erwartet = הוא / אתם)', hint: 'er erwartet. לא אותו דבר כמו warten (לחכות): erwarten = לצפות שמשהו יקרה או יגיע', pos: 'פועל', category: 'פעלים' },
   { de: 'Kram', ex: ["Räum deinen Kram weg!", "תפנה את הדברים שלך!"], he: 'חפצים / ג׳אנק / הדברים (לא רשמי)', hint: 'der Kram: דברים שמסתובבים. der ganze Kram = כל הדברים האלה. בשפה יומיומית, לא פורמלית', pos: 'שם עצם', gender: 'der', category: 'שמות עצם' },
+  { de: 'geduldig', ex: ["Sei bitte geduldig.", "בבקשה תהיה סבלני."], he: 'סבלני (geduldige = הצורה עם סיומת, למשל eine geduldige Frau)', hint: 'שם העצם: die Geduld = סבלנות. Hab Geduld! = תהיה סבלני. geduldige / geduldiger / geduldiges = אותה מילה עם סיומת לפי המין', pos: 'תואר', category: 'תארים ותוארי פועל' },
   { de: 'schwimmen', ex: ["Ich kann schwimmen.", "אני יכול לשחות."], he: 'לשחות', pos: 'פועל', category: 'פעלים', heForms: ['שחה', 'שחתה', 'שחו'] },
   { de: 'lernen', ex: ["Ich lerne Deutsch.", "אני לומד גרמנית."], he: 'ללמוד', pos: 'פועל', category: 'פעלים', heForms: ['למד', 'למדה', 'למדו'] },
   { de: 'essen', ex: ["Wir essen zusammen.", "אנחנו אוכלים ביחד."], he: 'לאכול', pos: 'פועל', category: 'פעלים', heForms: ['אכל', 'אכלה', 'אכלו'] },
@@ -7420,7 +7421,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'ab262a0d6b';
+  const APP_BUILD = '23a0140f62';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8454,9 +8455,10 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       { id: 'seed-2026-10-26-skate', date: '2026-10-26', words: ['Achtung', 'Von vorne', 'Pause', 'Probe', 'Halle', 'Bühne', 'Rollschuhe', 'Trainer', 'langsam', 'anfangen', 'aufhören', 'verstehen', 'heißen', 'Freut mich', 'Toi, toi, toi'] },
       { id: 'seed-2026-10-27-arrival', date: '2026-10-27', words: ['Zahl', 'Nummer', 'Flughafen', 'Koffer', 'Gepäck', 'Bahnhof', 'Zug', 'Schlüssel', 'Wohnung', 'Zimmer', 'Vermieter', 'Mitbewohner', 'Unterkunft', 'wohnen', 'ankommen'] },
       { id: 'seed-2026-10-28-housing', date: '2026-10-28', words: ['Euro', 'Cent', 'Miete', 'Kaution', 'Küche', 'Bad', 'Strom', 'Heizung', 'Waschmaschine', 'Treppe', 'Aufzug', 'Klingel', 'Müll', 'Hilfe', 'mieten'] },
-      // from 29.10 on: each day = 5 words from his texts + 10 general words I pick (pool left for later picks: nach, Sekunde, Montag..Sonntag, Januar..Dezember, Preis, teuer, billig, bar, Karte, Name, Adresse, Straße, schreiben, unterschreiben)
+      // from 29.10 on: each day = 5 words from his texts + 10 general words I pick (pool left for later picks: nach, Februar..Dezember, Januar..Dezember, Preis, teuer, billig, bar, Karte, Name, Adresse, Straße, schreiben, unterschreiben)
       { id: 'seed-2026-10-28-mine', date: '2026-10-29', words: ['Umstände', 'zufällig', 'scheinen', 'dürft', 'sorgen', 'Uhr', 'Stunde', 'Minute', 'halb', 'Viertel', 'pünktlich', 'früh', 'spät', 'gleich', 'bald'] },
       { id: 'seed-2026-10-30-mine', date: '2026-10-30', words: ['lassen', 'ziehen', 'welche', 'erwarten', 'Kram', 'heute', 'morgen', 'gestern', 'übermorgen', 'Tag', 'Woche', 'Monat', 'Jahr', 'Wochenende', 'jetzt'] },
+      { id: 'seed-2026-10-31-mine', date: '2026-10-31', words: ['geduldig', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag', 'Wochentag', 'Sekunde', 'Januar'] }, // 4 more of his words are added when he sends them
     ];
       const now = new Date(), today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
       const have = new Set(VOCAB.map(v => v.de));
