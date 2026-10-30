@@ -7223,7 +7223,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '7136de5da9';
+  const APP_BUILD = 'e60a06118d';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8322,6 +8322,20 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
           localStorage.setItem('delearn_seed-move-1', '1');
         }
       } catch (e) {}
+      const RESERVE = ['Sekunde', 'nach', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag', 'Januar', 'Februar', 'März'];
+      const topUp = (data, key, target) => { // a day stays at its full count: words that were skipped (already on another day) are replaced from the reserve
+        const cur = data[key] || [], used = new Set(); Object.keys(data).forEach(dk => (data[dk] || []).forEach(w => used.add(w)));
+        RESERVE.forEach(w => { if (cur.length < target && have.has(w) && !used.has(w)) { cur.push(w); used.add(w); } });
+        data[key] = cur;
+      };
+      try { // 29.10 and 30.10 came out at 14 words: top them up to 15
+        if (!localStorage.getItem('delearn_seed-topup-1')) {
+          const dd4 = JSON.parse(localStorage.getItem('delearn_daywords') || '{}') || {};
+          ['2026-10-29', '2026-10-30'].forEach(k => { if (dd4[k] && dd4[k].length && dd4[k].length < 15) topUp(dd4, k, 15); });
+          localStorage.setItem('delearn_daywords', JSON.stringify(dd4));
+          localStorage.setItem('delearn_seed-topup-1', '1');
+        }
+      } catch (e) {}
       DAY_SEEDS.forEach(s => {
         const flag = 'delearn_' + s.id;
         if (localStorage.getItem(flag)) return;
@@ -8334,6 +8348,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         s.words.forEach(w => { if (!have.has(w) || cur.indexOf(w) >= 0) return; if (elsewhere.has(w)) { skipped++; return; } cur.push(w); });
         ['erklären', 'wiederholen', 'zeigen'].forEach(w => { if (skipped > 0 && have.has(w) && !elsewhere.has(w) && cur.indexOf(w) < 0) { cur.push(w); skipped--; } });
         data[key] = cur;
+        if (cur.length < s.words.length) topUp(data, key, s.words.length);
         localStorage.setItem('delearn_daywords', JSON.stringify(data));
         localStorage.setItem(flag, '1');
       });
