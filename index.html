@@ -7427,7 +7427,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'b46f4d026f';
+  const APP_BUILD = 'eb1d337a82';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -9495,13 +9495,29 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         if (r.type === 'rev') { var pool = []; LESSONS.slice(1, N - 1).forEach(function (x) { x.rounds.forEach(function (q) { if (q.type === 'tbl' && !q.pron) pool.push(q); }); }); shuf(pool).slice(0, r.n).forEach(function (q) { rounds.push(q); }); }
         else rounds.push(r);
       });
-      var ri = -1, okAll = 0, totAll = 0, R = null; var o = load();
+      var ri = -1, okAll = 0, totAll = 0, wOk = 0, wTot = 0, R = null, warmN = 0, shownInter = false; var o = load();
+      // warm-up: a short active recap of what came before (pronouns, last lesson, the weakest earlier verb, one sentence), then the new lesson
+      if (di > 0) {
+        var warm = [], q0 = shuf(LESSONS[0].rounds.filter(function (r) { return r.type === 'q'; })), tb = [], se = [];
+        LESSONS.slice(1, di).forEach(function (x, xi) { x.rounds.forEach(function (r) { if (r.type === 'tbl') tb.push({ r: r, last: xi === di - 2 }); else if (r.type === 'sent') se.push(r); }); });
+        if (di === 1) warm.push(LESSONS[0].rounds[0]); else q0.slice(0, 2).forEach(function (r) { warm.push(r); });
+        var lastT = tb.filter(function (x) { return x.last; }).map(function (x) { return x.r; }); if (lastT.length) warm.push(shuf(lastT)[0]);
+        var rest = tb.map(function (x) { return x.r; }).filter(function (r) { return warm.indexOf(r) < 0; });
+        if (rest.length) { rest.sort(function (a, b) { return (o.errs['v:' + b.v] || 0) - (o.errs['v:' + a.v] || 0) || Math.random() - 0.5; }); warm.push(rest[0]); }
+        if (se.length) warm.push(shuf(se)[0]);
+        warm.slice().reverse().forEach(function (r) { rounds.unshift(Object.assign({}, r, { w: true })); }); warmN = warm.length;
+      }
       if (gm) gm.remove(); gm = document.createElement('div'); gm.className = 'gw-game'; document.body.appendChild(gm);
       function err(key) { o.errs[key] = (o.errs[key] || 0) + 1; save(o); }
       function close(done) { if (gm) { gm.remove(); gm = null; } finish(done, okAll, totAll); }
-      function head() { return '<div class="gw-curtain"></div><div class="gw-top"><button class="gw-x" id="gwX">✕</button><h2>' + L.e + ' ' + esc(L.t) + '</h2><div class="gw-prog">' + rounds.map(function (r, i) { return '<i class="' + (i < ri ? 'd' : i === ri ? 'on' : '') + '"></i>'; }).join('') + '</div></div>'; }
+      function head() { return '<div class="gw-curtain"></div><div class="gw-top"><button class="gw-x" id="gwX">✕</button><h2>' + (R && R.w ? '🔁 חימום · חוזרים' : L.e + ' ' + esc(L.t)) + '</h2><div class="gw-prog">' + rounds.map(function (r, i) { return '<i class="' + (i < ri ? 'd' : i === ri ? 'on' : '') + '"' + (r.w ? ' style="width:7px;height:7px;align-self:center"' : '') + '></i>'; }).join('') + '</div></div>'; }
       function next() {
         ri++; if (ri >= rounds.length) return end();
+        if (warmN && ri === warmN && !shownInter) {
+          shownInter = true; ri--; R = { w: false };
+          gm.innerHTML = head() + '<div class="gw-fin" style="padding-top:6px"><div class="big" style="font-size:44px">🎬</div><h3 style="margin:4px 0">' + esc(L.t) + '</h3><div class="s">מה שתתרגלו עכשיו:</div></div><div class="gw-card" style="color:#2b2b2b;background:#fff">' + L.card + '</div><button class="gw-btn g" id="gwGo">▶ מתחילים</button>';
+          gm.querySelector('#gwX').onclick = function () { close(false); }; gm.querySelector('#gwGo').onclick = function () { ri++; next(); }; return;
+        }
         R = rounds[ri]; if (R.type === 'tbl') tblRound(R); else if (R.type === 'q') qRound(R); else sentRound(R);
       }
       // conjugation table: six actors on a stage, the endings / forms are bricks to give them
@@ -9514,9 +9530,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         var acts = [].slice.call(gm.querySelectorAll('.gw-actor')), brs = [].slice.call(gm.querySelectorAll('.gw-br')), msg = gm.querySelector('#gwMsg');
         function tryPlace() {
           if (selB < 0 || selA < 0) return;
-          var b = bricks[selB], a = selA, A = acts[a]; totAll++;
+          var b = bricks[selB], a = selA, A = acts[a]; if (R.w) wTot++; else totAll++;
           if (b.t === texts[a]) {
-            if (!hadErr[a]) okAll++; b.used = true; brs[selB].classList.add('used'); brs[selB].classList.remove('sel'); filled[a] = true;
+            if (!hadErr[a]) { if (R.w) wOk++; else okAll++; } b.used = true; brs[selB].classList.add('used'); brs[selB].classList.remove('sel'); filled[a] = true;
             var sl = A.querySelector('.sl'); sl.textContent = pron ? PERS[a].p : r.forms[a]; sl.style.background = b.c; A.classList.add('ok'); A.classList.remove('sel'); sOk(a); say(pron ? SAY[a] : SAY[a] + ' ' + r.forms[a]);
             selB = -1; selA = -1;
             if (filled.filter(Boolean).length === 6) { setTimeout(function () { sScale(); vib([40, 30, 40]); msg.innerHTML = '🎭 <b>הצגה מושלמת!</b> שמעת את המנגינה?<br><button class="gw-btn g" id="gwNext" style="max-width:260px;margin:10px auto 0">▶ המשך</button>'; gm.querySelector('#gwNext').onclick = next; }, 500); }
@@ -9537,9 +9553,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         var brs = [].slice.call(gm.querySelectorAll('.gw-br')), msg = gm.querySelector('#gwMsg'), got = false;
         brs.forEach(function (B, i) {
           B.onclick = function () {
-            if (got) return; ctx(); totAll++;
+            if (got) return; ctx(); if (R.w) wTot++; else totAll++;
             if (opts[i] === r.ok) {
-              got = true; if (!hadErr) okAll++; sOk(ri); B.style.boxShadow = '0 0 0 4px #58cc02'; if (!deq) say(r.ok); else say(r.he);
+              got = true; if (!hadErr) { if (R.w) wOk++; else okAll++; } sOk(ri); B.style.boxShadow = '0 0 0 4px #58cc02'; if (!deq) say(r.ok); else say(r.he);
               setTimeout(function () { sScale(); msg.innerHTML = '✅ <b>' + esc(r.he) + ' = ' + esc(r.ok) + '</b>' + (r.note ? '<br><span style="font-size:13px;opacity:.85">' + esc(r.note) + '</span>' : '') + '<br><button class="gw-btn g" id="gwNext" style="max-width:260px;margin:10px auto 0">▶ המשך</button>'; gm.querySelector('#gwNext').onclick = next; }, 250);
             } else { hadErr = true; err('q:' + r.he); sBad(); vib(70); B.classList.add('bad'); B.style.opacity = '.4'; setTimeout(function () { B.classList.remove('bad'); }, 420); msg.textContent = 'לא בדיוק, נסו שוב.'; }
           };
@@ -9554,9 +9570,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         var sls = [].slice.call(gm.querySelectorAll('.gw-sl')), brs = [].slice.call(gm.querySelectorAll('.gw-br')), msg = gm.querySelector('#gwMsg');
         brs.forEach(function (B, i) {
           B.onclick = function () {
-            if (bricks[i].used) return; ctx(); totAll++;
+            if (bricks[i].used) return; ctx(); if (R.w) wTot++; else totAll++;
             if (bricks[i].t === r.parts[k]) {
-              if (!hadErr) okAll++; bricks[i].used = true; B.classList.add('used'); var sl = sls[k]; sl.classList.add('ok'); sl.querySelector('.tx').textContent = bricks[i].t; sl.style.background = B.style.background; sOk(k); k++;
+              if (!hadErr) { if (R.w) wOk++; else okAll++; } bricks[i].used = true; B.classList.add('used'); var sl = sls[k]; sl.classList.add('ok'); sl.querySelector('.tx').textContent = bricks[i].t; sl.style.background = B.style.background; sOk(k); k++;
               if (k === n) { var full = r.de; say(full); setTimeout(function () { sScale(); vib([40, 30, 40]); msg.innerHTML = '🎭 <b>' + esc(full) + '</b>' + (r.note ? '<br><span style="font-size:13px;opacity:.85">' + esc(r.note) + '</span>' : '') + '<br><button class="gw-btn g" id="gwNext" style="max-width:260px;margin:10px auto 0">▶ המשך</button>'; gm.querySelector('#gwNext').onclick = next; }, 350); }
             } else { hadErr = true; err('s:' + r.de); sBad(); vib(70); B.classList.add('bad'); setTimeout(function () { B.classList.remove('bad'); }, 420); msg.textContent = 'לא כאן. מה המילה הבאה במשפט?'; }
           };
@@ -9564,7 +9580,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       }
       function end() {
         var ratio = totAll ? okAll / totAll : 1, s = stars(ratio); sWin(); confetti(34, ['🎭', '⭐', '🎉', '✨', '🎶']);
-        gm.innerHTML = head() + '<div class="gw-fin"><div class="big">🎭</div><h3>סיימת את שלב ' + (di + 1) + '!</h3><div class="gw-stars">' + '⭐'.repeat(s) + '<span style="opacity:.25">' + '⭐'.repeat(3 - s) + '</span></div><div class="s">' + okAll + ' מתוך ' + totAll + ' בניסיון הראשון</div><button class="gw-btn g" id="gwVoice">🎤 עכשיו אומרים בקול</button><button class="gw-btn s" id="gwDone" style="color:#fff;border-color:rgba(255,255,255,.35);background:transparent;box-shadow:none">סגור</button></div>';
+        gm.innerHTML = head() + '<div class="gw-fin"><div class="big">🎭</div><h3>סיימת את שלב ' + (di + 1) + '!</h3><div class="gw-stars">' + '⭐'.repeat(s) + '<span style="opacity:.25">' + '⭐'.repeat(3 - s) + '</span></div><div class="s">' + okAll + ' מתוך ' + totAll + ' בניסיון הראשון' + (wTot ? '<br><span style="opacity:.8">🔁 חימום: ' + wOk + ' מתוך ' + wTot + '</span>' : '') + '</div><button class="gw-btn g" id="gwVoice">🎤 עכשיו אומרים בקול</button><button class="gw-btn s" id="gwDone" style="color:#fff;border-color:rgba(255,255,255,.35);background:transparent;box-shadow:none">סגור</button></div>';
         var oo = load(); if (!oo.done[di]) { oo.done[di] = today(); } oo.stars[di] = Math.max(oo.stars[di] || 0, s); save(oo);
         gm.querySelector('#gwDone').onclick = function () { close(true); };
         gm.querySelector('#gwVoice').onclick = function () { voice(di, function () {}); };
@@ -9598,7 +9614,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       var trail = LESSONS.map(function (x, i) { var cls = o.done[i] ? 'done' : (i === c && unlocked(o, i)) ? 'cur' : 'lock'; return '<button class="gw-dot ' + cls + (i === selDay ? ' sel' : '') + '" data-d="' + i + '">' + (o.done[i] ? '✓' : (unlocked(o, i) ? (i + 1) : '🔒')) + '</button>'; }).join('');
       var h = '<div class="gw-top"><button class="gw-x" id="gwClose">✕</button><h2>📐 דקדוק · שבוע ההווה</h2></div><div class="gw-trail">' + trail + '</div>' +
         '<div class="gw-card"><h3>' + L.e + ' יום ' + (selDay + 1) + ' · ' + esc(L.t) + (isDone ? ' <span style="font-size:15px">' + '⭐'.repeat(o.stars[selDay] || 1) + '</span>' : '') + '</h3>' + L.card + '</div>';
-      if (unl) h += '<button class="gw-btn" id="gwPlay">🎭 ' + (isDone ? 'לשחק שוב' : 'למשחק') + '</button><button class="gw-btn s" id="gwVoiceBtn">🎤 תרגול בקול</button>';
+      if (unl) h += '<button class="gw-btn" id="gwPlay">🎭 ' + (isDone ? 'לשחק שוב' : 'למשחק') + (selDay > 0 ? ' · קודם חימום קצר' : '') + '</button><button class="gw-btn s" id="gwVoiceBtn">🎤 תרגול בקול</button>';
       else h += '<div class="gw-card" style="text-align:center">🔒 השלב הזה נפתח מחר.</div><button class="gw-btn s" id="gwOpen">🔓 לפתוח עכשיו בכל זאת</button>';
       if (c < 0) h += '<div class="gw-card" style="text-align:center;margin-top:12px">🎉 סיימת את שבוע ההווה! הבא: עבר (Perfekt).</div>';
       ov.innerHTML = h;
