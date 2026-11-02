@@ -2674,6 +2674,12 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
   .fm-card { background: #fff; border-radius: 22px; border: 3px solid #b388ff; box-shadow: 0 6px 0 #8c63e0; padding: 18px; text-align: center; max-width: 340px; width: 100%; animation: rlUp .4s both; }
   .fm-card h3 { margin: 4px 0; font-size: 24px; } .fm-card .s { font-size: 15px; color: #6a7b8c; margin-bottom: 8px; } .fm-card ul { list-style: none; margin: 8px 0; padding: 0; text-align: right; font-size: 14px; } .fm-card li { direction: ltr; text-align: left; padding: 3px 0; border-top: 1px solid #eef1f5; } .fm-card li span { direction: rtl; color: #6a7b8c; margin-inline-start: 8px; }
   .fm-card .b { display: flex; gap: 8px; margin-top: 10px; } .fm-card .b button { flex: 1; border: 0; border-radius: 14px; padding: 12px 6px; font: inherit; font-weight: 800; cursor: pointer; color: #fff; background: #b388ff; box-shadow: 0 4px 0 #8c63e0; } .fm-card .b button.s2 { background: #e8ebf0; color: #3c3c3c; box-shadow: 0 4px 0 #cfd4dc; }
+  .da-card { background: var(--surface,#fff); border: 2px solid var(--line,#e5e5e5); border-radius: 18px; box-shadow: 0 3px 0 var(--line,#e5e5e5); padding: 12px 14px; margin: 0 0 12px; }
+  .da-card.done { border-color: #58cc02; background: #eefbe0; }
+  .da-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .da-top b { font-size: 15.5px; } .da-pct { font-size: 28px; font-weight: 900; color: #1cb0f6; } .da-card.done .da-pct { color: #46a302; }
+  .da-bar { height: 14px; border-radius: 8px; background: var(--line,#e5e5e5); overflow: hidden; margin: 6px 0; } .da-bar i { display: block; height: 100%; background: linear-gradient(90deg, #1cb0f6, #58cc02); border-radius: 8px; transition: width .4s; }
+  .da-sub { font-size: 12.5px; color: var(--ink-soft,#777); } .da-ok { font-weight: 800; color: #2b8a00; margin-top: 6px; }
+  .da-btn { display: block; width: 100%; border: 0; border-radius: 14px; background: #1cb0f6; color: #fff; font: inherit; font-weight: 900; font-size: 16px; padding: 12px; box-shadow: 0 4px 0 #1590c8; cursor: pointer; margin-top: 10px; } .da-btn.alt { background: var(--surface,#fff); color: inherit; border: 2px solid var(--line,#ddd); box-shadow: 0 3px 0 var(--line,#ddd); }
   `;
   function injectGameCss() { if (document.getElementById('dlGameCss')) return; const s = document.createElement('style'); s.id = 'dlGameCss'; s.textContent = GCSS; document.head.appendChild(s); }
   const shuf = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -2919,6 +2925,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
           const k = y + '-' + pad(m + 1) + '-' + pad(d), future = k > tk;
           cells += '<button class="dl-day' + (k === sel ? ' sel' : '') + (k === tk ? ' today' : '') + (future ? ' future' : '') + '" data-k="' + k + '" aria-label="' + d + ' ' + MONTHS[m] + '">' + ring(k, k === sel, k === tk, future, d) + '</button>';
         }
+        injectGameCss();
         let sents = []; const ids = wordsOf(sel), n = ids.length, kn = cfg.getKnown(), by = byId();
         const known = ids.filter(id => isK(kn, id)).length, sd = sel.split('-').map(Number), isToday = sel === tk, isFuture = sel > tk;
         const total = Object.keys(data).reduce((a, k) => a + wordsOf(k).length, 0), doneDays = Object.keys(data).filter(complete).length;
@@ -2926,6 +2933,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
           '<div class="dl-streak">' + (window.DailyPlan ? '<button class="dl-stat" id="dlCopy" style="cursor:pointer;font:inherit;color:inherit;flex:0 0 74px"><b>📋</b><span>העתק נתונים</span></button>' : '') + '<div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
           (cfg.grammar ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlGram" style="background:linear-gradient(180deg,#8f6bff,#6a43e0);box-shadow:0 4px 0 #4a2fa8">🎭 ' + esc(cfg.grammarLabel ? cfg.grammarLabel() : 'דקדוק') + '</button></div>' : '') +
           (Object.keys(data).filter(k => k <= tk && wordsOf(k).length).length >= 2 ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlRoul" style="background:linear-gradient(180deg,#ff5d8f,#d62e66);box-shadow:0 4px 0 #a31c4a">🎰 רולטה · בחר לי יום לבחינה</button></div>' : '') +
+          (cfg.dailyProgress && total ? (() => { const dp = cfg.dailyProgress(); if (!dp || !dp.total) return ''; return '<div class="da-card' + (dp.complete ? ' done' : '') + '"><div class="da-top"><b>🔁 חזרה יומית על כל המילים</b><span class="da-pct">' + dp.pct + '%</span></div><div class="da-bar"><i style="width:' + dp.pct + '%"></i></div><div class="da-sub">' + dp.done + ' מתוך ' + dp.total + ' מילים' + (dp.streak ? ' · 🔥 ' + dp.streak + (dp.streak === 1 ? ' יום' : ' ימים') + ' ברצף' : '') + '</div>' + (dp.complete ? '<div class="da-ok">✅ סגרת את היום! כל המילים נחזרו</div><button class="da-btn alt" id="dlDA">עוד סבב</button>' : '<button class="da-btn" id="dlDA">▶ ' + (dp.done ? 'המשך מאיפה שעצרת' : 'מתחילים') + ' · עוד ' + Math.min(dp.batch, dp.total - dp.done) + ' מילים</button>') + '</div>'; })() : '') +
           (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">' + (window.DailyPlan && window.DailyPlan.isRevDay && window.DailyPlan.isRevDay() ? '🔁 יום חזרה' : '🗓️ האימון של היום') + '</button>' : '') + (cfg.verbs && cfg.verbCount && cfg.verbCount() >= 3 ? '<button class="dl-btn" id="dlVerbs">🔧 נטיית פעלים</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות (לפי התרגול והקערה): ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
@@ -2952,6 +2960,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         el.querySelectorAll('.dl-day').forEach(b => { b.onclick = () => { if (b.classList.contains('future')) return; sel = b.dataset.k; draw(); }; });
         if ($('dlAdd')) $('dlAdd').onclick = () => picker(el, sel, draw);
         if ($('dlRoul')) $('dlRoul').onclick = () => roulette(draw);
+        if ($('dlDA')) $('dlDA').onclick = () => cfg.dailyRun(draw);
         if ($('dlGram')) $('dlGram').onclick = () => cfg.grammar(draw);
         if ($('dlFarm')) $('dlFarm').onclick = () => farm(sel, draw);
         if ($('dlMore')) $('dlMore').onclick = () => picker(el, sel, draw);
@@ -7439,7 +7448,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'edebfccf94';
+  const APP_BUILD = '9c0914868f';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8645,6 +8654,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       verbCount: () => (window.VerbTools ? window.VerbTools.count() : 0),
       numbers: redraw => { if (window.openNumbers) window.openNumbers({ onClose: redraw }); },
       health: redraw => { if (window.openWordHealth) window.openWordHealth({ onClose: redraw }); },
+      dailyProgress: () => (window.WordHealth && window.WordHealth.daily ? window.WordHealth.daily.progress() : null),
+      dailyRun: redraw => { if (window.WordHealth && window.WordHealth.daily) window.WordHealth.daily.run(20, redraw); },
       badge: de => (window.wordBadge ? window.wordBadge(de) : ''),
       gameCount: ids => (window.derDasDieNouns ? window.derDasDieNouns(ids).length : 0),
       game: (ids, redraw) => { if (window.openDerDasDie) window.openDerDasDie({ words: ids, onClose: redraw }); },
@@ -9416,7 +9427,49 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         getGroups: spGermanGroups, getItems: function () { return []; }, onClose: function () { if (cb) cb({ ok: ok, n: n, aborted: n < words.length }); }
       });
     }
-    window.WordHealth = { statusOf: statusOf, recommend: recommend, summary: summary, practice: practiceCb };
+    // ---- daily full review, in instalments: every word learned up to today, a few at a time; progress is kept per answer, so leaving in the middle loses nothing ----
+    var DA_KEY = 'delearn_dailyall';
+    function daToday() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+    function daLoad() { try { var o = JSON.parse(localStorage.getItem(DA_KEY) || 'null'); if (o && typeof o === 'object') { o.order = o.order || []; o.done = o.done || {}; o.hist = o.hist || {}; return o; } } catch (e) {} return { date: '', order: [], done: {}, hist: {} }; }
+    function daSave(o) { try { localStorage.setItem(DA_KEY, JSON.stringify(o)); } catch (e) {} }
+    function daWords() { var t = daToday(), seen = {}, out = []; dayWords().forEach(function (d) { if (d.k <= t) d.ws.forEach(function (v) { if (!seen[v.de]) { seen[v.de] = 1; out.push(v); } }); }); return out; }
+    function daState() {
+      var o = daLoad(), t = daToday(), ws = daWords(), set = {}; ws.forEach(function (v) { set[v.de] = 1; });
+      if (o.date !== t) { // a new day: the words that need it most come first, the rest in a mixed order
+        var lg = logGet(), items = ws.map(function (v) { return { v: v, s: statusOf(v.de, lg), r: Math.random() }; });
+        items.sort(function (a, b) { return (b.s.prio + b.r * 0.4) - (a.s.prio + a.r * 0.4); });
+        o = { date: t, order: items.map(function (x) { return x.v.de; }), done: {}, hist: o.hist || {} };
+      } else { var have = {}; o.order.forEach(function (d) { have[d] = 1; }); ws.forEach(function (v) { if (!have[v.de]) o.order.push(v.de); }); }
+      o.order = o.order.filter(function (d) { return set[d]; });
+      daSave(o); return { o: o, ws: ws };
+    }
+    function daStreak(o) {
+      var h = o.hist || {}, n = 0, d = new Date(); if (!h[daToday()]) d.setDate(d.getDate() - 1);
+      for (;;) { var k = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); if (!h[k]) break; n++; d.setDate(d.getDate() - 1); }
+      return n;
+    }
+    function daProgress() {
+      var st = daState(), total = st.o.order.length, done = st.o.order.filter(function (d) { return st.o.done[d]; }).length;
+      return { done: done, total: total, pct: total ? Math.floor(done / total * 100) : 0, complete: total > 0 && done >= total, streak: daStreak(st.o), batch: 20 };
+    }
+    function daRun(n, cb) {
+      if (!window.SpeakPractice) { if (cb) cb(daProgress()); return; }
+      var st = daState(), by = {}; st.ws.forEach(function (v) { by[v.de] = v; });
+      var rest = st.o.order.filter(function (d) { return !st.o.done[d]; }).slice(0, n || 20).map(function (d) { return by[d]; });
+      if (!rest.length) { if (cb) cb(daProgress()); return; }
+      SpeakPractice.open({
+        title: 'חזרה יומית על כל המילים', storeKey: 'delearn_sp_health', autostart: true,
+        items: rest.map(function (v) { return { ref: v, prompt: heOf(v), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos }; }),
+        onResult: function (v, good) {
+          try { recordAttempt(v.de, good); if (good) removeMissed(v.de); else addMissed(v.de); } catch (e) {}
+          var o = daLoad(); if (o.date !== daToday()) return; o.done[v.de] = 1;
+          if (o.order.length && o.order.every(function (d) { return o.done[d]; })) o.hist[o.date] = 1;
+          daSave(o);
+        },
+        getGroups: spGermanGroups, getItems: function () { return []; }, onClose: function () { if (cb) cb(daProgress()); }
+      });
+    }
+    window.WordHealth = { statusOf: statusOf, recommend: recommend, summary: summary, practice: practiceCb, daily: { progress: daProgress, run: daRun } };
     window.openWordHealth = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; flt = 'all'; ov = document.createElement('div'); ov.className = 'wh-ov'; document.body.appendChild(ov); render(); };
   })();
 
@@ -9699,6 +9752,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         var ls = A.filter(function (a) { return a.kind === 'let'; }).sort(function (a, b) { return b.need - a.need; });
         steps.push({ id: 'let1', kind: 'let', topic: ls[0].id, n: 5, t: 'אותיות: ' + ls[0].t, e: '🔤' });
       }
+      if (!diag && window.WordHealth && WordHealth.daily) { var dpr = WordHealth.daily.progress(); if (dpr.total && !dpr.complete) steps.push({ id: 'all', kind: 'all', t: 'חזרה על כל המילים · ' + dpr.pct + '%', e: '🔁' }); }
       if (!diag && window.GrammarWeek && window.GrammarWeek.current()) steps.push({ id: 'gram', kind: 'gram', t: 'דקדוק: ' + window.GrammarWeek.label().replace('דקדוק · ', ''), e: '🎭' });
       if (calNouns() >= 5) steps.push({ id: 'dds', kind: 'dds', t: 'דר דאס די', e: '🎙️' });
       if (window.VerbTools && VerbTools.count() >= 3) steps.push({ id: 'verbs', kind: 'verbs', t: 'נטיית פעלים', e: '🔧' });
@@ -9720,6 +9774,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (s.kind === 'letmix') return 'שבע שאלות מעורבות';
       if (s.kind === 'dds') return 'לשמור על ה-der / die / das חד';
       if (s.kind === 'verbs') return 'אני / אתה / הוא / אנחנו: איך הפועל משתנה במשפט';
+      if (s.kind === 'all') return 'כל מילה שלמדת עד היום, בכמה סבבים קצרים. ההתקדמות נשמרת, אפשר לעצור ולהמשיך';
       if (s.kind === 'gram') return 'שבוע הווה: כרטיס חוק, משחק תיאטרון ותרגול בקול. שלב אחד ביום';
       if (s.kind === 'report') return 'מה חזק, מה מתבלבל ומה נעשה מחר';
       return '';
@@ -9737,6 +9792,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (s.kind === 'letmix') { LetterTools.mix(cb); return; }
       if (s.kind === 'verbs') { var gc = window.GrammarWeek && window.GrammarWeek.current(); if (window.openVerbDrill) window.openVerbDrill({ n: 8, noSep: !!(gc && gc.day < 8), cb: cb, onClose: function () { if (!p.done[s.id]) mark(p, s, { aborted: true }); } }); return; }
       if (s.kind === 'dds') { if (window.openDerDasDie) window.openDerDasDie({ pool: 'cal', onClose: function () { mark(p, s, { ok: 0, n: 0 }); } }); return; }
+      if (s.kind === 'all') { WordHealth.daily.run(20, function (pr) { if (pr && pr.complete) mark(p, s, { ok: 1, n: 1 }); else mark(p, s, { aborted: true }); }); return; }
       if (s.kind === 'gram') { if (window.openGrammarWeek) window.openGrammarWeek({ onClose: function () { if (window.GrammarWeek.doneToday()) mark(p, s, { ok: 1, n: 1 }); else mark(p, s, { aborted: true }); } }); return; }
     }
     function css() {
