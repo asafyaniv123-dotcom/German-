@@ -1869,7 +1869,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     S.attempts++;
     S.combo = 0;
     S.heard = '';
-    if (S.attempts >= 3) { reveal(false); return; }
+    if (S.opts.once || S.attempts >= 3) { reveal(false); return; }
     S.msg = ''; S.shake = true; S.wrong = true; S.wrongHeard = heard ? 'שמעתי: ' + heard : '';
     if (!cur().failed) cur().failed = true;
     S.focusInput = true;
@@ -1889,7 +1889,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     sfx('bad');
     later(() => { if (S && S.state === 'bad') speakWord(c.display || c.answer, true); }, 500); // after a miss the word is always played, so the person hears how it should sound
     // practise it once more at the end of the round
-    if (!c.requeued) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, focus: c.focus, focusInfo: c.focusInfo, gram: c.gram, extraMs: c.extraMs, requeued: true });
+    if (!c.requeued && !S.opts.once) S.queue.push({ ref: c.ref, prompt: c.prompt, answer: c.answer, display: c.display, hint: c.hint, sub: c.sub, ltr: c.ltr, focus: c.focus, focusInfo: c.focusInfo, gram: c.gram, extraMs: c.extraMs, requeued: true });
   }
   function advance() {
     clearTimers();
@@ -2679,6 +2679,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
   .da-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; } .da-top b { font-size: 15.5px; } .da-pct { font-size: 28px; font-weight: 900; color: #1cb0f6; } .da-card.done .da-pct { color: #46a302; }
   .da-bar { height: 14px; border-radius: 8px; background: var(--line,#e5e5e5); overflow: hidden; margin: 6px 0; } .da-bar i { display: block; height: 100%; background: linear-gradient(90deg, #1cb0f6, #58cc02); border-radius: 8px; transition: width .4s; }
   .da-sub { font-size: 12.5px; color: var(--ink-soft,#777); } .da-ok { font-weight: 800; color: #2b8a00; margin-top: 6px; }
+  .da-modes { display: flex; gap: 8px; margin-top: 10px; } .da-modes .da-btn { margin-top: 0; padding: 12px 4px; font-size: 14.5px; }
   .da-btn { display: block; width: 100%; border: 0; border-radius: 14px; background: #1cb0f6; color: #fff; font: inherit; font-weight: 900; font-size: 16px; padding: 12px; box-shadow: 0 4px 0 #1590c8; cursor: pointer; margin-top: 10px; } .da-btn.alt { background: var(--surface,#fff); color: inherit; border: 2px solid var(--line,#ddd); box-shadow: 0 3px 0 var(--line,#ddd); }
   `;
   function injectGameCss() { if (document.getElementById('dlGameCss')) return; const s = document.createElement('style'); s.id = 'dlGameCss'; s.textContent = GCSS; document.head.appendChild(s); }
@@ -2847,11 +2848,11 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
       $('rlGo').onclick = spin;
     }
     // ----- 🦋 butterfly farm: five butterflies carry German words; tap the one that matches the Hebrew word on top -----
-    function farm(k, onClose) {
+    function farm(k, onClose, spec) {
       injectGameCss();
-      const by = byId(), items = wordsOf(k).map(id => by.get(String(id))).filter(Boolean);
+      const by = byId(), items = spec ? spec.items : wordsOf(k).map(id => by.get(String(id))).filter(Boolean);
       if (items.length < 2) return;
-      const dd = k.split('-').map(Number), label = k === todayKey() ? 'היום' : dd[2] + '.' + dd[1];
+      const dd = spec ? [0, 0, 0] : k.split('-').map(Number), label = spec ? spec.label : (k === todayKey() ? 'היום' : dd[2] + '.' + dd[1]);
       const ov = document.createElement('div'); ov.className = 'fm-ov'; document.body.appendChild(ov);
       const SLOTS = [[26, 15], [74, 24], [48, 48], [25, 73], [75, 76]], COLS = ['#ff7eb6', '#ffb347', '#7ed6ff', '#b388ff', '#7be495', '#ffd84d', '#ff8a7a'];
       const disp = it => ((it.ref && it.ref.gender) ? it.ref.gender + ' ' : '') + it.de;
@@ -2889,14 +2890,14 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
       function tap(b) {
         if (!cur || busy) return;
         if (b === cur) {
-          busy = true; const de = b.it.de; if (!missed.has(de)) { firstTry++; rec(de, true); } SND.pop(); try { cfg.speak && cfg.speak(disp(b.it)); } catch (e) {}
+          busy = true; const de = b.it.de; if (!missed.has(de)) { firstTry++; rec(de, true); } if (spec && spec.onCaught) spec.onCaught(de, !missed.has(de)); SND.pop(); try { cfg.speak && cfg.speak(disp(b.it)); } catch (e) {}
           const r = b.el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2); live = live.filter(x => x !== b); caught++;
           ov.querySelector('#fmJar').insertAdjacentHTML('beforeend', '<span>🦋</span>');
           try { b.el.animate([{ opacity: 1, transform: 'translate(-50%,-50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%,-420%) scale(.3)' }], { duration: 450, easing: 'ease-in', fill: 'forwards' }); } catch (e) {}
           setTimeout(() => { b.el.remove(); fill(); next(); }, 520);
         } else {
           SND.bad(); vib(80); b.el.classList.add('shake'); setTimeout(() => b.el.classList.remove('shake'), 450);
-          if (!missed.has(cur.it.de)) { missed.add(cur.it.de); rec(cur.it.de, false); results[cur.it.de] = cur.it; }
+          if (!missed.has(cur.it.de)) { missed.add(cur.it.de); rec(cur.it.de, false); results[cur.it.de] = cur.it; if (spec && spec.onMiss) spec.onMiss(cur.it.de); }
           if (++wrongN >= 2) cur.el.classList.add('glow'); // after two misses the right butterfly lights up
         }
       }
@@ -2933,7 +2934,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
           '<div class="dl-streak">' + (window.DailyPlan ? '<button class="dl-stat" id="dlCopy" style="cursor:pointer;font:inherit;color:inherit;flex:0 0 74px"><b>📋</b><span>העתק נתונים</span></button>' : '') + '<div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
           (cfg.grammar ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlGram" style="background:linear-gradient(180deg,#8f6bff,#6a43e0);box-shadow:0 4px 0 #4a2fa8">🎭 ' + esc(cfg.grammarLabel ? cfg.grammarLabel() : 'דקדוק') + '</button></div>' : '') +
           (Object.keys(data).filter(k => k <= tk && wordsOf(k).length).length >= 2 ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlRoul" style="background:linear-gradient(180deg,#ff5d8f,#d62e66);box-shadow:0 4px 0 #a31c4a">🎰 רולטה · בחר לי יום לבחינה</button></div>' : '') +
-          (cfg.dailyProgress && total ? (() => { const dp = cfg.dailyProgress(); if (!dp || !dp.total) return ''; return '<div class="da-card' + (dp.complete ? ' done' : '') + '"><div class="da-top"><b>🔁 חזרה יומית על כל המילים</b><span class="da-pct">' + dp.pct + '%</span></div><div class="da-bar"><i style="width:' + dp.pct + '%"></i></div><div class="da-sub">' + dp.done + ' מתוך ' + dp.total + ' מילים' + (dp.streak ? ' · 🔥 ' + dp.streak + (dp.streak === 1 ? ' יום' : ' ימים') + ' ברצף' : '') + '</div>' + (dp.complete ? '<div class="da-ok">✅ סגרת את היום! כל המילים נחזרו</div><button class="da-btn alt" id="dlDA">עוד סבב</button>' : '<button class="da-btn" id="dlDA">▶ ' + (dp.done ? 'המשך מאיפה שעצרת' : 'מתחילים') + ' · עוד ' + Math.min(dp.batch, dp.total - dp.done) + ' מילים</button>') + '</div>'; })() : '') +
+          (cfg.dailyProgress && total ? (() => { const dp = cfg.dailyProgress(); if (!dp || !dp.total) return ''; return '<div class="da-card' + (dp.complete ? ' done' : '') + '"><div class="da-top"><b>🔁 חזרה יומית על כל המילים</b><span class="da-pct">' + dp.pct + '%</span></div><div class="da-bar"><i style="width:' + dp.pct + '%"></i></div><div class="da-sub">' + dp.done + ' מתוך ' + dp.total + ' מילים' + (dp.streak ? ' · 🔥 ' + dp.streak + (dp.streak === 1 ? ' יום' : ' ימים') + ' ברצף' : '') + '</div>' + (dp.complete ? '<div class="da-ok">✅ סגרת את היום! כל המילים נחזרו</div>' : '<div class="da-sub" style="margin-top:4px">כל מילה פעם אחת. אפשר לעצור באמצע ולהמשיך מאיפה שעצרת</div>') + '<div class="da-modes"><button class="da-btn" data-da="speak">🎤 דיבור</button><button class="da-btn" data-da="butterfly">🦋 פרפרים</button><button class="da-btn" data-da="choice">🔤 4 תשובות</button></div><div class="da-sub" style="text-align:center;margin-top:6px">' + (dp.complete ? 'לחיצה מתחילה סבב חדש' : (dp.done ? 'המשך מאיפה שעצרת · ' : '') + 'נשארו ' + dp.left + ' מילים') + '</div></div>'; })() : '') +
           (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">' + (window.DailyPlan && window.DailyPlan.isRevDay && window.DailyPlan.isRevDay() ? '🔁 יום חזרה' : '🗓️ האימון של היום') + '</button>' : '') + (cfg.verbs && cfg.verbCount && cfg.verbCount() >= 3 ? '<button class="dl-btn" id="dlVerbs">🔧 נטיית פעלים</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
           '<div class="dl-grid">' + DOW.map(x => '<div class="dl-dow">' + x + '</div>').join('') + cells + '</div>';
         h += '<div class="dl-panel"><h3>' + (isToday ? 'היום' : sd[2] + ' ' + MONTHS[sd[1] - 1]) + ' · ' + n + '/' + GOAL + ' מילים</h3><div class="sub">' + (n ? 'ידועות (לפי התרגול והקערה): ' + known + ' מתוך ' + n : isFuture ? 'עוד לא הגיע היום הזה.' : 'עוד לא הוספת מילים ליום הזה.') + '</div>';
@@ -2960,7 +2961,14 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         el.querySelectorAll('.dl-day').forEach(b => { b.onclick = () => { if (b.classList.contains('future')) return; sel = b.dataset.k; draw(); }; });
         if ($('dlAdd')) $('dlAdd').onclick = () => picker(el, sel, draw);
         if ($('dlRoul')) $('dlRoul').onclick = () => roulette(draw);
-        if ($('dlDA')) $('dlDA').onclick = () => cfg.dailyRun(draw);
+        document.querySelectorAll('[data-da]').forEach(b => { b.onclick = () => {
+          const mode = b.dataset.da;
+          if (mode === 'butterfly') {
+            const rem = new Set(cfg.dailyRemaining()), items = cfg.items().filter(it => rem.has(String(it.id)));
+            if (items.length >= 2) farm(null, draw, { items: items, label: 'חזרה יומית · כל המילים', onCaught: (de, ok) => cfg.dailyMark(de, ok, true), onMiss: de => { try { cfg.dailyMark(de, false, true); } catch (e) {} } });
+            else if (items.length === 1) cfg.dailyRun('choice', draw);
+          } else cfg.dailyRun(mode, draw);
+        }; });
         if ($('dlGram')) $('dlGram').onclick = () => cfg.grammar(draw);
         if ($('dlFarm')) $('dlFarm').onclick = () => farm(sel, draw);
         if ($('dlMore')) $('dlMore').onclick = () => picker(el, sel, draw);
@@ -7448,7 +7456,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '9c0914868f';
+  const APP_BUILD = 'e6d020d814';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8655,7 +8663,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       numbers: redraw => { if (window.openNumbers) window.openNumbers({ onClose: redraw }); },
       health: redraw => { if (window.openWordHealth) window.openWordHealth({ onClose: redraw }); },
       dailyProgress: () => (window.WordHealth && window.WordHealth.daily ? window.WordHealth.daily.progress() : null),
-      dailyRun: redraw => { if (window.WordHealth && window.WordHealth.daily) window.WordHealth.daily.run(20, redraw); },
+      dailyRun: (mode, redraw) => { if (window.WordHealth && window.WordHealth.daily) window.WordHealth.daily.run(mode, redraw); },
+      dailyRemaining: () => (window.WordHealth && window.WordHealth.daily ? window.WordHealth.daily.remaining().map(v => v.de) : []),
+      dailyMark: (de, ok, recorded) => { try { window.WordHealth.daily.mark(de, ok, recorded); } catch (e) {} },
       badge: de => (window.wordBadge ? window.wordBadge(de) : ''),
       gameCount: ids => (window.derDasDieNouns ? window.derDasDieNouns(ids).length : 0),
       game: (ids, redraw) => { if (window.openDerDasDie) window.openDerDasDie({ words: ids, onClose: redraw }); },
@@ -9427,19 +9437,21 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         getGroups: spGermanGroups, getItems: function () { return []; }, onClose: function () { if (cb) cb({ ok: ok, n: n, aborted: n < words.length }); }
       });
     }
-    // ---- daily full review, in instalments: every word learned up to today, a few at a time; progress is kept per answer, so leaving in the middle loses nothing ----
+    // ---- daily full review: EVERY word learned up to today, each asked once, in one go (or in pieces: progress is saved per answer). A miss goes to the "not yet" pool. Three ways: speaking, butterflies, four answers ----
     var DA_KEY = 'delearn_dailyall';
     function daToday() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
     function daLoad() { try { var o = JSON.parse(localStorage.getItem(DA_KEY) || 'null'); if (o && typeof o === 'object') { o.order = o.order || []; o.done = o.done || {}; o.hist = o.hist || {}; return o; } } catch (e) {} return { date: '', order: [], done: {}, hist: {} }; }
     function daSave(o) { try { localStorage.setItem(DA_KEY, JSON.stringify(o)); } catch (e) {} }
     function daWords() { var t = daToday(), seen = {}, out = []; dayWords().forEach(function (d) { if (d.k <= t) d.ws.forEach(function (v) { if (!seen[v.de]) { seen[v.de] = 1; out.push(v); } }); }); return out; }
+    function daOrder(ws, hist) { // the words that need it most come first, the rest in a mixed order
+      var lg = logGet(), items = ws.map(function (v) { return { v: v, s: statusOf(v.de, lg), r: Math.random() }; });
+      items.sort(function (a, b) { return (b.s.prio + b.r * 0.4) - (a.s.prio + a.r * 0.4); });
+      return { date: daToday(), order: items.map(function (x) { return x.v.de; }), done: {}, hist: hist || {} };
+    }
     function daState() {
-      var o = daLoad(), t = daToday(), ws = daWords(), set = {}; ws.forEach(function (v) { set[v.de] = 1; });
-      if (o.date !== t) { // a new day: the words that need it most come first, the rest in a mixed order
-        var lg = logGet(), items = ws.map(function (v) { return { v: v, s: statusOf(v.de, lg), r: Math.random() }; });
-        items.sort(function (a, b) { return (b.s.prio + b.r * 0.4) - (a.s.prio + a.r * 0.4); });
-        o = { date: t, order: items.map(function (x) { return x.v.de; }), done: {}, hist: o.hist || {} };
-      } else { var have = {}; o.order.forEach(function (d) { have[d] = 1; }); ws.forEach(function (v) { if (!have[v.de]) o.order.push(v.de); }); }
+      var o = daLoad(), ws = daWords(), set = {}; ws.forEach(function (v) { set[v.de] = 1; });
+      if (o.date !== daToday()) o = daOrder(ws, o.hist);
+      else { var have = {}; o.order.forEach(function (d) { have[d] = 1; }); ws.forEach(function (v) { if (!have[v.de]) o.order.push(v.de); }); }
       o.order = o.order.filter(function (d) { return set[d]; });
       daSave(o); return { o: o, ws: ws };
     }
@@ -9450,26 +9462,88 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     }
     function daProgress() {
       var st = daState(), total = st.o.order.length, done = st.o.order.filter(function (d) { return st.o.done[d]; }).length;
-      return { done: done, total: total, pct: total ? Math.floor(done / total * 100) : 0, complete: total > 0 && done >= total, streak: daStreak(st.o), batch: 20 };
+      return { done: done, total: total, left: total - done, pct: total ? Math.floor(done / total * 100) : 0, complete: total > 0 && done >= total, streak: daStreak(st.o) };
     }
-    function daRun(n, cb) {
-      if (!window.SpeakPractice) { if (cb) cb(daProgress()); return; }
+    // the words still to do (when everything is done, a new round starts)
+    function daRemaining() {
       var st = daState(), by = {}; st.ws.forEach(function (v) { by[v.de] = v; });
-      var rest = st.o.order.filter(function (d) { return !st.o.done[d]; }).slice(0, n || 20).map(function (d) { return by[d]; });
-      if (!rest.length) { if (cb) cb(daProgress()); return; }
+      if (st.o.order.length && st.o.order.every(function (d) { return st.o.done[d]; })) { var n = daOrder(st.ws, st.o.hist); n.hist = st.o.hist; daSave(n); st = { o: n, ws: st.ws }; }
+      return st.o.order.filter(function (d) { return !st.o.done[d]; }).map(function (d) { return by[d]; }).filter(Boolean);
+    }
+    // an answer: counted in the word's history, a miss goes to the "not yet" pool, the word is done for today either way (asked once)
+    function daMark(de, ok, recorded) {
+      if (!recorded) { try { recordAttempt(de, ok); } catch (e) {} }
+      try { if (ok) removeMissed(de); else addMissed(de); } catch (e) {}
+      var o = daLoad(); if (o.date !== daToday()) return; o.done[de] = 1;
+      if (o.order.length && o.order.every(function (d) { return o.done[d]; })) o.hist[o.date] = 1;
+      daSave(o);
+    }
+    function daSpeak(rest, cb) {
       SpeakPractice.open({
-        title: 'חזרה יומית על כל המילים', storeKey: 'delearn_sp_health', autostart: true,
+        title: 'חזרה יומית · כל המילים', storeKey: 'delearn_sp_health', autostart: true, once: true,
         items: rest.map(function (v) { return { ref: v, prompt: heOf(v), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos }; }),
-        onResult: function (v, good) {
-          try { recordAttempt(v.de, good); if (good) removeMissed(v.de); else addMissed(v.de); } catch (e) {}
-          var o = daLoad(); if (o.date !== daToday()) return; o.done[v.de] = 1;
-          if (o.order.length && o.order.every(function (d) { return o.done[d]; })) o.hist[o.date] = 1;
-          daSave(o);
-        },
+        onResult: function (v, good) { daMark(v.de, good); },
         getGroups: spGermanGroups, getItems: function () { return []; }, onClose: function () { if (cb) cb(daProgress()); }
       });
     }
-    window.WordHealth = { statusOf: statusOf, recommend: recommend, summary: summary, practice: practiceCb, daily: { progress: daProgress, run: daRun } };
+    // four answers: one try per word; a miss shows the right answer and goes to the pool
+    function daChoice(rest, cb) {
+      if (!document.getElementById('daqCss')) {
+        var st = document.createElement('style'); st.id = 'daqCss';
+        st.textContent = '.daq{position:fixed;inset:0;z-index:8455;overflow-y:auto;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}' +
+          '.daq-w{max-width:520px;margin:0 auto}.daq-top{display:flex;align-items:center;gap:10px}.daq-x{border:0;background:none;font-size:26px;color:var(--ink-soft,#777);cursor:pointer;padding:4px 6px}.daq-bar{flex:1;height:14px;border-radius:8px;background:var(--line,#e5e5e5);overflow:hidden}.daq-bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#1cb0f6,#58cc02);border-radius:8px;transition:width .3s}.daq-n{font-size:13px;min-width:54px;text-align:left;direction:ltr;color:var(--ink-soft,#777)}' +
+          '.daq-dir{border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:12px;padding:4px 10px;font:inherit;font-size:13px;font-weight:800;cursor:pointer;color:inherit}' +
+          '.daq-q{text-align:center;margin:26px 0 20px}.daq-q small{display:block;color:var(--ink-soft,#777);font-size:13px;margin-bottom:6px}.daq-q b{display:block;font-size:34px;line-height:1.25}.daq-q b.de{direction:ltr}' +
+          '.daq-o{display:grid;grid-template-columns:1fr;gap:10px}.daq-o button{border:2px solid var(--line,#ddd);background:var(--surface,#fff);border-radius:16px;padding:16px 12px;font:inherit;font-size:21px;font-weight:800;color:inherit;cursor:pointer;box-shadow:0 3px 0 var(--line,#ddd)}.daq-o button.de{direction:ltr}.daq-o button.ok{background:#d7f2c4;border-color:#58cc02;box-shadow:0 3px 0 #46a302}.daq-o button.bad{background:#fbdcd8;border-color:#e5484d;box-shadow:0 3px 0 #c4373b}' +
+          '.daq-end{text-align:center;padding:30px 6px}.daq-end .big{font-size:60px}.daq-end h2{margin:6px 0}.daq-btn{display:block;width:100%;border:0;border-radius:14px;background:#58cc02;color:#fff;font:inherit;font-weight:900;font-size:17px;padding:13px;box-shadow:0 4px 0 #46a302;cursor:pointer;margin-top:12px}';
+        document.head.appendChild(st);
+      }
+      var pool = daWords(), ov = document.createElement('div'), i = 0, first = 0, miss = 0, dir = 'he2de', busy = false; ov.className = 'daq'; document.body.appendChild(ov);
+      try { dir = localStorage.getItem('delearn_da_dir') === 'de2he' ? 'de2he' : 'he2de'; } catch (e) {}
+      function lab(v) { return (v.gender ? v.gender + ' ' : '') + v.de; }
+      function opts(v) {
+        var he = heOf(v), same = pool.filter(function (x) { return x.de !== v.de && x.pos === v.pos && heOf(x) !== he; }), rest2 = pool.filter(function (x) { return x.de !== v.de && heOf(x) !== he && same.indexOf(x) < 0; });
+        var pick = [], src = same.slice().sort(function () { return Math.random() - 0.5; }).concat(rest2.sort(function () { return Math.random() - 0.5; }));
+        src.forEach(function (x) { if (pick.length < 3) pick.push(x); });
+        return pick.concat([v]).sort(function () { return Math.random() - 0.5; });
+      }
+      function close() { ov.remove(); if (cb) cb(daProgress()); }
+      function end() {
+        ov.innerHTML = '<div class="daq-w"><div class="daq-top"><button class="daq-x" id="daqX">✕</button></div><div class="daq-end"><div class="big">' + (miss ? '💪' : '🏆') + '</div><h2>' + (miss ? 'סיימת!' : 'מושלם!') + '</h2><div>' + first + ' מתוך ' + rest.length + ' בניסיון אחד</div>' + (miss ? '<div style="margin-top:6px;font-size:14px">' + miss + ' מילים נכנסו למאגר "עוד לא הצלחתי"</div>' : '') + '<button class="daq-btn" id="daqDone">סגור</button></div></div>';
+        ov.querySelector('#daqX').onclick = close; ov.querySelector('#daqDone').onclick = close;
+      }
+      function show() {
+        if (i >= rest.length) return end();
+        var v = rest[i], o = opts(v), de2he = dir === 'de2he', ans = de2he ? heOf(v) : lab(v); busy = false;
+        ov.innerHTML = '<div class="daq-w"><div class="daq-top"><button class="daq-x" id="daqX">✕</button><div class="daq-bar"><i style="width:' + Math.round(i / rest.length * 100) + '%"></i></div><div class="daq-n">' + (i + 1) + '/' + rest.length + '</div><button class="daq-dir" id="daqDir">' + (de2he ? '🇩🇪→🇮🇱' : '🇮🇱→🇩🇪') + '</button></div>' +
+          '<div class="daq-q"><small>' + (de2he ? 'מה זה אומר בעברית?' : 'איך אומרים בגרמנית?') + '</small><b class="' + (de2he ? 'de' : '') + '">' + esc(de2he ? lab(v) : heOf(v)) + '</b></div><div class="daq-o">' +
+          o.map(function (x, k) { return '<button data-k="' + k + '" class="' + (de2he ? '' : 'de') + '">' + esc(de2he ? heOf(x) : lab(x)) + '</button>'; }).join('') + '</div></div>';
+        ov.querySelector('#daqX').onclick = close;
+        ov.querySelector('#daqDir').onclick = function () { dir = de2he ? 'he2de' : 'de2he'; try { localStorage.setItem('delearn_da_dir', dir); } catch (e) {} show(); };
+        if (de2he) { try { speak(lab(v), null); } catch (e) {} }
+        var bs = [].slice.call(ov.querySelectorAll('.daq-o button'));
+        bs.forEach(function (b, k) {
+          b.onclick = function () {
+            if (busy) return; busy = true; var good = o[k].de === v.de;
+            if (good) first++; else miss++;
+            daMark(v.de, good);
+            b.classList.add(good ? 'ok' : 'bad'); if (!good) bs.forEach(function (x, j) { if (o[j].de === v.de) x.classList.add('ok'); });
+            if (!de2he) { try { speak(lab(v), null); } catch (e) {} }
+            i++; setTimeout(show, good ? 900 : 1800);
+          };
+        });
+      }
+      show();
+    }
+    // mode: 'speak' | 'choice' (butterflies are run by the calendar, which uses remaining() and mark())
+    function daRun(mode, cb) {
+      var rest = daRemaining();
+      if (!rest.length) { if (cb) cb(daProgress()); return; }
+      if (mode === 'choice') daChoice(rest, cb);
+      else if (window.SpeakPractice) daSpeak(rest, cb);
+      else if (cb) cb(daProgress());
+    }
+    window.WordHealth = { statusOf: statusOf, recommend: recommend, summary: summary, practice: practiceCb, daily: { progress: daProgress, run: daRun, remaining: daRemaining, mark: daMark } };
     window.openWordHealth = function (o) { css(); if (ov) close(); onClose = (o && o.onClose) || null; flt = 'all'; ov = document.createElement('div'); ov.className = 'wh-ov'; document.body.appendChild(ov); render(); };
   })();
 
@@ -9792,7 +9866,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (s.kind === 'letmix') { LetterTools.mix(cb); return; }
       if (s.kind === 'verbs') { var gc = window.GrammarWeek && window.GrammarWeek.current(); if (window.openVerbDrill) window.openVerbDrill({ n: 8, noSep: !!(gc && gc.day < 8), cb: cb, onClose: function () { if (!p.done[s.id]) mark(p, s, { aborted: true }); } }); return; }
       if (s.kind === 'dds') { if (window.openDerDasDie) window.openDerDasDie({ pool: 'cal', onClose: function () { mark(p, s, { ok: 0, n: 0 }); } }); return; }
-      if (s.kind === 'all') { WordHealth.daily.run(20, function (pr) { if (pr && pr.complete) mark(p, s, { ok: 1, n: 1 }); else mark(p, s, { aborted: true }); }); return; }
+      if (s.kind === 'all') { WordHealth.daily.run('speak', function (pr) { if (pr && pr.complete) mark(p, s, { ok: 1, n: 1 }); else mark(p, s, { aborted: true }); }); return; }
       if (s.kind === 'gram') { if (window.openGrammarWeek) window.openGrammarWeek({ onClose: function () { if (window.GrammarWeek.doneToday()) mark(p, s, { ok: 1, n: 1 }); else mark(p, s, { aborted: true }); } }); return; }
     }
     function css() {
