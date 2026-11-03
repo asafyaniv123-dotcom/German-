@@ -1616,7 +1616,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     const c = cur(), total = S.queue.length;
     ensureDir(c);
     const toHe = c.dir === 'de2he';
-    const pct = Math.round((S.idx / total) * 100);
+    const pBase = S.opts.progressBase || 0, pTot = pBase + total, pct = Math.round(((pBase + S.idx) / pTot) * 100);
     const cardCls = 'sp-card' + (S.enter ? ' enter' : '') + (S.state === 'ok' ? ' ok' : S.state === 'bad' ? ' bad' : S.wrong ? ' wrongtry' : '') + (S.shake ? ' shake' : '');
     let cardInner;
     if (S.state === 'ask') {
@@ -1661,7 +1661,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     links += '<button class="sp-link" id="spDbgBtn" style="opacity:.45">אבחון</button>';
     const pill = (S.live && S.state !== 'ask') ? '<button class="sp-livepill" id="spLiveStop">🎤 מקשיב · לחצו לעצירה</button>' : '';
     overlay.innerHTML =
-      '<div class="sp-top"><button class="sp-x" id="spClose" aria-label="סגירה">✕</button><div class="sp-bar"><div class="sp-fill" style="width:' + pct + '%"></div></div><div class="sp-count">' + S.idx + '/' + total + '</div></div>' +
+      '<div class="sp-top"><button class="sp-x" id="spClose" aria-label="סגירה">✕</button><div class="sp-bar"><div class="sp-fill" style="width:' + pct + '%"></div></div><div class="sp-count">' + (pBase + S.idx) + '/' + pTot + '</div></div>' +
       '<div class="sp-combo"><span>' + (S.combo >= 2 ? 'רצף ×' + S.combo : '') + '</span>' + pill + '</div>' +
       '<div class="sp-title">' + esc(toHe ? 'מה זה אומר? אמרו בעברית' : (S.opts.title || 'אמרו את המילה בגרמנית')) + '</div>' +
       '<div class="sp-stage">' + layers + (S.ghost ? '<div class="sp-card bad ghost">' + S.ghost + '</div>' : '') + '<div class="' + cardCls + '" id="spCard">' + cardInner + '</div></div>' +
@@ -2626,6 +2626,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
     tick: i => tone(560 + (i % 2) * 140, 0, 0.05, 'square', 0.07),
     spin: () => { tone(160, 0, 0.35, 'sawtooth', 0.05, 640); },
     win: () => { [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => tone(f, i * 0.09, 0.34, 'triangle', 0.2)); tone(1568, 0.55, 0.7, 'sine', 0.12); [0, 0.12, 0.24].forEach(a => tone(1976, 0.6 + a, 0.08, 'square', 0.05)); },
+    royal: () => { [659.25, 783.99, 987.77, 1174.66, 1318.5, 1567.98, 1975.53, 2349.3].forEach((f, i) => { tone(f, i * 0.07, 0.5, 'triangle', 0.16); tone(f * 2, i * 0.07 + 0.02, 0.35, 'sine', 0.05); }); tone(523.25, 0.1, 1.2, 'sine', 0.1); [0, 0.1, 0.2, 0.3].forEach(a => tone(3136 + a * 600, 0.6 + a, 0.12, 'sine', 0.06)); },
     pop: () => { tone(700, 0, 0.14, 'sine', 0.18, 1400); tone(1568, 0.08, 0.22, 'triangle', 0.1); },
     bad: () => tone(230, 0, 0.2, 'sawtooth', 0.08, 140)
   };
@@ -2669,6 +2670,10 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
   .fm-b.glow .fm-l { border-color: #58cc02; background: #eefbe0; animation: fmGlow .7s infinite alternate; } @keyframes fmGlow { from { box-shadow: 0 0 0 #58cc02; } to { box-shadow: 0 0 16px #58cc02; } }
   .fm-ground { padding: 6px 0 max(10px, env(safe-area-inset-bottom)); text-align: center; font-size: 22px; letter-spacing: 6px; }
   .fm-jar { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; min-height: 24px; font-size: 18px; letter-spacing: 0; }
+  .fm-b.royal { z-index: 3; } .fm-b.royal svg { width: 84px; height: 62px; filter: drop-shadow(0 0 8px #ffe36e) drop-shadow(0 0 20px #ffb300); } .fm-b.royal .fm-l { border-color: #ffc400; background: #fff8dc; box-shadow: 0 0 14px #ffd84d; } .fm-b.royal .wg { animation-duration: .3s; }
+  .fm-twk { position: absolute; top: -6px; inset-inline-end: -8px; font-style: normal; font-size: 20px; pointer-events: none; animation: fmTw .7s ease-in-out infinite alternate; } @keyframes fmTw { from { opacity: .3; transform: scale(.7) rotate(0); } to { opacity: 1; transform: scale(1.25) rotate(30deg); } }
+  .fm-royal-banner { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); z-index: 8480; pointer-events: none; font-size: 26px; font-weight: 900; color: #fff; text-shadow: 0 2px 0 #b8860b, 0 0 16px #ffd84d; background: linear-gradient(180deg, #ffd84d, #ff9f1c); padding: 14px 24px; border-radius: 26px; border: 4px solid #fff; box-shadow: 0 8px 30px rgba(255,180,0,.6); white-space: nowrap; }
+  .fm-flash { position: fixed; inset: 0; z-index: 8475; pointer-events: none; background: radial-gradient(circle, rgba(255,240,150,.85), rgba(255,255,255,0) 70%); }
   .fm-sp { position: fixed; pointer-events: none; z-index: 8470; font-size: 18px; }
   .fm-end { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(255,255,255,.55); }
   .fm-card { background: #fff; border-radius: 22px; border: 3px solid #b388ff; box-shadow: 0 6px 0 #8c63e0; padding: 18px; text-align: center; max-width: 340px; width: 100%; animation: rlUp .4s both; }
@@ -2867,10 +2872,26 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
           setTimeout(() => s.remove(), 900);
         }
       }
-      function counter() { const c = ov.querySelector('#fmCnt'); if (c) c.textContent = '🦋 ' + caught + '/' + items.length; }
+      function royalCatch(r) { // the word "Schmetterling" inside the butterfly farm: a butterfly of butterflies
+        try { SND.royal(); } catch (e) {} vib([40, 30, 40, 30, 120]);
+        const fl = document.createElement('div'); fl.className = 'fm-flash'; document.body.appendChild(fl);
+        try { fl.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0 }], { duration: 900, easing: 'ease-out' }); } catch (e) {} setTimeout(() => fl.remove(), 950);
+        const bn = document.createElement('div'); bn.className = 'fm-royal-banner'; bn.innerHTML = '🦋 פרפר בחוות פרפרים! ✨'; document.body.appendChild(bn);
+        try { bn.animate([{ opacity: 0, transform: 'translate(-50%,-50%) scale(.4)' }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1.08)', offset: .25 }, { opacity: 1, transform: 'translate(-50%,-50%) scale(1)', offset: .75 }, { opacity: 0, transform: 'translate(-50%,-90%) scale(.9)' }], { duration: 1900, easing: 'ease-out' }); } catch (e) {} setTimeout(() => bn.remove(), 1950);
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        for (let i = 0; i < 16; i++) {
+          const f = document.createElement('i'); f.className = 'fm-sp'; f.textContent = i % 4 === 0 ? '✨' : '🦋'; f.style.left = cx + 'px'; f.style.top = cy + 'px'; f.style.fontSize = (20 + Math.random() * 22) + 'px'; document.body.appendChild(f);
+          const a = (Math.PI * 2 * i) / 16 + Math.random() * 0.4, d = 90 + Math.random() * 150;
+          try { f.animate([{ transform: 'translate(0,0) rotate(0deg) scale(.5)', opacity: 1 }, { transform: 'translate(' + Math.cos(a) * d + 'px,' + (Math.sin(a) * d - 140) + 'px) rotate(' + (Math.random() * 90 - 45) + 'deg) scale(1.1)', opacity: 0 }], { duration: 1500 + Math.random() * 700, easing: 'cubic-bezier(.2,.7,.3,1)' }); } catch (e) {}
+          setTimeout(() => f.remove(), 2300);
+        }
+        confetti(18, ['🦋', '✨', '🌟']);
+      }
+      function counter() { const c = ov.querySelector('#fmCnt'); if (!c) return; let d = caught, t = items.length; if (spec && spec.progress) { try { const pr = spec.progress(); d = pr.done; t = pr.total; } catch (e) {} } c.textContent = '🦋 ' + d + '/' + t; }
       function mk(b) {
-        const s = SLOTS[b.slot], col = COLS[Math.floor(Math.random() * COLS.length)], el = document.createElement('button'); el.className = 'fm-b'; el.style.left = s[0] + '%'; el.style.top = s[1] + '%';
+        const royal = b.it.de === 'Schmetterling', s = SLOTS[b.slot], col = royal ? '#ffc400' : COLS[Math.floor(Math.random() * COLS.length)], el = document.createElement('button'); el.className = 'fm-b' + (royal ? ' royal' : ''); el.style.left = s[0] + '%'; el.style.top = s[1] + '%';
         el.innerHTML = '<span class="fm-bi" style="--d:' + (3.5 + Math.random() * 3).toFixed(1) + 's;--dx:' + Math.round(6 + Math.random() * 10) + 'px;--dy:' + Math.round(5 + Math.random() * 9) + 'px">' + BFLY(col) + '<span class="fm-l">' + esc(disp(b.it)) + '</span></span>';
+        if (royal) { const tw = document.createElement('i'); tw.className = 'fm-twk'; tw.textContent = '✨'; el.appendChild(tw); }
         el.onclick = () => tap(b); return el;
       }
       function fill() {
@@ -2891,7 +2912,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         if (!cur || busy) return;
         if (b === cur) {
           busy = true; const de = b.it.de; if (!missed.has(de)) { firstTry++; rec(de, true); } if (spec && spec.onCaught) spec.onCaught(de, !missed.has(de)); SND.pop(); try { cfg.speak && cfg.speak(disp(b.it)); } catch (e) {}
-          const r = b.el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2); live = live.filter(x => x !== b); caught++;
+          const r = b.el.getBoundingClientRect(); burst(r.left + r.width / 2, r.top + r.height / 2); if (b.it.de === 'Schmetterling') royalCatch(r); live = live.filter(x => x !== b); caught++;
           ov.querySelector('#fmJar').insertAdjacentHTML('beforeend', '<span>🦋</span>');
           try { b.el.animate([{ opacity: 1, transform: 'translate(-50%,-50%) scale(1)' }, { opacity: 0, transform: 'translate(-50%,-420%) scale(.3)' }], { duration: 450, easing: 'ease-in', fill: 'forwards' }); } catch (e) {}
           setTimeout(() => { b.el.remove(); fill(); next(); }, 520);
@@ -2907,7 +2928,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         ov.querySelector('#fmStage').insertAdjacentHTML('beforeend', '<div class="fm-end"><div class="fm-card"><div style="font-size:54px">🦋</div><h3>כל הפרפרים נתפסו!</h3><div class="s">' + firstTry + ' מתוך ' + items.length + ' בניסיון הראשון</div>' +
           (miss.length ? '<div class="s" style="margin:6px 0 0">מילים לחזור עליהן:</div><ul>' + miss.map(it => '<li>' + esc(disp(it)) + '<span>' + esc(it.he) + '</span></li>').join('') + '</ul>' : '<div class="s">בלי אף טעות. מושלם!</div>') +
           '<div class="b"><button id="fmAgain">🔁 עוד סיבוב</button><button class="s2" id="fmClose">סגור</button></div></div></div>');
-        ov.querySelector('#fmAgain').onclick = start; ov.querySelector('#fmClose').onclick = close;
+        if (spec && spec.noAgain) { const ag = ov.querySelector('#fmAgain'); if (ag) ag.remove(); } else ov.querySelector('#fmAgain').onclick = start; ov.querySelector('#fmClose').onclick = close;
       }
       function start() {
         queue = shuf(items); live = []; cur = null; last = null; caught = 0; firstTry = 0; missed = new Set(); wrongN = 0; busy = true; results = {};
@@ -2965,7 +2986,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
           const mode = b.dataset.da;
           if (mode === 'butterfly') {
             const rem = new Set(cfg.dailyRemaining()), items = cfg.items().filter(it => rem.has(String(it.id)));
-            if (items.length >= 2) farm(null, draw, { items: items, label: 'חזרה יומית · כל המילים', onCaught: (de, ok) => cfg.dailyMark(de, ok, true), onMiss: de => { try { cfg.dailyMark(de, false, true); } catch (e) {} } });
+            if (items.length >= 2) farm(null, draw, { items: items, label: 'חזרה יומית · כל המילים', progress: () => cfg.dailyProgress(), noAgain: true, onCaught: (de, ok) => cfg.dailyMark(de, ok, true), onMiss: de => { try { cfg.dailyMark(de, false, true); } catch (e) {} } });
             else if (items.length === 1) cfg.dailyRun('choice', draw);
           } else cfg.dailyRun(mode, draw);
         }; });
@@ -7488,7 +7509,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '33877a2605';
+  const APP_BUILD = '19e3e8e385';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -9523,16 +9544,17 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       if (o.order.length && o.order.every(function (d) { return o.done[d]; })) o.hist[o.date] = 1;
       daSave(o);
     }
-    function daSpeak(rest, cb) {
+    function daSpeak(rest, cb, base) {
       SpeakPractice.open({
-        title: 'חזרה יומית · כל המילים', storeKey: 'delearn_sp_health', autostart: true, once: true,
+        title: 'חזרה יומית · כל המילים', storeKey: 'delearn_sp_health', autostart: true, once: true, progressBase: base || 0,
         items: rest.map(function (v) { return { ref: v, prompt: heOf(v), answer: v.de, display: (v.gender ? v.gender + ' ' : '') + v.de, hint: v.pos }; }),
         onResult: function (v, good) { daMark(v.de, good); },
         getGroups: spGermanGroups, getItems: function () { return []; }, onClose: function () { if (cb) cb(daProgress()); }
       });
     }
     // four answers: one try per word; a miss shows the right answer and goes to the pool
-    function daChoice(rest, cb) {
+    function daChoice(rest, cb, base) {
+      base = base || 0;
       if (!document.getElementById('daqCss')) {
         var st = document.createElement('style'); st.id = 'daqCss';
         st.textContent = '.daq{position:fixed;inset:0;z-index:8455;overflow-y:auto;background:var(--bg,#fff);color:var(--ink,#3c3c3c);direction:rtl;padding:max(14px,env(safe-area-inset-top)) 16px calc(28px + env(safe-area-inset-bottom))}' +
@@ -9560,7 +9582,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       function show() {
         if (i >= rest.length) return end();
         var v = rest[i], o = opts(v), de2he = dir === 'de2he', ans = de2he ? heOf(v) : lab(v); busy = false;
-        ov.innerHTML = '<div class="daq-w"><div class="daq-top"><button class="daq-x" id="daqX">✕</button><div class="daq-bar"><i style="width:' + Math.round(i / rest.length * 100) + '%"></i></div><div class="daq-n">' + (i + 1) + '/' + rest.length + '</div><button class="daq-dir" id="daqDir">' + (de2he ? '🇩🇪→🇮🇱' : '🇮🇱→🇩🇪') + '</button></div>' +
+        ov.innerHTML = '<div class="daq-w"><div class="daq-top"><button class="daq-x" id="daqX">✕</button><div class="daq-bar"><i style="width:' + Math.round((base + i) / (base + rest.length) * 100) + '%"></i></div><div class="daq-n">' + (base + Math.min(i, rest.length)) + '/' + (base + rest.length) + '</div><button class="daq-dir" id="daqDir">' + (de2he ? '🇩🇪→🇮🇱' : '🇮🇱→🇩🇪') + '</button></div>' +
           '<div class="daq-q"><small>' + (de2he ? 'מה זה אומר בעברית?' : 'איך אומרים בגרמנית?') + '</small><b class="' + (de2he ? 'de' : '') + '">' + esc(de2he ? lab(v) : heOf(v)) + '</b></div><div class="daq-o">' +
           o.map(function (x, k) { return '<button data-k="' + k + '" class="' + (de2he ? '' : 'de') + '">' + esc(de2he ? heOf(x) : lab(x)) + '</button>'; }).join('') + '</div></div>';
         ov.querySelector('#daqX').onclick = close;
@@ -9584,8 +9606,9 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     function daRun(mode, cb) {
       var rest = daRemaining();
       if (!rest.length) { if (cb) cb(daProgress()); return; }
-      if (mode === 'choice') daChoice(rest, cb);
-      else if (window.SpeakPractice) daSpeak(rest, cb);
+      var base = daProgress().done;
+      if (mode === 'choice') daChoice(rest, cb, base);
+      else if (window.SpeakPractice) daSpeak(rest, cb, base);
       else if (cb) cb(daProgress());
     }
     window.WordHealth = { statusOf: statusOf, recommend: recommend, summary: summary, practice: practiceCb, daily: { progress: daProgress, run: daRun, remaining: daRemaining, mark: daMark } };
