@@ -1535,9 +1535,14 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         for (const nv of norms(raw)) {
           const hd = nv.split(' ').filter(Boolean); let i = 0, ok = true, used = 0;
           for (const w of tg) {
-            let f = -1;
-            for (let j = i; j < hd.length && j < i + 4; j++) { if (near(hd[j], w) || (Math.abs(hd[j].length - w.length) === 1 && Math.min(hd[j].length, w.length) >= 3 && (hd[j].indexOf(w) === 0 || w.indexOf(hd[j]) === 0))) { f = j; break; } }
-            if (f >= 0) { used += f - i; i = f + 1; } else if (OPT_W.indexOf(w) === -1) { ok = false; break; }
+            let f = -1, ln = 1;
+            for (let j = i; j < hd.length && j < i + 4; j++) {
+              if (near(hd[j], w) || (Math.abs(hd[j].length - w.length) === 1 && Math.min(hd[j].length, w.length) >= 3 && (hd[j].indexOf(w) === 0 || w.indexOf(hd[j]) === 0))) { f = j; break; }
+              // a long German compound that the recogniser split in two or three: "Sport Handtuch" = Sporthandtuch
+              if (w.length >= 4 && j + 1 < hd.length && near(hd[j] + hd[j + 1], w)) { f = j; ln = 2; break; }
+              if (w.length >= 8 && j + 2 < hd.length && near(hd[j] + hd[j + 1] + hd[j + 2], w)) { f = j; ln = 3; break; }
+            }
+            if (f >= 0) { used += f - i; i = f + ln; } else if (OPT_W.indexOf(w) === -1) { ok = false; break; }
           }
           if (ok && used <= 2 && hd.length - i <= 2) return true;
         }
@@ -7546,7 +7551,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '7d627e693b';
+  const APP_BUILD = '05da596c79';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
