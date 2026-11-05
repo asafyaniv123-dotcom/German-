@@ -1,5 +1,5 @@
 // Service worker: keeps the app available offline and updates it when a new version is published.
-const VERSION = 'd209113e63';
+const VERSION = '7d627e693b';
 const APP_CACHE = 'app-' + VERSION;
 const MEDIA_CACHE = 'media-v1';       // audio files: kept across app versions so they are downloaded only once
 const FONT_CACHE = 'fonts-v1';
