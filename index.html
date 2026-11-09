@@ -2966,7 +2966,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         let h = '<div class="dl-wrap">' + (onExit ? '<div class="dl-head"><button class="dl-x" id="dlX">✕</button><h2>📅 ' + esc(cfg.title || '15 מילים ביום') + '</h2><span style="width:34px"></span></div>' : '') +
           '<div class="dl-streak">' + (window.DailyPlan ? '<button class="dl-stat" id="dlCopy" style="cursor:pointer;font:inherit;color:inherit;flex:0 0 74px"><b>📋</b><span>העתק נתונים</span></button>' : '') + '<div class="dl-stat"><b>🔥 ' + streak() + '</b><span>ימים ברצף</span></div><div class="dl-stat"><b>' + total + '</b><span>מילים בלוח</span></div><div class="dl-stat"><b>' + doneDays + '</b><span>ימים מלאים</span></div></div>' +
           (cfg.grammar ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlGram" style="background:linear-gradient(180deg,#8f6bff,#6a43e0);box-shadow:0 4px 0 #4a2fa8">🎭 ' + esc(cfg.grammarLabel ? cfg.grammarLabel() : 'דקדוק') + '</button></div>' : '') +
-          (cfg.mySent ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlMyS" style="background:linear-gradient(180deg,#5db7ff,#2f8fe0);box-shadow:0 4px 0 #1b6cb3">🚂 ' + esc(cfg.mySentLabel ? cfg.mySentLabel() : 'משפטים שלי') + '</button></div>' : '') +
+          (cfg.mySent ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlMyS" style="background:linear-gradient(180deg,#5db7ff,#2f8fe0);box-shadow:0 4px 0 #1b6cb3">🚂 ' + esc(cfg.mySentLabel ? cfg.mySentLabel() : 'משפטים שלי') + '</button>' + (cfg.diary ? '<button class="dl-btn" id="dlDia" style="background:linear-gradient(180deg,#d3a877,#a47a4c);box-shadow:0 4px 0 #6f4f2e">📔 ' + esc(cfg.diaryLabel ? cfg.diaryLabel() : 'יומני היקר') + '</button>' : '') + '</div>' : '') +
           (Object.keys(data).filter(k => k <= tk && wordsOf(k).length).length >= 2 ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlRoul" style="background:linear-gradient(180deg,#ff5d8f,#d62e66);box-shadow:0 4px 0 #a31c4a">🎰 רולטה · בחר לי יום לבחינה</button></div>' : '') +
           (cfg.dailyProgress && total ? (() => { const dp = cfg.dailyProgress(); if (!dp || !dp.total) return ''; return '<div class="da-card' + (dp.complete ? ' done' : '') + '"><div class="da-top"><b>🔁 חזרה יומית על כל המילים</b><span class="da-pct">' + dp.pct + '%</span></div><div class="da-bar"><i style="width:' + dp.pct + '%"></i></div><div class="da-sub">' + dp.done + ' מתוך ' + dp.total + ' מילים' + (dp.streak ? ' · 🔥 ' + dp.streak + (dp.streak === 1 ? ' יום' : ' ימים') + ' ברצף' : '') + '</div>' + (dp.complete ? '<div class="da-ok">✅ סגרת את היום! כל המילים נחזרו</div>' : '<div class="da-sub" style="margin-top:4px">כל מילה פעם אחת. אפשר לעצור באמצע ולהמשיך מאיפה שעצרת</div>') + '<div class="da-modes"><button class="da-btn" data-da="speak">🎤 דיבור</button><button class="da-btn" data-da="butterfly">🦋 פרפרים</button><button class="da-btn" data-da="choice">🔤 4 תשובות</button></div><div class="da-sub" style="text-align:center;margin-top:6px">' + (dp.complete ? 'לחיצה מתחילה סבב חדש' : (dp.done ? 'המשך מאיפה שעצרת · ' : '') + 'נשארו ' + dp.left + ' מילים') + '</div></div>'; })() : '') +
           (cfg.testAll && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn blue" id="dlAll">🎯 מבחן על כל ' + total + ' המילים שלמדת</button>' + (cfg.gameAll ? '<button class="dl-btn blue" id="dlGameAll">🎙️ דר דאס די</button>' : '') + '</div>' : '') + (cfg.health && total ? '<div class="dl-btns" style="margin:0 0 12px"><button class="dl-btn" id="dlHealth">🌳 הגן של המילים שלי</button>' + (cfg.numbers ? '<button class="dl-btn" id="dlNumbers">🔢 מספרים ושעון</button>' : '') + (cfg.plan ? '<button class="dl-btn" id="dlPlan">' + (window.DailyPlan && window.DailyPlan.isRevDay && window.DailyPlan.isRevDay() ? '🔁 יום חזרה' : '🗓️ האימון של היום') + '</button>' : '') + (cfg.verbs && cfg.verbCount && cfg.verbCount() >= 3 ? '<button class="dl-btn" id="dlVerbs">🔧 נטיית פעלים</button>' : '') + '</div>' : '') + '<div class="dl-head"><button class="dl-nav" id="dlNext" aria-label="חודש הבא">›</button><h2>' + MONTHS[m] + ' ' + y + '</h2><button class="dl-nav" id="dlPrev" aria-label="חודש קודם">‹</button></div>' +
@@ -3005,6 +3005,7 @@ window.NUMWORDS = ['null', 'eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'si
         }; });
         if ($('dlGram')) $('dlGram').onclick = () => cfg.grammar(draw);
         if ($('dlMyS')) $('dlMyS').onclick = () => cfg.mySent(draw);
+        if ($('dlDia')) $('dlDia').onclick = () => cfg.diary(draw);
         if ($('dlFarm')) $('dlFarm').onclick = () => farm(sel, draw);
         if ($('dlMore')) $('dlMore').onclick = () => picker(el, sel, draw);
         if ($('dlAll')) $('dlAll').onclick = () => cfg.testAll(draw);
@@ -7573,7 +7574,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = 'ba4b8345ba';
+  const APP_BUILD = 'dc769ce18b';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -8839,6 +8840,8 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       grammarLabel: () => (window.GrammarWeek ? window.GrammarWeek.label() : ''),
       mySent: redraw => { if (window.MySentences) window.MySentences.open({ onClose: redraw }); },
       mySentLabel: () => (window.MySentences ? window.MySentences.label() : 'רכבת המשפטים'),
+      diary: redraw => { if (window.Diary) window.Diary.open({ onClose: redraw }); },
+      diaryLabel: () => (window.Diary ? window.Diary.label() : 'יומני היקר'),
       verbCount: () => (window.VerbTools ? window.VerbTools.count() : 0),
       numbers: redraw => { if (window.openNumbers) window.openNumbers({ onClose: redraw }); },
       health: redraw => { if (window.openWordHealth) window.openWordHealth({ onClose: redraw }); },
@@ -10015,7 +10018,10 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       wordorder: [{ de: 'Heute habe ich eine Probe.', he: 'היום יש לי חזרה.', b: 'habe', x: ['ich', 'hast', 'hat'] }],
       prep: [{ de: 'Ich wohne in Bremerhaven.', he: 'אני גר בברמרהפן.', b: 'in', x: ['an', 'auf', 'bei'] }, { de: 'Wir fahren mit dem Zug.', he: 'אנחנו נוסעים ברכבת.', b: 'mit', x: ['von', 'bei', 'nach'] }]
     };
-    function all(o) { return BANK.concat(o.custom || []); }
+    // the diary: each line he wrote in Hebrew and the German version (added day by day): {date, lines:[{he, de, t, b, x}]}
+    var DIARY = window.DIARY_DATA = [];
+    function diaryBank() { var out = []; DIARY.forEach(function (e) { (e.lines || []).forEach(function (l, i) { out.push({ id: 'd-' + e.date + '-' + (i + 1), date: e.date, de: l.de, he: l.he, t: l.t || ['perfekt'], b: l.b, x: l.x || [], diary: true }); }); }); return out; }
+    function all(o) { return BANK.concat(diaryBank(), o.custom || []); }
     function rec(o, id) { return o.b[id] || null; }
     function box(o, id) { return (o.b[id] && o.b[id].box) || 0; }
     function pick(o) {
@@ -12574,6 +12580,53 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     });
   })();
 
+</script>
+<script>
+// 📔 Dear Diary: five Hebrew lines about the day, the German version next to them (added day by day), lines also ride the trains
+(function () {
+  var ov = null, hide = false, onClose = null;
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function data() { return (window.DIARY_DATA || []).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; }); }
+  function ds(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+  function streak() {
+    var have = {}; data().forEach(function (e) { have[e.date] = 1; });
+    var d = new Date(), n = 0; if (!have[ds(d)]) d.setDate(d.getDate() - 1);
+    while (have[ds(d)]) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }
+  function label() { var n = data().length; return 'יומני היקר' + (n ? ' · ' + n + (n === 1 ? ' דף' : ' דפים') : ''); }
+  function say(t) { try { speak(t, null); } catch (e) {} }
+  function dlabel(d) { try { return new Date(d + 'T12:00:00').toLocaleDateString('he-IL', { weekday: 'long', day: 'numeric', month: 'long' }); } catch (e) { return d; } }
+  function css() {
+    if (document.getElementById('dyCss')) return; var st = document.createElement('style'); st.id = 'dyCss';
+    st.textContent = '.dy-ov{position:fixed;inset:0;z-index:100000;background:#f4ecd8;color:#2b2b2b;overflow:auto;direction:rtl;font-family:inherit;padding:14px 14px 60px}' +
+      '.dy-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.dy-x{border:0;background:none;font-size:28px;color:#6b5a3c;cursor:pointer}' +
+      '.dy-h{font-size:26px;font-weight:900;text-align:center;margin:2px 0 4px;color:#5b4326}.dy-s{text-align:center;color:#7a6a4a;font-size:14px;margin-bottom:12px}' +
+      '.dy-tg{display:block;margin:0 auto 14px;border:2px solid #c9b48b;background:#fff8e6;color:#5b4326;border-radius:14px;padding:8px 16px;font-weight:800;font-size:14px;cursor:pointer}' +
+      '.dy-pg{background:#fffdf4;border-radius:6px 14px 14px 6px;border-right:8px solid #b08a56;box-shadow:0 3px 10px rgba(80,60,20,.18);padding:12px 16px 8px;margin:0 0 18px}' +
+      '.dy-d{font-weight:900;color:#8a6b3a;font-size:15px;margin-bottom:8px}.dy-l{padding:6px 0 7px;border-bottom:1px dashed #e0d4b6;cursor:pointer}.dy-he{font-size:14px;color:#7a6a4a;margin-bottom:2px}' +
+      '.dy-de{direction:ltr;text-align:left;font-size:19px;font-weight:800;color:#1b4f8f;line-height:1.35}.dy-ov.hid .dy-de{filter:blur(7px);user-select:none}.dy-ov.hid .dy-l.on .dy-de{filter:none}' +
+      '.dy-go{display:block;width:100%;margin:2px 0 14px;border:0;border-radius:14px;background:#2f8fe0;color:#fff;font-weight:900;font-size:16px;padding:12px;box-shadow:0 4px 0 #1b6cb3;cursor:pointer}' +
+      '.dy-empty{text-align:center;padding:30px 10px;color:#6b5a3c;line-height:1.6;font-size:16px}.dy-empty b{display:block;font-size:54px}';
+    document.head.appendChild(st);
+  }
+  function close() { if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; if (cb) cb(); }
+  function draw() {
+    var ds0 = data(), n = streak();
+    ov.className = 'dy-ov' + (hide ? ' hid' : '');
+    ov.innerHTML = '<div class="dy-top"><span></span><button class="dy-x" id="dyX">✕</button></div><div class="dy-h">📔 יומני היקר</div>' +
+      '<div class="dy-s">' + (ds0.length ? (n > 1 ? '🔥 ' + n + ' ימים ברצף · ' : '') + ds0.length + ' דפים ביומן' : 'חמש שורות על היום, ולומדים איך להגיד אותן') + '</div>' +
+      (ds0.length ? '<button class="dy-tg" id="dyTg">' + (hide ? '👁️ מראים את הגרמנית' : '🙈 מצב בוחן: מסתירים את הגרמנית, לוחצים לגלות') + '</button><button class="dy-go" id="dyGo">🚂 מתרגלים את השורות ברכבת</button>' : '') +
+      (ds0.length ? ds0.map(function (e) { return '<div class="dy-pg"><div class="dy-d">' + esc(dlabel(e.date)) + '</div>' + (e.lines || []).map(function (l, i) { return '<div class="dy-l" data-de="' + esc(l.de) + '"><div class="dy-he">' + esc(l.he) + '</div><div class="dy-de">' + esc(l.de) + ' 🔊</div></div>'; }).join('') + '</div>'; }).join('')
+        : '<div class="dy-empty"><b>✍️</b>כל ערב כותבים לי בצ\'אט עד 5 שורות בעברית על מה שקרה היום.<br>אני מחזיר גרמנית פשוטה, והיא מופיעה כאן כדף ביומן.<br>כל שורה נכנסת גם לרכבות לתרגול.</div>');
+    ov.querySelector('#dyX').onclick = close;
+    var tg = ov.querySelector('#dyTg'); if (tg) tg.onclick = function () { hide = !hide; draw(); };
+    var go = ov.querySelector('#dyGo'); if (go) go.onclick = function () { if (window.MySentences) { var cb = onClose; onClose = null; ov.remove(); ov = null; window.MySentences.open({ onClose: cb }); } };
+    ov.querySelectorAll('.dy-l').forEach(function (el) { el.onclick = function () { el.classList.add('on'); say(el.getAttribute('data-de')); }; });
+  }
+  function open(o) { css(); onClose = (o && o.onClose) || null; hide = false; if (ov) ov.remove(); ov = document.createElement('div'); document.body.appendChild(ov); draw(); }
+  window.Diary = { open: open, label: label, count: function () { return data().length; } };
+})();
 </script>
 </body>
 </html>
