@@ -7585,7 +7585,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
   ];
   const HOME_TILES = HOME_GROUPS.reduce((a, g) => a.concat(g.items), []);
 
-  const APP_BUILD = '77e4e54c49';
+  const APP_BUILD = 'ff1236b99d';
   // forces the newest version: drops the cached app files (his progress stays) and reloads
   window.forceAppUpdate = async function () {
     try { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); } catch (e) {}
@@ -10077,8 +10077,14 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     }
     function close() { if (ov) { ov.remove(); ov = null; } var cb = onClose; onClose = null; onFinish = null; if (cb) { try { cb(); } catch (e) {} } }
     function frame(inner, pct, stat, back) { ov.innerHTML = '<div class="ms-w"><div class="ms-top"><button class="ms-x" id="msX">' + (back ? '→' : '✕') + '</button><div class="ms-bar"><i style="width:' + (pct || 0) + '%"></i><u style="right:calc(' + (pct || 0) + '% - 13px)">🚂</u></div><div class="ms-st">' + (stat || '') + '</div></div>' + inner + '</div>'; ov.querySelector('#msX').onclick = back || close; ov.scrollTop = 0; }
-    function trainHtml(toks, bi, tail) { return '<div class="tr-rail"><div class="tr-train"><span class="tr-loco">🚂</span>' + toks.map(function (t, k) { return k === bi ? '<span class="tr-w tr-gap" id="msGap" data-tail="' + esc(tail || '') + '">&nbsp;</span>' : '<span class="tr-w">' + esc(t) + '</span>'; }).join('') + '</div></div>'; }
-    function miniTrain(x, b) { return '<div class="tr-mini"><span class="tr-lo' + (b ? '' : ' off') + '">' + (b >= 3 ? '🏁' : '🚂') + '</span>' + x.de.split(' ').map(function (t) { return '<i>' + esc(t) + '</i>'; }).join('') + '</div>'; }
+    function gcls(de, k) { var G = window.Gram, r = G && G.role(de, k); return (r ? ' r-' + r : '') + (G && G.info(de, k) ? ' gv' : ''); }
+    function chipH(de) { return window.Gram ? Gram.chip(de, true) : ''; }
+    function legendH(de) { return window.Gram ? Gram.legend(de) : ''; }
+    function bTag(de, k) { var c = gcls(de, k); return '<b' + (c ? ' class="' + c.trim() + '"' : '') + ' data-i="' + k + '">'; }
+    function addNext(msg, fn) { var bt = document.createElement('button'); bt.className = 'ms-btn'; bt.textContent = '▶ הבא'; msg.parentNode.insertBefore(bt, msg.nextSibling); bt.onclick = function () { bt.onclick = null; fn(); }; }
+    function wire(de, okFn) { if (!window.Gram) return; [].slice.call(ov.querySelectorAll('.gv[data-i]')).forEach(function (el) { el.onclick = function () { if (el.id === 'msGap' && !okFn()) return; Gram.pop(de, Number(el.getAttribute('data-i'))); }; }); }
+    function trainHtml(toks, bi, tail, de) { return '<div class="tr-rail"><div class="tr-train"><span class="tr-loco">🚂</span>' + toks.map(function (t, k) { var c = gcls(de, k); return k === bi ? '<span class="tr-w tr-gap' + c + '" id="msGap" data-i="' + k + '" data-tail="' + esc(tail || '') + '">&nbsp;</span>' : '<span class="tr-w' + c + '" data-i="' + k + '">' + esc(t) + '</span>'; }).join('') + '</div></div>'; }
+    function miniTrain(x, b) { return '<div class="tr-mini"><span class="tr-lo' + (b ? '' : ' off') + '">' + (b >= 3 ? '🏁' : '🚂') + '</span>' + x.de.split(' ').map(function (t, k) { var r = window.Gram && Gram.role(x.de, k); return '<i' + (r ? ' class="r-' + r + '"' : '') + '>' + esc(t) + '</i>'; }).join('') + '</div>'; }
     function plain(w) { return String(w).replace(/[.,!?;:"“”]/g, ''); }
     function blankIdx(x, toks) { var i = -1; toks.forEach(function (t, k) { if (i < 0 && x.b && plain(t) === x.b) i = k; }); if (i >= 0) return i; var best = 0; toks.forEach(function (t, k) { if (plain(t).length > plain(toks[best]).length) best = k; }); return best; }
     function distract(x, toks, bi) {
@@ -10132,11 +10138,12 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         if (i >= list.length) { i = 0; return station(2, p2); }
         var x = list[i], toks = x.de.split(' '), bi = blankIdx(x, toks), w = plain(toks[bi]), opts = shuf(distract(x, toks, bi).concat([w]));
         var pre = toks.slice(0, bi).join(' '), post = toks.slice(bi + 1).join(' '), tail = /[.,!?;:]$/.test(toks[bi]) ? toks[bi].slice(-1) : '';
-        frame('<div class="ms-he">' + esc(x.he) + '</div>' + trainHtml(toks, bi, tail) + '<div class="ms-o">' + opts.map(function (f, k) { return '<button data-k="' + k + '">' + esc(f) + '</button>'; }).join('') + '</div><div class="ms-msg" id="msMsg">1/3 · בחרו את המילה החסרה</div>', pct(), (i + 1) + '/' + list.length);
+        frame('<div class="ms-he">' + esc(x.he) + '</div>' + chipH(x.de) + trainHtml(toks, bi, tail, x.de) + '<div class="ms-o">' + opts.map(function (f, k) { return '<button data-k="' + k + '">' + esc(f) + '</button>'; }).join('') + '</div><div class="ms-msg" id="msMsg">1/3 · בחרו את המילה החסרה</div>' + legendH(x.de), pct(), (i + 1) + '/' + list.length);
         var bs = [].slice.call(ov.querySelectorAll('.ms-o button')), msg = ov.querySelector('#msMsg'), got = false;
+        wire(x.de, function () { return got; });
         bs.forEach(function (b, k) { b.onclick = function () {
           if (got) return;
-          if (opts[k] === w) { got = true; b.classList.add('ok'); var g = ov.querySelector('#msGap'); g.textContent = w; g.classList.add('ok'); say(x.de); vib(20); stepsDone++; msg.innerHTML = '✅'; i++; setTimeout(p1, R[x.id].e1 ? 1900 : 1200); }
+          if (opts[k] === w) { got = true; b.classList.add('ok'); var g = ov.querySelector('#msGap'); g.textContent = w; g.classList.add('ok'); say(x.de); vib(20); stepsDone++; i++; var why = window.Gram && Gram.why(x.de, bi); if (why) { msg.innerHTML = '✅ ' + esc(why); addNext(msg, p1); } else { msg.innerHTML = '✅'; setTimeout(p1, R[x.id].e1 ? 1900 : 1200); } }
           else { R[x.id].e1 = true; b.classList.add('bad'); vib(60); msg.textContent = 'לא בדיוק. נסו שוב.'; }
         }; });
       }
@@ -10145,12 +10152,12 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
         if (i >= list.length) { i = 0; return p3(); }
         var x = list[i], toks = x.de.split(' '), tiles = shuf(toks.map(function (t) { return { t: t, used: false }; })), k2 = 0;
         if (tiles.map(function (t) { return t.t; }).join(' ') === x.de && toks.length > 1) tiles.reverse();
-        frame('<div class="ms-he">' + esc(x.he) + '</div><div class="ms-line" id="msLine"></div><div class="ms-t">' + tiles.map(function (t, k) { return '<button data-k="' + k + '">' + esc(t.t) + '</button>'; }).join('') + '</div><div class="ms-msg" id="msMsg">2/3 · בנו את המשפט לפי הסדר</div><button class="ms-btn hint" id="msHint">💡 רמז</button>', pct(), (i + 1) + '/' + list.length);
+        frame('<div class="ms-he">' + esc(x.he) + '</div>' + chipH(x.de) + '<div class="ms-line" id="msLine"></div><div class="ms-t">' + tiles.map(function (t, k) { return '<button data-k="' + k + '">' + esc(t.t) + '</button>'; }).join('') + '</div><div class="ms-msg" id="msMsg">2/3 · בנו את המשפט לפי הסדר</div><button class="ms-btn hint" id="msHint">💡 רמז</button>', pct(), (i + 1) + '/' + list.length);
         var bs = [].slice.call(ov.querySelectorAll('.ms-t button')), line = ov.querySelector('#msLine'), msg = ov.querySelector('#msMsg');
         ov.querySelector('#msHint').onclick = function () { R[x.id].e2 = true; var b = bs.filter(function (b, k) { return !tiles[k].used && tiles[k].t === toks[k2]; })[0]; if (b) { b.classList.add('glow'); setTimeout(function () { b.classList.remove('glow'); }, 1400); } };
         bs.forEach(function (b, k) { b.onclick = function () {
           if (tiles[k].used) return;
-          if (tiles[k].t === toks[k2]) { tiles[k].used = true; b.classList.add('used'); line.insertAdjacentHTML('beforeend', '<b>' + esc(tiles[k].t) + '</b>'); k2++; vib(15); if (k2 === toks.length) { say(x.de); stepsDone++; msg.innerHTML = '🎉'; i++; setTimeout(p2, R[x.id].e2 ? 1900 : 1300); } }
+          if (tiles[k].t === toks[k2]) { tiles[k].used = true; b.classList.add('used'); line.insertAdjacentHTML('beforeend', bTag(x.de, k2) + esc(tiles[k].t) + '</b>'); (function (kk) { var el = line.lastChild; if (window.Gram && el.classList.contains('gv')) el.onclick = function () { Gram.pop(x.de, kk); }; })(k2); k2++; vib(15); if (k2 === toks.length) { say(x.de); stepsDone++; i++; if (window.Gram && Gram.get(x.de)) { msg.innerHTML = '🎉 ' + esc(Gram.tnLine(x.de)) + '<br><small>לחצו על פועל לראות את הצורה המקורית</small>'; addNext(msg, p2); } else { msg.innerHTML = '🎉'; setTimeout(p2, R[x.id].e2 ? 1900 : 1300); } } }
           else { R[x.id].e2 = true; b.classList.add('bad'); vib(60); setTimeout(function () { b.classList.remove('bad'); }, 420); msg.textContent = 'לא כאן. מה המילה הבאה?'; }
         }; });
       }
@@ -12594,6 +12601,77 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
 
 </script>
 <script>
+// 🎨 Grammar colors for sentences: who does it (subject), the verb, objects, time, place. Tense on the side, tap a verb to see its base form.
+(function () {
+  var R = { s: ['נושא', 'מי', '#2f8fe0', '#1f6fb8'], v: ['פועל', '', '#e5484d', '#b83539'], o: ['מושא ישיר', 'את מה', '#3aa655', '#2a7d3f'], d: ['מושא עקיף', 'למי', '#8e5bd6', '#6b3fb0'], t: ['זמן', 'מתי', '#ee8a12', '#b9660a'], p: ['מקום / אמצעי', 'איפה, לאן, עם מה', '#0aa5a5', '#077c7c'], x: ['מילים אחרות', '', '#78909c', '#546e7a'] };
+  var TN = { present: ['⏱️', 'הווה', 'Präsens', 'הפועל מותאם לנושא'], perfekt: ['⏪', 'עבר', 'Perfekt', 'haben / sein + Partizip II בסוף'], future: ['⏩', 'עתיד', 'Futur', 'werden + מקור בסוף'], modal: ['🔑', 'הווה + מודאל', 'Modalverb', 'פועל מודאל + מקור בסוף'], praeteritum: ['⏮️', 'עבר פשוט', 'Präteritum', 'צורת עבר אחת'], phrase: ['💬', 'ביטוי קבוע', '', ''] };
+  window.GRAM_DATA = {"Wir sprechen später.": {"tn": "present", "m": "s:Wir v:sprechen t:später.", "v": {"sprechen": ["sprechen", "לדבר", "sprechen – sprach – hat gesprochen", "wir sprechen: אחרי wir הפועל נשאר זהה לצורה המקורית.", "ich spreche · du sprichst · er spricht · wir sprechen"]}}, "Ich kann es verstehen, aber das Sprechen ist für mich ein bisschen kompliziert.": {"tn": "modal", "m": "s:Ich v:kann o:es v:verstehen, x:aber s:das s:Sprechen v:ist p:für p:mich x:ein x:bisschen x:kompliziert.", "v": {"kann": ["können", "יכול / מסוגל", "können – konnte – hat gekonnt", "ich kann: צורת ich של können (פועל מודאל). הפועל השני במשפט עומד במקור, בסוף.", "ich kann · du kannst · er kann · wir können"], "verstehen": ["verstehen", "להבין", "verstehen – verstand – hat verstanden", "צורת המקור (Infinitiv). אחרי פועל מודאל הפועל השני נשאר במקור ועובר לסוף.", "ich verstehe · du verstehst · er versteht"], "ist": ["sein", "להיות", "sein – war – ist gewesen", "das Sprechen ist: צורת er / sie / es / das של sein.", "ich bin · du bist · er ist · wir sind"]}}, "Ich kann es verstehen, aber zum Sprechen brauche ich Mut.": {"tn": "modal", "m": "s:Ich v:kann o:es v:verstehen, x:aber p:zum p:Sprechen v:brauche s:ich o:Mut.", "v": {"kann": ["können", "יכול / מסוגל", "können – konnte – hat gekonnt", "ich kann: צורת ich של können (פועל מודאל). הפועל השני במשפט עומד במקור, בסוף.", "ich kann · du kannst · er kann · wir können"], "verstehen": ["verstehen", "להבין", "verstehen – verstand – hat verstanden", "צורת המקור (Infinitiv). אחרי פועל מודאל הפועל השני נשאר במקור ועובר לסוף.", "ich verstehe · du verstehst · er versteht"], "brauche": ["brauchen", "להזדקק / צריך", "brauchen – brauchte – hat gebraucht", "ich brauche: צורת ich של brauchen (שורש brauch + e).", "ich brauche · du brauchst · er braucht"]}}, "Hast du das gesehen?": {"tn": "perfekt", "m": "v:Hast s:du o:das v:gesehen?", "v": {"Hast": ["haben", "יש ל… / לקבל", "haben – hatte – hat gehabt", "du hast: צורת du של haben (צורה לא סדירה: haben, hast).", "ich habe · du hast · er hat · wir haben"], "gesehen": ["sehen", "לראות", "sehen – sah – hat gesehen", "Partizip II של sehen (ge + sehen). עומד בסוף משפט Perfekt.", "ich sehe · du siehst · er sieht"]}}, "Ich werde es dir sagen.": {"tn": "future", "m": "s:Ich v:werde o:es d:dir v:sagen.", "v": {"werde": ["werden", "להיות / להפוך (גם עוזר העתיד)", "werden – wurde – ist geworden", "ich werde: צורת ich של werden. עוזר העתיד: werden + פועל במקור בסוף.", "ich werde · du wirst · er wird · wir werden"], "sagen": ["sagen", "לומר", "sagen – sagte – hat gesagt", "צורת המקור (Infinitiv), בסוף המשפט אחרי werden.", "ich sage · du sagst · er sagt"]}}, "Haben Sie ein Ladegerät?": {"tn": "present", "m": "v:Haben s:Sie o:ein o:Ladegerät?", "v": {"Haben": ["haben", "יש ל… / לקבל", "haben – hatte – hat gehabt", "Sie haben: בנימוס (Sie) הפועל זהה לצורה המקורית. בשאלה הפועל בא ראשון.", "ich habe · du hast · er hat · Sie haben"]}}, "Hast du ein Ladekabel für mein Handy?": {"tn": "present", "m": "v:Hast s:du o:ein o:Ladekabel p:für p:mein p:Handy?", "v": {"Hast": ["haben", "יש ל… / לקבל", "haben – hatte – hat gehabt", "du hast: צורת du של haben (צורה לא סדירה: haben, hast).", "ich habe · du hast · er hat · wir haben"]}}, "Kann ich die Rechnung haben?": {"tn": "modal", "m": "v:Kann s:ich o:die o:Rechnung v:haben?", "v": {"Kann": ["können", "יכול / מסוגל", "können – konnte – hat gekonnt", "Kann ich…? שאלה עם פועל מודאל: הפועל הראשון, והפועל השני במקור בסוף המשפט.", "ich kann · du kannst · er kann · wir können"], "haben": ["haben", "יש ל… / לקבל", "haben – hatte – hat gehabt", "צורת המקור (Infinitiv), בסוף אחרי פועל מודאל.", "ich habe · du hast · er hat · wir haben"]}}, "Kann ich den Cappuccino auch mitnehmen?": {"tn": "modal", "m": "v:Kann s:ich o:den o:Cappuccino x:auch v:mitnehmen?", "v": {"Kann": ["können", "יכול / מסוגל", "können – konnte – hat gekonnt", "Kann ich…? שאלה עם פועל מודאל: הפועל הראשון, והפועל השני במקור בסוף המשפט.", "ich kann · du kannst · er kann · wir können"], "mitnehmen": ["mitnehmen", "לקחת איתי", "mitnehmen – nahm mit – hat mitgenommen", "מקור של פועל מתפרק (mit + nehmen). בלי מודאל: Ich nehme es mit.", "ich nehme mit · du nimmst mit · er nimmt mit"]}}, "Wie heißt du?": {"tn": "present", "m": "x:Wie v:heißt s:du?", "v": {"heißt": ["heißen", "להיקרא", "heißen – hieß – hat geheißen", "du heißt: צורת du של heißen (שורש heiß + t).", "ich heiße · du heißt · er heißt"]}}, "Haben Sie Platz für drei Personen?": {"tn": "present", "m": "v:Haben s:Sie o:Platz p:für p:drei p:Personen?", "v": {"Haben": ["haben", "יש ל… / לקבל", "haben – hatte – hat gehabt", "Sie haben: בנימוס (Sie) הפועל זהה לצורה המקורית. בשאלה הפועל בא ראשון.", "ich habe · du hast · er hat · Sie haben"]}}, "Gibt es hier WLAN?": {"tn": "present", "m": "v:Gibt s:es p:hier o:WLAN?", "v": {"Gibt": ["geben", "לתת", "geben – gab – hat gegeben", "es gibt: צורת er / sie / es של geben. הביטוי es gibt = יש.", "ich gebe · du gibst · er gibt"]}}, "Bis später.": {"tn": "phrase", "m": "x:Bis t:später.", "v": {}}, "Haben Sie Schlagsahne?": {"tn": "present", "m": "v:Haben s:Sie o:Schlagsahne?", "v": {"Haben": ["haben", "יש ל… / לקבל", "haben – hatte – hat gehabt", "Sie haben: בנימוס (Sie) הפועל זהה לצורה המקורית. בשאלה הפועל בא ראשון.", "ich habe · du hast · er hat · Sie haben"]}}, "Kann ich hier ein Sporthandtuch kaufen?": {"tn": "modal", "m": "v:Kann s:ich p:hier o:ein o:Sporthandtuch v:kaufen?", "v": {"Kann": ["können", "יכול / מסוגל", "können – konnte – hat gekonnt", "Kann ich…? שאלה עם פועל מודאל: הפועל הראשון, והפועל השני במקור בסוף המשפט.", "ich kann · du kannst · er kann · wir können"], "kaufen": ["kaufen", "לקנות", "kaufen – kaufte – hat gekauft", "צורת המקור (Infinitiv), בסוף אחרי Kann.", "ich kaufe · du kaufst · er kauft"]}}, "Heute habe ich meine Freunde getroffen.": {"tn": "perfekt", "m": "t:Heute v:habe s:ich o:meine o:Freunde v:getroffen.", "v": {"habe": ["haben", "יש ל… (כאן: פועל עזר)", "haben – hatte – hat gehabt", "ich habe: צורת ich של haben, פועל העזר של Perfekt. יחד עם Partizip II בסוף יוצרים עבר.", "ich habe · du hast · er hat · wir haben"], "getroffen": ["treffen", "לפגוש", "treffen – traf – hat getroffen", "Partizip II של treffen (ge + treffen). הצורה משתנה מעט (trifft, getroffen).", "ich treffe · du triffst · er trifft"]}}, "Wir sind zusammen mit dem Zug nach Hannover gefahren.": {"tn": "perfekt", "m": "s:Wir v:sind x:zusammen p:mit p:dem p:Zug p:nach p:Hannover v:gefahren.", "v": {"sind": ["sein", "להיות (כאן: פועל עזר)", "sein – war – ist gewesen", "wir sind: צורת wir של sein. פעלי תנועה (fahren, gehen) יוצרים Perfekt עם sein ולא עם haben.", "ich bin · du bist · er ist · wir sind"], "gefahren": ["fahren", "לנסוע", "fahren – fuhr – ist gefahren", "Partizip II של fahren (ge + fahren). הצורה משתנה מעט (fährt, gefahren).", "ich fahre · du fährst · er fährt"]}}, "Wir haben viel gesprochen und gelacht.": {"tn": "perfekt", "m": "s:Wir v:haben x:viel v:gesprochen x:und v:gelacht.", "v": {"haben": ["haben", "יש ל… (כאן: פועל עזר)", "haben – hatte – hat gehabt", "wir haben: צורת wir של haben, פועל העזר של Perfekt.", "ich habe · du hast · er hat · wir haben"], "gesprochen": ["sprechen", "לדבר", "sprechen – sprach – hat gesprochen", "Partizip II של sprechen (ge + sprochen). הצורה משתנה (spricht, gesprochen).", "ich spreche · du sprichst · er spricht"], "gelacht": ["lachen", "לצחוק", "lachen – lachte – hat gelacht", "Partizip II של lachen (ge + lach + t). פועל רגיל: ge + שורש + t.", "ich lache · du lachst · er lacht"]}}, "Wir haben leckeres Essen gegessen.": {"tn": "perfekt", "m": "s:Wir v:haben o:leckeres o:Essen v:gegessen.", "v": {"haben": ["haben", "יש ל… (כאן: פועל עזר)", "haben – hatte – hat gehabt", "wir haben: צורת wir של haben, פועל העזר של Perfekt.", "ich habe · du hast · er hat · wir haben"], "gegessen": ["essen", "לאכול", "essen – aß – hat gegessen", "Partizip II של essen (ge + essen).", "ich esse · du isst · er isst"]}}};
+  var cache = {};
+  function esc(t) { return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function key(t) { return String(t).replace(/[.,!?;:]/g, ''); }
+  function get(de) {
+    if (cache[de] !== undefined) return cache[de];
+    var e = window.GRAM_DATA[de], out = null;
+    if (e) { var w = e.m.split(' ').map(function (s) { var i = s.indexOf(':'); return { r: s.slice(0, i), t: s.slice(i + 1) }; }); if (w.map(function (a) { return a.t; }).join(' ') === de) out = { tn: e.tn, w: w, v: e.v || {} }; }
+    cache[de] = out; return out;
+  }
+  function role(de, i) { var g = get(de); return g && g.w[i] ? g.w[i].r : null; }
+  function info(de, i) { var g = get(de); if (!g || !g.w[i] || g.w[i].r !== 'v') return null; return g.v[key(g.w[i].t)] || null; }
+  function say(t) { try { speak(t, null); } catch (e) {} }
+  function sentHtml(de) {
+    var g = get(de); if (!g) return esc(de);
+    return g.w.map(function (a, i) { return '<span class="gr r-' + a.r + (info(de, i) ? ' gv' : '') + '" data-i="' + i + '">' + esc(a.t) + '</span>'; }).join(' ');
+  }
+  function chip(de, full) {
+    var g = get(de); if (!g) return ''; var t = TN[g.tn] || TN.phrase;
+    if (full) return '<div class="gr-tn"><b>' + t[0] + ' ' + t[1] + (t[2] ? ' · ' + t[2] : '') + '</b>' + (t[3] ? '<small>' + esc(t[3]) + '</small>' : '') + '</div>';
+    return '<div class="gr-sd"><b>' + t[0] + '</b>' + esc(t[1]) + (t[2] ? '<br>' + t[2] : '') + '</div>';
+  }
+  function tnLine(de) { var g = get(de); if (!g) return ''; var t = TN[g.tn] || TN.phrase; return t[0] + ' ' + t[1] + (t[2] ? ' (' + t[2] + ')' : '') + (t[3] ? ': ' + t[3] : ''); }
+  function legend(de, compact) {
+    var ks = Object.keys(R), g = de ? get(de) : null;
+    if (g) { var used = {}; g.w.forEach(function (a) { used[a.r] = 1; }); ks = ks.filter(function (k) { return used[k]; }); }
+    return '<div class="gr-lgw">' + ks.map(function (k) { return '<span class="gr-lg r-' + k + '">' + R[k][0] + (R[k][1] ? ' · ' + R[k][1] : '') + '</span>'; }).join('') + '<div class="gr-lgh">לחצו על פועל כדי לראות את הצורה המקורית שלו</div></div>';
+  }
+  function why(de, i) {
+    var g = get(de); if (!g || !g.w[i]) return '';
+    var n = info(de, i); if (n) return n[3];
+    var r = g.w[i].r; return R[r][0] + (R[r][1] ? ' (' + R[r][1] + ')' : '');
+  }
+  function pop(de, i) {
+    var n = info(de, i), g = get(de); if (!n || !g) return;
+    var word = key(g.w[i].t), el = document.createElement('div');
+    el.innerHTML = '<div class="gr-bk"></div><div class="gr-pop"><button class="gr-x">✕</button>' +
+      '<div class="gr-r">במשפט</div><div class="gr-big">' + esc(word) + '</div><div class="gr-note">' + esc(n[3]) + '</div>' +
+      '<div class="gr-r">הצורה המקורית (Infinitiv)</div><div class="gr-inf" id="grInf">' + esc(n[0]) + ' 🔊</div><div class="gr-he">' + esc(n[1]) + '</div>' +
+      '<div class="gr-fm"><span>מקור – עבר פשוט – Perfekt</span><b>' + esc(n[2]) + '</b></div>' + (n[4] ? '<div class="gr-fm"><span>בהווה</span><b>' + esc(n[4]) + '</b></div>' : '') + '</div>';
+    document.body.appendChild(el);
+    function close() { el.remove(); }
+    el.querySelector('.gr-bk').onclick = close; el.querySelector('.gr-x').onclick = close;
+    el.querySelector('#grInf').onclick = function () { say(n[0]); }; say(word);
+  }
+  function css() {
+    if (document.getElementById('grCss')) return; var st = document.createElement('style'); st.id = 'grCss';
+    var t = '';
+    Object.keys(R).forEach(function (k) { t += '.r-' + k + '{--rc:' + R[k][2] + ';--rd:' + R[k][3] + '}'; });
+    t += '.gr{border-bottom:3px solid var(--rc);color:var(--rd);padding:0 1px}.gr.gv{background:rgba(229,72,77,.13);border-radius:5px 5px 0 0;cursor:pointer;font-weight:900}' +
+      '.tr-w[class*=" r-"],.ms-line b[class*="r-"]{background:var(--rc);box-shadow:0 3px 0 var(--rd)}.tr-w.gv,.ms-line b.gv{cursor:pointer;outline:2px dotted rgba(255,255,255,.85);outline-offset:-4px}' +
+      '.tr-w.tr-gap[class*=" r-"]{background:transparent;color:var(--rc);border-color:var(--rc);box-shadow:none}.tr-w.tr-gap.ok[class*=" r-"]{background:var(--rc);color:#fff;box-shadow:0 3px 0 var(--rd)}' +
+      '.tr-mini i[class*="r-"]{background:var(--rc)}' +
+      '.gr-tn{display:flex;flex-direction:column;align-items:center;gap:1px;margin:10px auto 0;width:max-content;max-width:100%;background:#fff3d6;color:#5b4326;border-radius:14px;padding:6px 14px;font-size:15px;line-height:1.3;text-align:center}.gr-tn small{font-size:12px;color:#8a6b3a;font-weight:600}' +
+      '.gr-sd{flex:0 0 60px;text-align:center;font-size:11px;font-weight:800;color:#7a6a4a;background:#fff3d6;border-radius:10px;padding:4px 2px;line-height:1.3;direction:rtl}.gr-sd b{display:block;font-size:20px;line-height:1.1}' +
+      '.gr-lgw{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:12px 0}.gr-lg{background:var(--rc);color:#fff;border-radius:9px;padding:3px 9px;font-size:12.5px;font-weight:800}.gr-lgh{flex:1 0 100%;text-align:center;font-size:12.5px;color:#8a7a5a;margin-top:2px}' +
+      '.gr-bk{position:fixed;inset:0;z-index:100020;background:rgba(0,0,0,.4)}.gr-pop{position:fixed;left:0;right:0;bottom:0;z-index:100021;background:#fffdf4;color:#2b2b2b;border-radius:24px 24px 0 0;padding:16px 20px calc(24px + env(safe-area-inset-bottom));direction:rtl;box-shadow:0 -6px 24px rgba(0,0,0,.25);max-height:78vh;overflow:auto}' +
+      '.gr-x{position:absolute;top:10px;left:14px;border:0;background:none;font-size:24px;color:#8a6b3a;cursor:pointer}.gr-r{font-size:12.5px;color:#8a7a5a;margin:10px 0 2px;font-weight:700}.gr-big{direction:ltr;text-align:right;font-size:30px;font-weight:900;color:#b83539}' +
+      '.gr-note{font-size:15px;line-height:1.5;margin-top:4px}.gr-inf{direction:ltr;text-align:right;font-size:30px;font-weight:900;color:#1b4f8f;cursor:pointer}.gr-he{font-size:17px;font-weight:800;margin-top:2px}' +
+      '.gr-fm{margin-top:12px;background:#f6efdc;border-radius:12px;padding:8px 12px}.gr-fm span{display:block;font-size:12px;color:#8a7a5a}.gr-fm b{display:block;direction:ltr;text-align:right;font-size:16px}';
+    st.textContent = t; document.head.appendChild(st);
+  }
+  css();
+  window.Gram = { get: get, role: role, info: info, sentHtml: sentHtml, chip: chip, tnLine: tnLine, legend: legend, why: why, pop: pop, css: css };
+})();
+</script>
+<script>
 // 📔 Dear Diary: five Hebrew lines about the day, the German version next to them (added day by day), lines also ride the trains
 (function () {
   var ov = null, hide = false, onClose = null;
@@ -12619,6 +12697,7 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
       '.dy-d{font-weight:900;color:#8a6b3a;font-size:15px;margin-bottom:8px}.dy-l{padding:6px 0 7px;border-bottom:1px dashed #e0d4b6;cursor:pointer}.dy-he{font-size:14px;color:#7a6a4a;margin-bottom:2px}' +
       '.dy-de{direction:ltr;text-align:left;font-size:19px;font-weight:800;color:#1b4f8f;line-height:1.35}.dy-ov.hid .dy-de{filter:blur(7px);user-select:none}.dy-ov.hid .dy-l.on .dy-de{filter:none}' +
       '.dy-go{display:block;width:100%;margin:2px 0 14px;border:0;border-radius:14px;background:#2f8fe0;color:#fff;font-weight:900;font-size:16px;padding:12px;box-shadow:0 4px 0 #1b6cb3;cursor:pointer}' +
+      '.dy-rw{display:flex;gap:8px;align-items:flex-start;direction:ltr}.dy-rw .dy-de{flex:1}.dy-de .gr{font-weight:800}' +
       '.dy-empty{text-align:center;padding:30px 10px;color:#6b5a3c;line-height:1.6;font-size:16px}.dy-empty b{display:block;font-size:54px}';
     document.head.appendChild(st);
   }
@@ -12628,13 +12707,13 @@ html.fun .sp-mic.live { box-shadow: 0 5px 0 #bd3a3e; }
     ov.className = 'dy-ov' + (hide ? ' hid' : '');
     ov.innerHTML = '<div class="dy-top"><span></span><button class="dy-x" id="dyX">✕</button></div><div class="dy-h">📔 יומני היקר</div>' +
       '<div class="dy-s">' + (ds0.length ? (n > 1 ? '🔥 ' + n + ' ימים ברצף · ' : '') + ds0.length + ' דפים ביומן' : 'חמש שורות על היום, ולומדים איך להגיד אותן') + '</div>' +
-      (ds0.length ? '<button class="dy-tg" id="dyTg">' + (hide ? '👁️ מראים את הגרמנית' : '🙈 מצב בוחן: מסתירים את הגרמנית, לוחצים לגלות') + '</button><button class="dy-go" id="dyGo">🚂 מתרגלים את השורות ברכבת</button>' : '') +
-      (ds0.length ? ds0.map(function (e) { return '<div class="dy-pg"><div class="dy-d">' + esc(dlabel(e.date)) + '</div>' + (e.lines || []).map(function (l, i) { return '<div class="dy-l" data-de="' + esc(l.de) + '"><div class="dy-he">' + esc(l.he) + '</div><div class="dy-de">' + esc(l.de) + ' 🔊</div></div>'; }).join('') + '</div>'; }).join('')
+      (ds0.length ? '<button class="dy-tg" id="dyTg">' + (hide ? '👁️ מראים את הגרמנית' : '🙈 מצב בוחן: מסתירים את הגרמנית, לוחצים לגלות') + '</button><button class="dy-go" id="dyGo">🚂 מתרגלים את השורות ברכבת</button>' : '') + (ds0.length && window.Gram ? Gram.legend() : '') +
+      (ds0.length ? ds0.map(function (e) { return '<div class="dy-pg"><div class="dy-d">' + esc(dlabel(e.date)) + '</div>' + (e.lines || []).map(function (l, i) { return '<div class="dy-l" data-de="' + esc(l.de) + '"><div class="dy-he">' + esc(l.he) + '</div><div class="dy-rw"><div class="dy-de">' + (window.Gram && Gram.get(l.de) ? Gram.sentHtml(l.de) : esc(l.de)) + ' 🔊</div>' + (window.Gram ? Gram.chip(l.de, false) : '') + '</div></div>'; }).join('') + '</div>'; }).join('')
         : '<div class="dy-empty"><b>✍️</b>כל ערב כותבים לי בצ\'אט עד 5 שורות בעברית על מה שקרה היום.<br>אני מחזיר גרמנית פשוטה, והיא מופיעה כאן כדף ביומן.<br>כל שורה נכנסת גם לרכבות לתרגול.</div>');
     ov.querySelector('#dyX').onclick = close;
     var tg = ov.querySelector('#dyTg'); if (tg) tg.onclick = function () { hide = !hide; draw(); };
     var go = ov.querySelector('#dyGo'); if (go) go.onclick = function () { if (window.MySentences) { var cb = onClose; onClose = null; ov.remove(); ov = null; window.MySentences.open({ onClose: cb }); } };
-    ov.querySelectorAll('.dy-l').forEach(function (el) { el.onclick = function () { el.classList.add('on'); say(el.getAttribute('data-de')); }; });
+    ov.querySelectorAll('.dy-l').forEach(function (el) { el.onclick = function () { el.classList.add('on'); say(el.getAttribute('data-de')); }; [].forEach.call(el.querySelectorAll('.gv'), function (v) { v.onclick = function (e) { e.stopPropagation(); if (hide && !el.classList.contains('on')) { el.classList.add('on'); return; } if (window.Gram) Gram.pop(el.getAttribute('data-de'), Number(v.getAttribute('data-i'))); }; }); });
   }
   function open(o) { css(); onClose = (o && o.onClose) || null; hide = false; if (ov) ov.remove(); ov = document.createElement('div'); document.body.appendChild(ov); draw(); }
   window.Diary = { open: open, label: label, count: function () { return data().length; } };
